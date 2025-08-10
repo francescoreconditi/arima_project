@@ -69,8 +69,25 @@ docs = [
     "mkdocs-material>=9.0.0",
     "mkdocstrings[python]>=0.22.0",
 ]
+api = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+]
+dashboard = [
+    "streamlit>=1.28.0",
+    "streamlit-plotly-events>=0.0.6",
+    "streamlit-aggrid>=0.3.4",
+]
+automl = [
+    "optuna>=3.4.0",
+    "hyperopt>=0.2.7",
+    "scikit-optimize>=0.9.0",
+    "tqdm>=4.66.0",
+]
 all = [
-    "arima-forecaster[dev,viz,jupyter,docs]",
+    "arima-forecaster[dev,viz,jupyter,docs,api,dashboard,automl]",
 ]
 
 [project.urls]
