@@ -1,116 +1,116 @@
-# Advanced ARIMA Forecasting Features
+# Funzionalità Avanzate di Forecasting ARIMA
 
-This document describes the advanced features added to the ARIMA Forecaster library, providing comprehensive tools for modern time series forecasting.
+Questo documento descrive le funzionalità avanzate aggiunte alla libreria ARIMA Forecaster, fornendo strumenti completi per il forecasting moderno delle serie temporali.
 
-## 🌊 SARIMA Models (Seasonal ARIMA)
+## 🌊 Modelli SARIMA (ARIMA Stagionale)
 
-### Overview
-SARIMA (Seasonal AutoRegressive Integrated Moving Average) models extend ARIMA to handle seasonal patterns in time series data.
+### Panoramica
+I modelli SARIMA (Seasonal AutoRegressive Integrated Moving Average) estendono ARIMA per gestire pattern stagionali nelle serie temporali.
 
-### Key Features
-- **Seasonal Parameters**: (P, D, Q, s) for seasonal AR, differencing, MA, and period
-- **Automatic Selection**: Grid search for optimal seasonal parameters  
-- **Seasonal Decomposition**: Built-in decomposition analysis
-- **Multiple Seasonal Periods**: Support for different seasonal cycles
+### Caratteristiche Chiave
+- **Parametri Stagionali**: (P, D, Q, s) per AR stagionale, differenziazione, MA e periodo
+- **Selezione Automatica**: Grid search per parametri stagionali ottimali
+- **Decomposizione Stagionale**: Analisi di decomposizione integrata
+- **Periodi Stagionali Multipli**: Supporto per diversi cicli stagionali
 
-### Usage Example
+### Esempio di Utilizzo
 ```python
 from arima_forecaster import SARIMAForecaster, SARIMAModelSelector
 
-# Manual SARIMA specification
+# Specifica manuale SARIMA
 model = SARIMAForecaster(
-    order=(1, 1, 1),           # Non-seasonal (p, d, q)
-    seasonal_order=(1, 1, 1, 12)  # Seasonal (P, D, Q, s)
+    order=(1, 1, 1),           # Non-stagionale (p, d, q)
+    seasonal_order=(1, 1, 1, 12)  # Stagionale (P, D, Q, s)
 )
 model.fit(data)
 forecast = model.forecast(steps=12)
 
-# Automatic SARIMA selection
+# Selezione automatica SARIMA
 selector = SARIMAModelSelector(
-    seasonal_periods=[12, 4],  # Monthly and quarterly patterns
+    seasonal_periods=[12, 4],  # Pattern mensili e trimestrali
     max_models=50
 )
 selector.search(data)
 best_model = selector.get_best_model()
 ```
 
-### Applications
-- **Monthly Sales Data**: Yearly seasonality (s=12)
-- **Daily Traffic**: Weekly seasonality (s=7)
-- **Quarterly Earnings**: Yearly seasonality (s=4)
-- **Hourly Energy Consumption**: Daily (s=24) and weekly (s=168) patterns
+### Applicazioni
+- **Dati Vendite Mensili**: Stagionalità annuale (s=12)
+- **Traffico Giornaliero**: Stagionalità settimanale (s=7)
+- **Guadagni Trimestrali**: Stagionalità annuale (s=4)
+- **Consumo Energetico Orario**: Pattern giornalieri (s=24) e settimanali (s=168)
 
-## 📈 Vector Autoregression (VAR) Models
+## 📈 Modelli Vector Autoregression (VAR)
 
-### Overview
-VAR models handle multivariate time series where multiple variables influence each other over time.
+### Panoramica
+I modelli VAR gestiscono serie temporali multivariate dove più variabili si influenzano reciprocamente nel tempo.
 
-### Key Features
-- **Multivariate Forecasting**: Forecast multiple related variables simultaneously
-- **Lag Selection**: Automatic optimal lag determination
-- **Causality Testing**: Granger causality tests between variables
-- **Impulse Response**: Analysis of variable interactions
-- **Cointegration Tests**: Long-term relationship analysis
+### Caratteristiche Chiave
+- **Forecasting Multivariato**: Previsione di più variabili correlate simultaneamente
+- **Selezione Lag**: Determinazione automatica del lag ottimale
+- **Test di Causalità**: Test di causalità di Granger tra variabili
+- **Impulse Response**: Analisi delle interazioni tra variabili
+- **Test di Cointegrazione**: Analisi delle relazioni a lungo termine
 
-### Usage Example
+### Esempio di Utilizzo
 ```python
 from arima_forecaster import VARForecaster
 import pandas as pd
 
-# Prepare multivariate data
+# Prepara dati multivariati
 data = pd.DataFrame({
-    'sales': sales_data,
-    'marketing_spend': marketing_data,
-    'competitor_index': competitor_data
+    'vendite': sales_data,
+    'spesa_marketing': marketing_data,
+    'indice_competitor': competitor_data
 })
 
-# Fit VAR model
+# Addestra modello VAR
 model = VARForecaster(maxlags=4)
 model.fit(data)
 
-# Generate multivariate forecast
+# Genera forecast multivariato
 forecast = model.forecast(steps=6)
-print(forecast['forecast'])  # Forecasts for all variables
+print(forecast['forecast'])  # Previsioni per tutte le variabili
 
-# Analyze variable relationships
-causality = model.granger_causality('sales', ['marketing_spend'])
+# Analizza relazioni tra variabili
+causalità = model.granger_causality('vendite', ['spesa_marketing'])
 impulse_resp = model.impulse_response(periods=10)
 ```
 
-### Advanced Analysis
-- **Impulse Response Functions**: How shocks in one variable affect others
-- **Forecast Error Variance Decomposition**: Contribution of each variable to forecast variance
-- **Granger Causality**: Statistical tests for causal relationships
-- **Cointegration**: Long-term equilibrium relationships
+### Analisi Avanzate
+- **Funzioni Impulse Response**: Come gli shock in una variabile influenzano le altre
+- **Decomposizione Varianza Errore di Previsione**: Contributo di ogni variabile alla varianza della previsione
+- **Causalità di Granger**: Test statistici per relazioni causali
+- **Cointegrazione**: Relazioni di equilibrio a lungo termine
 
-## 🤖 Auto-ML Hyperparameter Optimization
+## 🤖 Ottimizzazione Auto-ML degli Iperparametri
 
-### Overview
-Advanced optimization algorithms automatically find optimal model parameters using state-of-the-art techniques.
+### Panoramica
+Algoritmi di ottimizzazione avanzati trovano automaticamente i parametri ottimali del modello utilizzando tecniche all'avanguardia.
 
-### Supported Algorithms
+### Algoritmi Supportati
 - **Optuna**: Tree-structured Parzen Estimator (TPE)
-- **Hyperopt**: Bayesian optimization
-- **Scikit-Optimize**: Gaussian Process optimization
+- **Hyperopt**: Ottimizzazione Bayesiana
+- **Scikit-Optimize**: Ottimizzazione con Gaussian Process
 
-### Optimization Features
-- **Multi-Objective**: Optimize multiple metrics simultaneously
-- **Cross-Validation**: Time series-aware validation
-- **Early Stopping**: Prevent overfitting
-- **Parallel Processing**: Speed up optimization
+### Caratteristiche di Ottimizzazione
+- **Multi-Obiettivo**: Ottimizza più metriche simultaneamente
+- **Cross-Validation**: Validazione consapevole delle serie temporali
+- **Early Stopping**: Previene l'overfitting
+- **Processamento Parallelo**: Accelera l'ottimizzazione
 
-### Usage Example
+### Esempio di Utilizzo
 ```python
 from arima_forecaster.automl import ARIMAOptimizer, optimize_model
 
-# Single-objective optimization
+# Ottimizzazione singolo obiettivo
 optimizer = ARIMAOptimizer(objective_metric='aic')
 result = optimizer.optimize_optuna(data, n_trials=100)
 
-print(f"Best parameters: {result['best_params']}")
-print(f"Best score: {result['best_score']}")
+print(f"Parametri migliori: {result['best_params']}")
+print(f"Score migliore: {result['best_score']}")
 
-# Convenience function for any model type
+# Funzione di convenienza per qualsiasi tipo di modello
 result = optimize_model(
     model_type='sarima',
     data=data,
@@ -119,15 +119,15 @@ result = optimize_model(
 )
 ```
 
-### Optimization Objectives
-- **Information Criteria**: AIC, BIC, HQIC
-- **Forecast Accuracy**: MSE, MAE, MAPE
-- **Custom Metrics**: User-defined objective functions
+### Obiettivi di Ottimizzazione
+- **Criteri Informativi**: AIC, BIC, HQIC
+- **Accuratezza Forecast**: MSE, MAE, MAPE
+- **Metriche Personalizzate**: Funzioni obiettivo definite dall'utente
 
-## 🎯 Advanced Hyperparameter Tuning
+## 🎯 Tuning Avanzato degli Iperparametri
 
-### Multi-Objective Optimization
-Optimize multiple competing objectives simultaneously using Pareto optimization.
+### Ottimizzazione Multi-Obiettivo
+Ottimizza più obiettivi competitivi simultaneamente utilizzando l'ottimizzazione di Pareto.
 
 ```python
 from arima_forecaster.automl import HyperparameterTuner
@@ -139,21 +139,21 @@ tuner = HyperparameterTuner(
 
 result = tuner.multi_objective_optimization('arima', data, n_trials=100)
 pareto_front = result['pareto_front']
-best_solution = result['best_solution']
+soluzione_migliore = result['best_solution']
 ```
 
-### Ensemble Methods
-Create diverse model ensembles for improved forecasting performance.
+### Metodi Ensemble
+Crea ensemble di modelli diversi per migliori prestazioni di forecasting.
 
 ```python
-# Create ensemble of diverse models
+# Crea ensemble di modelli diversi
 ensemble_result = tuner.ensemble_optimization(
     'arima', data, 
     n_models=5, 
     diversity_threshold=0.2
 )
 
-# Generate ensemble forecast
+# Genera forecast ensemble
 forecast = tuner.forecast_ensemble(
     steps=12, 
     method='weighted',
@@ -161,11 +161,11 @@ forecast = tuner.forecast_ensemble(
 )
 ```
 
-### Adaptive Optimization
-Dynamically adjust search space based on optimization progress.
+### Ottimizzazione Adattiva
+Regola dinamicamente lo spazio di ricerca basandosi sui progressi dell'ottimizzazione.
 
 ```python
-# Adaptive optimization with early stopping
+# Ottimizzazione adattiva con early stopping
 adaptive_result = tuner.adaptive_optimization(
     'sarima', data,
     max_iterations=10,
@@ -173,25 +173,25 @@ adaptive_result = tuner.adaptive_optimization(
 )
 ```
 
-## 🌐 REST API for Forecasting Services
+## 🌐 API REST per Servizi di Forecasting
 
-### Overview
-Production-ready REST API for deploying forecasting models as web services.
+### Panoramica
+API REST pronta per la produzione per distribuire modelli di forecasting come servizi web.
 
-### Key Endpoints
-- `POST /models/train`: Train ARIMA/SARIMA models
-- `POST /models/train/var`: Train VAR models  
-- `POST /models/{id}/forecast`: Generate forecasts
-- `POST /models/auto-select`: Automatic model selection
-- `GET /models`: List all models
-- `POST /models/{id}/diagnostics`: Model diagnostics
+### Endpoint Principali
+- `POST /models/train`: Addestra modelli ARIMA/SARIMA
+- `POST /models/train/var`: Addestra modelli VAR
+- `POST /models/{id}/forecast`: Genera previsioni
+- `POST /models/auto-select`: Selezione automatica del modello
+- `GET /models`: Elenca tutti i modelli
+- `POST /models/{id}/diagnostics`: Diagnostica del modello
 
-### Usage Example
+### Esempio di Utilizzo
 ```bash
-# Start API server
+# Avvia server API
 python scripts/run_api.py --host 0.0.0.0 --port 8000
 
-# Train a model
+# Addestra un modello
 curl -X POST "http://localhost:8000/models/train" \
   -H "Content-Type: application/json" \
   -d '{
@@ -203,7 +203,7 @@ curl -X POST "http://localhost:8000/models/train" \
     "order": {"p": 1, "d": 1, "q": 1}
   }'
 
-# Generate forecast
+# Genera previsioni
 curl -X POST "http://localhost:8000/models/{model_id}/forecast" \
   -H "Content-Type: application/json" \
   -d '{
@@ -213,100 +213,100 @@ curl -X POST "http://localhost:8000/models/{model_id}/forecast" \
   }'
 ```
 
-### API Features
-- **Async Processing**: Background model training
-- **Model Persistence**: Automatic model storage and retrieval
-- **Input Validation**: Pydantic-based request/response validation
-- **Error Handling**: Comprehensive error responses
-- **API Documentation**: Auto-generated OpenAPI/Swagger docs
+### Caratteristiche API
+- **Processamento Asincrono**: Addestramento modelli in background
+- **Persistenza Modelli**: Archiviazione e recupero automatico dei modelli
+- **Validazione Input**: Validazione richieste/risposte basata su Pydantic
+- **Gestione Errori**: Risposte di errore complete
+- **Documentazione API**: Docs OpenAPI/Swagger generate automaticamente
 
-## 📊 Interactive Streamlit Dashboard
+## 📊 Dashboard Interattiva Streamlit
 
-### Overview
-User-friendly web interface for exploring data, training models, and generating forecasts.
+### Panoramica
+Interfaccia web user-friendly per esplorare dati, addestrare modelli e generare previsioni.
 
-### Dashboard Features
-1. **Data Upload**: CSV file upload with column mapping
-2. **Data Exploration**: Interactive plots and statistics
-3. **Preprocessing**: Missing values, outliers, stationarity
-4. **Model Training**: All model types with parameter tuning
-5. **Forecasting**: Interactive forecast generation
-6. **Model Diagnostics**: Residual analysis and tests
+### Caratteristiche Dashboard
+1. **Upload Dati**: Caricamento file CSV con mappatura colonne
+2. **Esplorazione Dati**: Grafici interattivi e statistiche
+3. **Preprocessing**: Valori mancanti, outlier, stazionarità
+4. **Addestramento Modelli**: Tutti i tipi di modello con tuning parametri
+5. **Forecasting**: Generazione previsioni interattiva
+6. **Diagnostica Modelli**: Analisi residui e test
 
-### Usage
+### Utilizzo
 ```bash
-# Launch dashboard
+# Lancia dashboard
 python scripts/run_dashboard.py
 
-# Access at http://localhost:8501
+# Accedi a http://localhost:8501
 ```
 
-### Dashboard Pages
-- **Data Upload**: Load and preview time series data
-- **Data Exploration**: Visualize and analyze data patterns
-- **Model Training**: Train and compare different models
-- **Forecasting**: Generate and visualize predictions
-- **Model Diagnostics**: Evaluate model performance
+### Pagine Dashboard
+- **Upload Dati**: Carica e anteprima dati serie temporali
+- **Esplorazione Dati**: Visualizza e analizza pattern dei dati
+- **Addestramento Modelli**: Addestra e confronta modelli diversi
+- **Forecasting**: Genera e visualizza previsioni
+- **Diagnostica Modelli**: Valuta performance dei modelli
 
-## 🚀 Installation and Setup
+## 🚀 Installazione e Setup
 
-### Dependencies
-Install the library with all advanced features:
+### Dipendenze
+Installa la libreria con tutte le funzionalità avanzate:
 
 ```bash
-# Install with all optional dependencies
+# Installa con tutte le dipendenze opzionali
 pip install -e ".[all]"
 
-# Or install specific feature groups
-pip install -e ".[api]"      # API features
-pip install -e ".[dashboard]" # Dashboard features  
-pip install -e ".[automl]"    # Auto-ML features
+# Oppure installa gruppi di funzionalità specifici
+pip install -e ".[api]"      # Funzionalità API
+pip install -e ".[dashboard]" # Funzionalità Dashboard  
+pip install -e ".[automl]"    # Funzionalità Auto-ML
 ```
 
-### Using UV (Recommended)
+### Usando UV (Raccomandato)
 ```bash
-# Sync all dependencies
+# Sincronizza tutte le dipendenze
 uv sync --all-extras
 
-# Activate environment
+# Attiva ambiente
 source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows
 ```
 
-## 📈 Performance Benchmarks
+## 📈 Benchmark delle Prestazioni
 
-### Model Training Speed
-- **ARIMA**: ~0.1-1.0 seconds per model
-- **SARIMA**: ~0.5-5.0 seconds per model
-- **VAR**: ~0.1-2.0 seconds per model
-- **Auto-ML**: ~10-300 seconds for full optimization
+### Velocità Addestramento Modelli
+- **ARIMA**: ~0.1-1.0 secondi per modello
+- **SARIMA**: ~0.5-5.0 secondi per modello
+- **VAR**: ~0.1-2.0 secondi per modello
+- **Auto-ML**: ~10-300 secondi per ottimizzazione completa
 
-### Optimization Efficiency
-- **Grid Search**: Baseline performance
-- **Optuna TPE**: 2-5x faster convergence
-- **Multi-objective**: 10-50 Pareto solutions
-- **Ensemble**: 3-7 diverse models
+### Efficienza Ottimizzazione
+- **Grid Search**: Prestazioni baseline
+- **Optuna TPE**: Convergenza 2-5x più veloce
+- **Multi-obiettivo**: 10-50 soluzioni Pareto
+- **Ensemble**: 3-7 modelli diversi
 
-### Memory Usage
-- **Single Model**: 1-10 MB
-- **Ensemble (5 models)**: 5-50 MB
-- **API Server**: 50-200 MB base memory
-- **Dashboard**: 100-300 MB including UI
+### Utilizzo Memoria
+- **Singolo Modello**: 1-10 MB
+- **Ensemble (5 modelli)**: 5-50 MB
+- **Server API**: 50-200 MB memoria base
+- **Dashboard**: 100-300 MB inclusa UI
 
-## 🔧 Advanced Configuration
+## 🔧 Configurazione Avanzata
 
-### Optimization Settings
+### Impostazioni Ottimizzazione
 ```python
-# Custom optimization configuration
+# Configurazione ottimizzazione personalizzata
 optimizer = ARIMAOptimizer(
     objective_metric='aic',
     cv_folds=3,
     test_size=0.2,
-    n_jobs=4,  # Parallel processing
+    n_jobs=4,  # Processamento parallelo
     random_state=42
 )
 
-# Advanced tuner settings
+# Impostazioni tuner avanzate
 tuner = HyperparameterTuner(
     objective_metrics=['aic', 'bic', 'mse'],
     ensemble_method='pareto',
@@ -315,94 +315,94 @@ tuner = HyperparameterTuner(
 )
 ```
 
-### API Configuration
+### Configurazione API
 ```python
-# Custom API configuration
+# Configurazione API personalizzata
 from arima_forecaster.api import create_app
 
 app = create_app(model_storage_path="/path/to/models")
 
-# Run with custom settings
+# Esegui con impostazioni personalizzate
 import uvicorn
 uvicorn.run(app, host="0.0.0.0", port=8080, workers=4)
 ```
 
-## 🧪 Testing and Validation
+## 🧪 Testing e Validazione
 
-### Model Testing
+### Test dei Modelli
 ```bash
-# Run all tests including advanced features
+# Esegui tutti i test incluse le funzionalità avanzate
 uv run pytest tests/ -v --cov=src/arima_forecaster
 
-# Test specific modules
+# Testa moduli specifici
 uv run pytest tests/test_sarima.py -v
 uv run pytest tests/test_var.py -v
 uv run pytest tests/test_automl.py -v
 ```
 
-### API Testing
+### Test API
 ```bash
-# Start test server
+# Avvia server di test
 python scripts/run_api.py --host localhost --port 8001
 
-# Run API tests
+# Esegui test API
 python -m pytest tests/test_api.py -v
 ```
 
-## 📚 Examples and Tutorials
+## 📚 Esempi e Tutorial
 
-### Complete Examples
-- `examples/advanced_forecasting_showcase.py`: Comprehensive feature demonstration
-- `examples/api_client_example.py`: API client usage
-- `examples/dashboard_demo.py`: Dashboard features walkthrough
-- `examples/automl_tutorial.py`: Auto-ML optimization guide
+### Esempi Completi
+- `examples/advanced_forecasting_showcase.py`: Dimostrazione completa delle funzionalità
+- `examples/api_client_example.py`: Utilizzo client API
+- `examples/dashboard_demo.py`: Walkthrough funzionalità dashboard
+- `examples/automl_tutorial.py`: Guida ottimizzazione Auto-ML
 
-### Jupyter Notebooks
-- `notebooks/sarima_analysis.ipynb`: Seasonal modeling
-- `notebooks/var_multivariate.ipynb`: VAR model exploration  
-- `notebooks/automl_comparison.ipynb`: Optimization algorithms
-- `notebooks/ensemble_forecasting.ipynb`: Ensemble methods
+### Notebook Jupyter
+- `notebooks/sarima_analysis.ipynb`: Modellazione stagionale
+- `notebooks/var_multivariate.ipynb`: Esplorazione modelli VAR
+- `notebooks/automl_comparison.ipynb`: Algoritmi di ottimizzazione
+- `notebooks/ensemble_forecasting.ipynb`: Metodi ensemble
 
-## 🤝 Contributing
+## 🤝 Contribuire
 
-### Adding New Features
-1. Create feature branch
-2. Implement with tests
-3. Update documentation
-4. Add examples
-5. Submit pull request
+### Aggiungere Nuove Funzionalità
+1. Crea branch feature
+2. Implementa con test
+3. Aggiorna documentazione
+4. Aggiungi esempi
+5. Invia pull request
 
-### Extending Optimizers
+### Estendere Ottimizzatori
 ```python
 class CustomOptimizer(BaseOptimizer):
     def optimize_custom(self, series, **kwargs):
-        # Implement custom optimization logic
+        # Implementa logica di ottimizzazione personalizzata
         pass
 ```
 
-### API Extensions
+### Estensioni API
 ```python
 @app.post("/custom-endpoint")
 async def custom_forecasting_endpoint(request: CustomRequest):
-    # Implement custom API endpoint
+    # Implementa endpoint API personalizzato
     pass
 ```
 
-## 📄 License
+## 📄 Licenza
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Questo progetto è rilasciato sotto Licenza MIT - vedi il file LICENSE per i dettagli.
 
-## 🙏 Acknowledgments
+## 🙏 Riconoscimenti
 
-- **Optuna**: Advanced optimization framework
-- **FastAPI**: Modern API framework
-- **Streamlit**: Interactive web applications
-- **Statsmodels**: Statistical modeling foundation
-- **Plotly**: Interactive visualizations
+- **Optuna**: Framework di ottimizzazione avanzata
+- **FastAPI**: Framework API moderno
+- **Streamlit**: Applicazioni web interattive
+- **Statsmodels**: Fondamento per modellazione statistica
+- **Plotly**: Visualizzazioni interattive
 
 ---
 
-For more information, see the full documentation or run the showcase example:
+Per maggiori informazioni, consulta la documentazione completa o esegui l'esempio showcase:
 
 ```bash
 python examples/advanced_forecasting_showcase.py
