@@ -241,10 +241,10 @@ def main():
             logger.info(f"  Month {i+1}: {f:.2f} [{lower:.2f}, {upper:.2f}]")
         
         logger.info("Basic forecasting example completed successfully!")
+        print("Plot saved as 'outputs/plots/forecasting_base.png'")
         
         # Display plots (optional - comment out if running headless)
         # plt.show()  # Disabled for Windows compatibility
-    print("Plot saved as 'outputs/plots/forecasting_base.png'")
         
     except Exception as e:
         logger.error(f"Example failed: {e}")

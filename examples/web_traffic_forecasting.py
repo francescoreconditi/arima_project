@@ -630,7 +630,10 @@ def main():
     peak_hour = future_hourly_avg.idxmax()
     peak_traffic = future_hourly_avg.max()
     
-    print(f"  ⏰ Ora di picco media: {peak_hour:02d}:00 ({peak_traffic:,.0f} visitatori/ora)")
+    if pd.isna(peak_hour) or pd.isna(peak_traffic):
+        print(f"  ⏰ Ora di picco media: N/A (dati insufficienti)")
+    else:
+        print(f"  ⏰ Ora di picco media: {int(peak_hour):02d}:00 ({peak_traffic:,.0f} visitatori/ora)")
     
     # Capacity planning
     current_max_hourly = traffic_data.max()

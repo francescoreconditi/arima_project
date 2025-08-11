@@ -141,29 +141,41 @@ def main():
         # Step 4: Automatic model selection
         logger.info("Starting automatic model selection...")
         
-        # Create model selector
-        selector = ARIMAModelSelector(
-            p_range=(0, 4),
-            d_range=(0, 2),
-            q_range=(0, 4),
-            information_criterion='aic'
-        )
-        
-        # Perform grid search
-        best_order = selector.search(train_data, verbose=True, max_models=50)
-        logger.info(f"Best model found: ARIMA{best_order}")
+        try:
+            # Create model selector
+            selector = ARIMAModelSelector(
+                p_range=(0, 3),
+                d_range=(0, 2), 
+                q_range=(0, 3),
+                information_criterion='aic'
+            )
+            
+            # Perform grid search
+            best_order = selector.search(train_data, verbose=True, max_models=30)
+            logger.info(f"Best model found: ARIMA{best_order}")
+            
+        except Exception as e:
+            logger.warning(f"Automatic model selection failed: {e}")
+            logger.info("Using fallback model ARIMA(1,1,1)")
+            best_order = (1, 1, 1)
+            
+            # Create a dummy selector result for consistency
+            selector = None
         
         # Get detailed results
-        results_df = selector.get_results_summary(top_n=10)
-        logger.info("Top 10 models by AIC:")
-        logger.info(results_df.to_string())
-        
-        best_info = selector.get_best_model_info()
-        logger.info(f"Best model details:")
-        logger.info(f"  AIC: {best_info['aic']:.2f}")
-        logger.info(f"  BIC: {best_info['bic']:.2f}")
-        logger.info(f"  HQIC: {best_info['hqic']:.2f}")
-        logger.info(f"  Parameters: {best_info['parameters']}")
+        if selector is not None:
+            results_df = selector.get_results_summary(top_n=10)
+            logger.info("Top 10 models by AIC:")
+            logger.info(results_df.to_string())
+            
+            best_info = selector.get_best_model_info()
+            logger.info(f"Best model details:")
+            logger.info(f"  AIC: {best_info['aic']:.2f}")
+            logger.info(f"  BIC: {best_info['bic']:.2f}")
+            logger.info(f"  HQIC: {best_info['hqic']:.2f}")
+            logger.info(f"  Parameters: {best_info['parameters']}")
+        else:
+            logger.info("Using fallback model, no detailed comparison available")
         
         # Step 5: Compare multiple models
         logger.info("Training and comparing top models...")
@@ -171,41 +183,44 @@ def main():
         evaluator = ModelEvaluator()
         model_comparison = {}
         
-        # Test top 3 models
-        top_models = results_df.head(3)
-        
-        for idx, row in top_models.iterrows():
-            order = row['order']
-            logger.info(f"Evaluating ARIMA{order}...")
+        if selector is not None:
+            # Test top 3 models
+            top_models = results_df.head(3)
             
-            try:
-                # Train model
-                model = ARIMAForecaster(order=order)
-                model.fit(train_data)
+            for idx, row in top_models.iterrows():
+                order = row['order']
+                logger.info(f"Evaluating ARIMA{order}...")
                 
-                # Generate forecasts
-                forecast = model.forecast(steps=len(test_data))
-                
-                # Calculate metrics
-                metrics = evaluator.calculate_forecast_metrics(test_data, forecast)
-                
-                # Store results
-                model_name = f"ARIMA{order}"
-                model_comparison[model_name] = {
-                    'aic': row['aic'],
-                    'bic': row['bic'],
-                    'rmse': metrics['rmse'],
-                    'mae': metrics['mae'],
-                    'mape': metrics['mape'],
-                    'r_squared': metrics['r_squared']
-                }
-                
-                logger.info(f"  RMSE: {metrics['rmse']:.4f}")
-                logger.info(f"  MAE: {metrics['mae']:.4f}")
-                logger.info(f"  MAPE: {metrics['mape']:.2f}%")
-                
-            except Exception as e:
-                logger.warning(f"Failed to evaluate ARIMA{order}: {e}")
+                try:
+                    # Train model
+                    model = ARIMAForecaster(order=order)
+                    model.fit(train_data)
+                    
+                    # Generate forecasts
+                    forecast = model.forecast(steps=len(test_data))
+                    
+                    # Calculate metrics
+                    metrics = evaluator.calculate_forecast_metrics(test_data, forecast)
+                    
+                    # Store results
+                    model_name = f"ARIMA{order}"
+                    model_comparison[model_name] = {
+                        'aic': row['aic'],
+                        'bic': row['bic'],
+                        'rmse': metrics['rmse'],
+                        'mae': metrics['mae'],
+                        'mape': metrics['mape'],
+                        'r_squared': metrics['r_squared']
+                    }
+                    
+                    logger.info(f"  RMSE: {metrics['rmse']:.4f}")
+                    logger.info(f"  MAE: {metrics['mae']:.4f}")
+                    logger.info(f"  MAPE: {metrics['mape']:.2f}%")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to evaluate ARIMA{order}: {e}")
+        else:
+            logger.info("Skipping model comparison due to fallback mode")
         
         # Step 6: Train final model with best parameters
         logger.info("Training final model...")
@@ -253,20 +268,26 @@ def main():
         plots_dir.mkdir(parents=True, exist_ok=True)
         
         # Plot 1: Model selection results
-        try:
-            selector.plot_selection_results(figsize=(15, 10))
-            plt.savefig(plots_dir / "model_selection_results.png", dpi=300, bbox_inches='tight')
-            logger.info("Model selection plots created")
-        except Exception as e:
-            logger.warning(f"Could not create selection plots: {e}")
+        if selector is not None:
+            try:
+                selector.plot_selection_results(figsize=(15, 10))
+                plt.savefig(plots_dir / "model_selection_results.png", dpi=300, bbox_inches='tight')
+                logger.info("Model selection plots created")
+            except Exception as e:
+                logger.warning(f"Could not create selection plots: {e}")
+        else:
+            logger.info("Skipping selection plots due to fallback mode")
         
         # Plot 2: Model comparison
-        fig2 = plotter.plot_model_comparison(
-            results=model_comparison,
-            metric='rmse',
-            title='Model Comparison by RMSE',
-            save_path=plots_dir / "model_comparison_rmse.png"
-        )
+        if model_comparison:
+            fig2 = plotter.plot_model_comparison(
+                results=model_comparison,
+                metric='rmse',
+                title='Model Comparison by RMSE',
+                save_path=plots_dir / "model_comparison_rmse.png"
+            )
+        else:
+            logger.info("Skipping model comparison plot due to empty results")
         
         # Plot 3: Comprehensive dashboard
         fig3 = plotter.create_dashboard(
@@ -308,36 +329,68 @@ def main():
         final_model.save(model_dir / f"best_arima_model_{best_order}.pkl")
         
         # Save model comparison results
-        comparison_df = pd.DataFrame(model_comparison).T
-        comparison_df.to_csv(model_dir / "model_comparison_results.csv")
+        if model_comparison:
+            comparison_df = pd.DataFrame(model_comparison).T
+            comparison_df.to_csv(model_dir / "model_comparison_results.csv")
+            logger.info("Model comparison results saved")
+        else:
+            logger.info("No model comparison results to save (fallback mode)")
         
         # Save detailed results
-        results_summary = {
-            'best_model': {
-                'order': best_order,
-                'aic': best_info['aic'],
-                'bic': best_info['bic'],
-                'performance': final_metrics
-            },
-            'preprocessing': metadata,
-            'evaluation': evaluation_report
-        }
+        if selector is not None:
+            results_summary = {
+                'best_model': {
+                    'order': best_order,
+                    'aic': best_info['aic'],
+                    'bic': best_info['bic'],
+                    'performance': final_metrics
+                },
+                'preprocessing': metadata,
+                'evaluation': evaluation_report
+            }
+        else:
+            results_summary = {
+                'best_model': {
+                    'order': best_order,
+                    'aic': 'N/A (fallback mode)',
+                    'bic': 'N/A (fallback mode)', 
+                    'performance': final_metrics
+                },
+                'preprocessing': metadata,
+                'evaluation': evaluation_report
+            }
         
         import json
+        
+        # Create a simplified version for JSON serialization
+        simplified_summary = {
+            'best_model': {
+                'order': best_order,
+                'aic': results_summary['best_model']['aic'],
+                'bic': results_summary['best_model']['bic'],
+                'performance': dict(final_metrics)  # Convert to simple dict
+            },
+            'preprocessing': dict(metadata) if isinstance(metadata, dict) else str(metadata)
+        }
+        
         with open(model_dir / "modeling_results.json", 'w') as f:
             # Convert numpy types to native Python types for JSON serialization
             def convert_numpy(obj):
-                if isinstance(obj, np.integer):
+                if isinstance(obj, (np.integer, int)):
                     return int(obj)
-                elif isinstance(obj, np.floating):
+                elif isinstance(obj, (np.floating, float)):
                     return float(obj)
                 elif isinstance(obj, np.ndarray):
                     return obj.tolist()
                 elif isinstance(obj, pd.Timestamp):
                     return obj.isoformat()
+                elif isinstance(obj, (pd.Series, pd.DataFrame)):
+                    return str(obj)  # Convert pandas objects to string
+                elif hasattr(obj, '__dict__'):
+                    return str(obj)  # Convert complex objects to string
                 return obj
             
-            json.dump(results_summary, f, indent=2, default=convert_numpy)
+            json.dump(simplified_summary, f, indent=2, default=convert_numpy)
         
         logger.info(f"Results saved to {model_dir}")
         
@@ -373,10 +426,10 @@ def main():
         logger.info(f"Best model: ARIMA{best_order}")
         logger.info(f"Test RMSE: {final_metrics['rmse']:.4f}")
         logger.info(f"Test MAPE: {final_metrics['mape']:.2f}%")
+        print("Plot saved as 'outputs/plots/selezione_automatica.png'")
         
         # Display plots (optional)
         # plt.show()  # Disabled for Windows compatibility
-    print("Plot saved as 'outputs/plots/selezione_automatica.png'")
         
     except Exception as e:
         logger.error(f"Example failed: {e}")
