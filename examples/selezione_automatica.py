@@ -14,6 +14,8 @@ Esecuzione:
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 from pathlib import Path
 
@@ -373,7 +375,8 @@ def main():
         logger.info(f"Test MAPE: {final_metrics['mape']:.2f}%")
         
         # Display plots (optional)
-        plt.show()
+        # plt.show()  # Disabled for Windows compatibility
+    print("Plot saved as 'outputs/plots/selezione_automatica.png'")
         
     except Exception as e:
         logger.error(f"Example failed: {e}")

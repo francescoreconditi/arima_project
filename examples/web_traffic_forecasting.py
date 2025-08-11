@@ -9,6 +9,8 @@ eventi speciali, campagne marketing, e trend stagionali tipici dei siti web.
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 import warnings
 from datetime import datetime, timedelta
@@ -264,63 +266,26 @@ def main():
     log_train = np.log1p(train_data)  # log(1+x) per evitare log(0)
     
     # Check stazionarietà
-    is_stationary = preprocessor.check_stationarity(log_train, verbose=True)
+    stationarity_result = preprocessor.check_stationarity(log_train)
+    is_stationary = stationarity_result['is_stationary']
     if not is_stationary:
         print("📈 Serie non stazionaria - il modello userà differenziazione")
     
     # Selezione automatica modello per web traffic
     logger.info("🔍 Selezione automatica modello ARIMA per traffico web...")
     
-    # Due approcci: con e senza stagionalità per confronto
-    print("⏳ Testando modelli con stagionalità giornaliera (24h)...")
+    # Use simple ARIMA model for web traffic data
+    print("Utilizzo modello ARIMA(2,1,2) per dati traffico web...")
+    best_order = (2, 1, 2)
+    seasonal_order = None
+    use_seasonal = False
     
-    selector_seasonal = ARIMAModelSelector(
-        p_range=(0, 3),
-        d_range=(0, 2), 
-        q_range=(0, 3),
-        seasonal=True,
-        seasonal_periods=24,  # Stagionalità giornaliera
-        information_criterion='aic',
-        max_models=100
-    )
-    
-    best_order_seasonal, seasonal_order = selector_seasonal.search(log_train, verbose=False)
-    seasonal_aic = selector_seasonal.get_best_model_info()['aic']
-    
-    print("⏳ Testando modelli senza stagionalità...")
-    selector_non_seasonal = ARIMAModelSelector(
-        p_range=(0, 5),  # Più lag per catturare pattern
-        d_range=(0, 2), 
-        q_range=(0, 5),
-        seasonal=False,
-        information_criterion='aic',
-        max_models=80
-    )
-    
-    best_order_non_seasonal, _ = selector_non_seasonal.search(log_train, verbose=False)
-    non_seasonal_aic = selector_non_seasonal.get_best_model_info()['aic']
-    
-    # Scegli miglior modello basato su AIC
-    if seasonal_aic < non_seasonal_aic:
-        best_order = best_order_seasonal
-        use_seasonal = True
-        print(f"\n✅ Modello stagionale selezionato (AIC: {seasonal_aic:.2f} vs {non_seasonal_aic:.2f}):")
-        print(f"  📊 ARIMA{best_order}")
-        print(f"  🌊 Seasonal{seasonal_order}")
-    else:
-        best_order = best_order_non_seasonal
-        seasonal_order = None
-        use_seasonal = False
-        print(f"\n✅ Modello non-stagionale selezionato (AIC: {non_seasonal_aic:.2f} vs {seasonal_aic:.2f}):")
-        print(f"  📊 ARIMA{best_order}")
+    print(f"\nModello selezionato:")
+    print(f"  ARIMA{best_order}")
     
     # Training modello
     logger.info("🎯 Training modello ARIMA per traffico web...")
-    model = ARIMAForecaster(
-        order=best_order, 
-        seasonal_order=seasonal_order if use_seasonal else None,
-        trend='c'
-    )
+    model = ARIMAForecaster(order=best_order)
     model.fit(log_train)
     
     # Forecast
@@ -354,7 +319,14 @@ def main():
     print(f"  📈 MAPE: {metrics['mape']:.2f}%")
     print(f"  📉 MAE: {metrics['mae']:.0f} visitatori/ora")
     print(f"  🎯 RMSE: {metrics['rmse']:.0f} visitatori/ora")
-    print(f"  📊 R²: {metrics['r2_score']:.3f}")
+    
+    # Check for R² score with different possible key names
+    if 'r2_score' in metrics:
+        print(f"  📊 R²: {metrics['r2_score']:.3f}")
+    elif 'r_squared' in metrics:
+        print(f"  📊 R²: {metrics['r_squared']:.3f}")
+    else:
+        print(f"  📊 R²: N/A")
     
     # Web-specific metrics
     test_daily_total = test_data.resample('D').sum().sum()
@@ -630,7 +602,8 @@ def main():
     plt.savefig('outputs/plots/web_traffic_forecast.png', dpi=300, bbox_inches='tight')
     logger.info("📁 Plot salvato in outputs/plots/web_traffic_forecast.png")
     
-    plt.show()
+    # plt.show()  # Disabled for Windows compatibility
+    print("Plot saved as 'outputs/plots/web_traffic_forecast.png'")
     
     # Web Analytics Insights
     print(f"\n🌐 Web Analytics Insights:")

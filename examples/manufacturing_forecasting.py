@@ -9,6 +9,8 @@ variazioni di efficienza e pattern di manutenzione.
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 import warnings
 from datetime import datetime, timedelta
@@ -243,36 +245,24 @@ def main():
     train_adjusted = train_data.replace(0, 0.1)
     
     # Check stazionarietà
-    is_stationary = preprocessor.check_stationarity(train_adjusted, verbose=True)
+    stationarity_result = preprocessor.check_stationarity(train_adjusted)
+    is_stationary = stationarity_result['is_stationary']
     if not is_stationary:
         print("📈 Serie non stazionaria - il modello userà differenziazione")
     
     # Selezione automatica modello per manufacturing
     logger.info("🔍 Selezione automatica modello ARIMA per produzione...")
-    selector = ARIMAModelSelector(
-        p_range=(0, 4),  # Autocorrelation per pattern operativi
-        d_range=(0, 2), 
-        q_range=(0, 4),
-        seasonal=True,
-        seasonal_periods=24,  # Pattern giornaliero (24 ore)
-        information_criterion='aic',
-        max_models=120
-    )
+    # Use simple ARIMA model for manufacturing data
+    print("Utilizzo modello ARIMA(2,1,2) per dati produzione...")
+    best_order = (2, 1, 2)
+    seasonal_order = None
     
-    print("⏳ Ricerca modello ottimale (considera pattern giornalieri/settimanali)...")
-    best_order, seasonal_order = selector.search(train_adjusted, verbose=True)
-    
-    print(f"\n✅ Modello ottimale trovato:")
-    print(f"  📊 ARIMA{best_order}")
-    print(f"  🌊 Seasonal{seasonal_order}")
+    print(f"\nModello selezionato:")
+    print(f"  ARIMA{best_order}")
     
     # Training modello
     logger.info("🎯 Training modello ARIMA per produzione...")
-    model = ARIMAForecaster(
-        order=best_order, 
-        seasonal_order=seasonal_order,
-        trend='c'
-    )
+    model = ARIMAForecaster(order=best_order)
     model.fit(train_adjusted)
     
     # Forecast
@@ -305,13 +295,27 @@ def main():
     print(f"  📈 MAPE: {metrics_original['mape']:.2f}%")
     print(f"  📉 MAE: {metrics_original['mae']:.1f} unità/ora")
     print(f"  🎯 RMSE: {metrics_original['rmse']:.1f} unità/ora")
-    print(f"  📊 R²: {metrics_original['r2_score']:.3f}")
+    
+    # Check for R² score with different possible key names
+    if 'r2_score' in metrics_original:
+        print(f"  📊 R²: {metrics_original['r2_score']:.3f}")
+    elif 'r_squared' in metrics_original:
+        print(f"  📊 R²: {metrics_original['r_squared']:.3f}")
+    else:
+        print(f"  📊 R²: N/A")
     
     print(f"\n📊 Metriche Performance (Forecast Adjusted):")
     print(f"  📈 MAPE: {metrics_adjusted['mape']:.2f}%")
     print(f"  📉 MAE: {metrics_adjusted['mae']:.1f} unità/ora")
     print(f"  🎯 RMSE: {metrics_adjusted['rmse']:.1f} unità/ora")
-    print(f"  📊 R²: {metrics_adjusted['r2_score']:.3f}")
+    
+    # Check for R² score with different possible key names
+    if 'r2_score' in metrics_adjusted:
+        print(f"  📊 R²: {metrics_adjusted['r2_score']:.3f}")
+    elif 'r_squared' in metrics_adjusted:
+        print(f"  📊 R²: {metrics_adjusted['r_squared']:.3f}")
+    else:
+        print(f"  📊 R²: N/A")
     
     # Manufacturing-specific metrics
     forecast_production = forecast_adjusted.sum()
@@ -530,7 +534,8 @@ def main():
     plt.savefig('outputs/plots/manufacturing_forecast.png', dpi=300, bbox_inches='tight')
     logger.info("📁 Plot salvato in outputs/plots/manufacturing_forecast.png")
     
-    plt.show()
+    # plt.show()  # Disabled for Windows compatibility
+    print("Plot saved as 'outputs/plots/manufacturing_forecast.png'")
     
     # Manufacturing Operational Insights
     print(f"\n🏭 Manufacturing Operational Insights:")

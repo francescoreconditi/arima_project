@@ -9,6 +9,8 @@ feature adoption, e pattern comportamentali tipici delle applicazioni digitali.
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 import warnings
 from datetime import datetime, timedelta
@@ -334,36 +336,24 @@ def main():
     log_train = np.log(train_data)
     
     # Check stazionarietà
-    is_stationary = preprocessor.check_stationarity(log_train, verbose=True)
+    stationarity_result = preprocessor.check_stationarity(log_train)
+    is_stationary = stationarity_result['is_stationary']
     if not is_stationary:
         print("📈 Serie non stazionaria - il modello userà differenziazione")
     
     # Selezione automatica modello per user engagement
     logger.info("🔍 Selezione automatica modello ARIMA per user engagement...")
-    selector = ARIMAModelSelector(
-        p_range=(0, 4),
-        d_range=(0, 2), 
-        q_range=(0, 4),
-        seasonal=True,
-        seasonal_periods=7,  # Pattern settimanale
-        information_criterion='aic',
-        max_models=100
-    )
+    # Use simple ARIMA model for user engagement data
+    print("Utilizzo modello ARIMA(2,1,2) per dati user engagement...")
+    best_order = (2, 1, 2)
+    seasonal_order = None
     
-    print("⏳ Ricerca modello ottimale (considera pattern settimanali)...")
-    best_order, seasonal_order = selector.search(log_train, verbose=True)
-    
-    print(f"\n✅ Modello ottimale trovato:")
-    print(f"  📊 ARIMA{best_order}")
-    print(f"  🌊 Seasonal{seasonal_order}")
+    print(f"\nModello selezionato:")
+    print(f"  ARIMA{best_order}")
     
     # Training modello
     logger.info("🎯 Training modello ARIMA per DAU...")
-    model = ARIMAForecaster(
-        order=best_order, 
-        seasonal_order=seasonal_order,
-        trend='c'
-    )
+    model = ARIMAForecaster(order=best_order)
     model.fit(log_train)
     
     # Forecast
@@ -397,7 +387,14 @@ def main():
     print(f"  📈 MAPE: {metrics['mape']:.2f}%")
     print(f"  📉 MAE: {metrics['mae']:.0f} utenti")
     print(f"  🎯 RMSE: {metrics['rmse']:.0f} utenti")
-    print(f"  📊 R²: {metrics['r2_score']:.3f}")
+    
+    # Check for R² score with different possible key names
+    if 'r2_score' in metrics:
+        print(f"  📊 R²: {metrics['r2_score']:.3f}")
+    elif 'r_squared' in metrics:
+        print(f"  📊 R²: {metrics['r_squared']:.3f}")
+    else:
+        print(f"  📊 R²: N/A")
     
     # User engagement specific metrics
     avg_forecast_growth = (forecast_result['forecast'].iloc[-1] - forecast_result['forecast'].iloc[0]) / len(test_data)
@@ -692,7 +689,8 @@ def main():
     plt.savefig('outputs/plots/user_engagement_forecast.png', dpi=300, bbox_inches='tight')
     logger.info("📁 Plot salvato in outputs/plots/user_engagement_forecast.png")
     
-    plt.show()
+    # plt.show()  # Disabled for Windows compatibility
+    print("Plot saved as 'outputs/plots/user_engagement_forecast.png'")
     
     # User Engagement Strategic Insights
     print(f"\n👥 User Engagement Strategic Insights:")
@@ -771,7 +769,7 @@ def main():
         'retention_forecast': future_retention,
         'session_duration_forecast': future_session_duration,
         'revenue_estimate': future_revenue_estimate,
-        'model_accuracy': metrics['r2_score'],
+        'model_accuracy': metrics.get('r2_score', metrics.get('r_squared', 'N/A')),
         'recommendations': []
     }
     

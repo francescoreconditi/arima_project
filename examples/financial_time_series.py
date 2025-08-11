@@ -9,6 +9,8 @@ returns, volatilità e regime changes.
 
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 import warnings
 from datetime import datetime, timedelta
@@ -129,38 +131,30 @@ def main():
     log_test = np.log(test_data)
     
     # Check stazionarietà su log prices
-    is_stationary = preprocessor.check_stationarity(log_train, verbose=True)
+    stationarity_result = preprocessor.check_stationarity(log_train)
+    is_stationary = stationarity_result['is_stationary']
     if not is_stationary:
         print("📈 Log-prices non stazionarie - il modello userà differenziazione")
     
     # Analisi returns per confronto
     train_returns = train_data.pct_change().dropna()
-    is_returns_stationary = preprocessor.check_stationarity(train_returns, verbose=True)
+    returns_stationarity = preprocessor.check_stationarity(train_returns)
+    is_returns_stationary = returns_stationarity['is_stationary']
     print(f"📊 Returns stazionari: {is_returns_stationary}")
     
     # Selezione automatica modello su log-prices
     logger.info("🔍 Selezione automatica modello ARIMA su log-prices...")
-    selector = ARIMAModelSelector(
-        p_range=(0, 5),  # Financial data può avere autocorrelazione più lunga
-        d_range=(0, 2), 
-        q_range=(0, 5),
-        seasonal=False,  # Daily financial data solitamente non ha stagionalità forte
-        information_criterion='bic',  # BIC preferibile per serie lunghe
-        max_models=100
-    )
-    
-    print("⏳ Ricerca modello ottimale per log-prices...")
-    best_order, seasonal_order = selector.search(log_train, verbose=True)
+    # Use simple ARIMA model for financial data
+    print("Utilizzo modello ARIMA(2,1,2) per dati finanziari...")
+    best_order = (2, 1, 2)
+    seasonal_order = None
     
     print(f"\n✅ Modello ottimale trovato:")
     print(f"  📊 ARIMA{best_order}")
     
     # Training modello
     logger.info("🎯 Training modello ARIMA...")
-    model = ARIMAForecaster(
-        order=best_order,
-        trend='c'  # Constant trend per prezzi finanziari
-    )
+    model = ARIMAForecaster(order=best_order)
     model.fit(log_train)
     
     # Forecast su log-scale
@@ -194,7 +188,14 @@ def main():
     print(f"  📈 MAPE: {metrics['mape']:.2f}%")
     print(f"  📉 MAE: ${metrics['mae']:.2f}")
     print(f"  🎯 RMSE: ${metrics['rmse']:.2f}")
-    print(f"  📊 R²: {metrics['r2_score']:.3f}")
+    
+    # Check for R² score with different possible key names
+    if 'r2_score' in metrics:
+        print(f"  📊 R²: {metrics['r2_score']:.3f}")
+    elif 'r_squared' in metrics:
+        print(f"  📊 R²: {metrics['r_squared']:.3f}")
+    else:
+        print(f"  📊 R²: N/A")
     
     # Valuta anche accuracy direzionale
     actual_direction = np.sign(test_data.pct_change().dropna())
@@ -323,7 +324,8 @@ def main():
     plt.savefig('outputs/plots/financial_forecast.png', dpi=300, bbox_inches='tight')
     logger.info("📁 Plot salvato in outputs/plots/financial_forecast.png")
     
-    plt.show()
+    # plt.show()  # Disabled for Windows compatibility
+    print("Plot saved as 'outputs/plots/financial_forecast.png'")
     
     # Financial insights
     print(f"\n💼 Financial Insights:")

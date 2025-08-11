@@ -100,7 +100,7 @@ class SARIMAForecaster:
             
         except Exception as e:
             self.logger.error(f"SARIMA model fitting failed: {e}")
-            raise ModelTrainingError(f"Failed to fit SARIMA model: {e}")
+            raise ModelTrainingError(f"Impossibile addestrare il modello SARIMA: {e}")
     
     def forecast(
         self, 
@@ -142,11 +142,30 @@ class SARIMAForecaster:
             # Create forecast index
             last_date = self.training_data.index[-1]
             if isinstance(last_date, pd.Timestamp):
-                forecast_index = pd.date_range(
-                    start=last_date + pd.infer_freq(self.training_data.index),
-                    periods=steps,
-                    freq=pd.infer_freq(self.training_data.index)
-                )
+                freq = pd.infer_freq(self.training_data.index)
+                if freq:
+                    try:
+                        # Convert string frequency to DateOffset and add to timestamp
+                        freq_offset = pd.tseries.frequencies.to_offset(freq)
+                        forecast_index = pd.date_range(
+                            start=last_date + freq_offset,
+                            periods=steps,
+                            freq=freq
+                        )
+                    except Exception:
+                        # Fallback: use daily frequency
+                        forecast_index = pd.date_range(
+                            start=last_date + pd.Timedelta(days=1),
+                            periods=steps,
+                            freq='D'
+                        )
+                else:
+                    # Fallback: use daily frequency if no frequency can be inferred
+                    forecast_index = pd.date_range(
+                        start=last_date + pd.Timedelta(days=1),
+                        periods=steps,
+                        freq='D'
+                    )
             else:
                 forecast_index = range(len(self.training_data), len(self.training_data) + steps)
             
@@ -164,7 +183,7 @@ class SARIMAForecaster:
                 
         except Exception as e:
             self.logger.error(f"SARIMA forecasting failed: {e}")
-            raise ForecastError(f"Failed to generate SARIMA forecast: {e}")
+            raise ForecastError(f"Impossibile generare il forecast SARIMA: {e}")
     
     def predict(
         self, 
@@ -193,7 +212,7 @@ class SARIMAForecaster:
             
         except Exception as e:
             self.logger.error(f"SARIMA prediction failed: {e}")
-            raise ForecastError(f"Failed to generate SARIMA predictions: {e}")
+            raise ForecastError(f"Impossibile generare le predizioni SARIMA: {e}")
     
     def save(self, filepath: Union[str, Path]) -> None:
         """
@@ -204,7 +223,7 @@ class SARIMAForecaster:
         """
         try:
             if self.fitted_model is None:
-                raise ModelTrainingError("No fitted SARIMA model to save")
+                raise ModelTrainingError("Nessun modello SARIMA addestrato da salvare")
             
             filepath = Path(filepath)
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -226,7 +245,7 @@ class SARIMAForecaster:
             
         except Exception as e:
             self.logger.error(f"Failed to save SARIMA model: {e}")
-            raise ModelTrainingError(f"Failed to save SARIMA model: {e}")
+            raise ModelTrainingError(f"Impossibile salvare il modello SARIMA: {e}")
     
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> 'SARIMAForecaster':
@@ -271,8 +290,8 @@ class SARIMAForecaster:
             
         except Exception as e:
             logger = get_logger(__name__)
-            logger.error(f"Failed to load SARIMA model: {e}")
-            raise ModelTrainingError(f"Failed to load SARIMA model: {e}")
+            logger.error(f"Impossibile caricare il modello SARIMA: {e}")
+            raise ModelTrainingError(f"Impossibile caricare il modello SARIMA: {e}")
     
     def get_model_info(self) -> Dict[str, Any]:
         """
@@ -329,7 +348,7 @@ class SARIMAForecaster:
             
         except Exception as e:
             self.logger.error(f"Seasonal decomposition failed: {e}")
-            raise ForecastError(f"Failed to perform seasonal decomposition: {e}")
+            raise ForecastError(f"Impossibile eseguire la decomposizione stagionale: {e}")
     
     def _validate_series(self, series: pd.Series) -> None:
         """

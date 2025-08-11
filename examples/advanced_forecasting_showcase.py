@@ -13,6 +13,8 @@ import sys
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
@@ -130,9 +132,11 @@ def demonstrate_var_models(data):
     print("\n📈 Vector Autoregression (VAR) Models")
     print("=" * 50)
     
-    # Check stationarity of all variables
+    # First fit the VAR model to check stationarity
     print("\n1. Stationarity Analysis")
     var_model = VARForecaster(maxlags=4)
+    var_model.fit(data)  # Fit first so we can check stationarity
+    
     stationarity_results = var_model.check_stationarity()
     
     for variable, result in stationarity_results.items():
@@ -142,7 +146,7 @@ def demonstrate_var_models(data):
     # Make data stationary if needed
     stationary_data = data.diff().dropna()  # First difference
     
-    # Fit VAR model with automatic lag selection
+    # Fit VAR model with automatic lag selection on stationary data
     print("\n2. VAR Model with Automatic Lag Selection")
     var_model = VARForecaster(ic='aic')
     var_model.fit(stationary_data)
@@ -494,25 +498,26 @@ def create_visualization_dashboard(data, models):
         plt.savefig(output_path / "advanced_forecasting_dashboard.png", 
                    dpi=300, bbox_inches='tight')
         print(f"✅ Dashboard saved to: {output_path / 'advanced_forecasting_dashboard.png'}")
+        print("Grafico salvato come 'outputs/plots/advanced_forecast_showcase.png'")
         
-        plt.show()
+        # plt.show()  # Disabled for Windows compatibility
         
     except ImportError:
-        print("❌ Matplotlib not available for visualization")
+        print("❌ Matplotlib non disponibile per la visualizzazione")
     except Exception as e:
-        print(f"❌ Visualization failed: {e}")
+        print(f"❌ Visualizzazione fallita: {e}")
 
 
 def main():
     """Main demonstration function."""
-    print("🚀 ARIMA Forecaster Advanced Features Showcase")
+    print("🚀 Dimostrazione Funzionalità Avanzate di ARIMA Forecaster")
     print("=" * 60)
-    print("This script demonstrates the advanced features added to the ARIMA library:")
-    print("• SARIMA models with seasonal support")
-    print("• Multivariate VAR models")  
-    print("• Auto-ML hyperparameter optimization")
-    print("• Ensemble methods and advanced tuning")
-    print("• Comprehensive model comparison")
+    print("Questo script dimostra le funzionalità avanzate aggiunte alla libreria ARIMA:")
+    print("• Modelli SARIMA con supporto stagionale")
+    print("• Modelli VAR multivariati")  
+    print("• Ottimizzazione iperparametri Auto-ML")
+    print("• Metodi ensemble e tuning avanzato")
+    print("• Confronto modelli completo")
     print("=" * 60)
     
     # Generate sample data

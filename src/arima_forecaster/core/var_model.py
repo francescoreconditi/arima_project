@@ -93,7 +93,7 @@ class VARForecaster:
                 self.logger.info(f"Auto-selected lag order: {self.selected_lag} using {self.ic.upper()}")
             else:
                 self.selected_lag = self.maxlags
-                self.logger.info(f"Using specified lag order: {self.selected_lag}")
+                self.logger.info(f"Utilizzo ordine lag specificato: {self.selected_lag}")
             
             # Fit the model
             self.fitted_model = self.model.fit(
@@ -103,7 +103,7 @@ class VARForecaster:
             )
             
             # Log model summary
-            self.logger.info("VAR model fitted successfully")
+            self.logger.info("Modello VAR addestrato con successo")
             self.logger.info(f"Lag order: {self.fitted_model.k_ar}")
             self.logger.info(f"AIC: {self.fitted_model.aic:.2f}")
             self.logger.info(f"BIC: {self.fitted_model.bic:.2f}")
@@ -112,13 +112,13 @@ class VARForecaster:
             
         except Exception as e:
             self.logger.error(f"VAR model fitting failed: {e}")
-            raise ModelTrainingError(f"Failed to fit VAR model: {e}")
+            raise ModelTrainingError(f"Impossibile addestrare il modello VAR: {e}")
     
     def forecast(
         self, 
         steps: int,
         alpha: float = 0.05
-    ) -> Dict[str, Union[pd.DataFrame, pd.Panel]]:
+    ) -> Dict[str, pd.DataFrame]:
         """
         Generate forecasts from fitted VAR model.
         
@@ -147,11 +147,30 @@ class VARForecaster:
             # Create forecast index
             last_date = self.training_data.index[-1]
             if isinstance(last_date, pd.Timestamp):
-                forecast_index = pd.date_range(
-                    start=last_date + pd.infer_freq(self.training_data.index),
-                    periods=steps,
-                    freq=pd.infer_freq(self.training_data.index)
-                )
+                freq = pd.infer_freq(self.training_data.index)
+                if freq:
+                    try:
+                        # Convert string frequency to DateOffset and add to timestamp
+                        freq_offset = pd.tseries.frequencies.to_offset(freq)
+                        forecast_index = pd.date_range(
+                            start=last_date + freq_offset,
+                            periods=steps,
+                            freq=freq
+                        )
+                    except Exception:
+                        # Fallback: use daily frequency
+                        forecast_index = pd.date_range(
+                            start=last_date + pd.Timedelta(days=1),
+                            periods=steps,
+                            freq='D'
+                        )
+                else:
+                    # Fallback: use daily frequency if no frequency can be inferred
+                    forecast_index = pd.date_range(
+                        start=last_date + pd.Timedelta(days=1),
+                        periods=steps,
+                        freq='D'
+                    )
             else:
                 forecast_index = range(len(self.training_data), len(self.training_data) + steps)
             
@@ -163,24 +182,52 @@ class VARForecaster:
             )
             
             # Get forecast confidence intervals
-            conf_int = self.fitted_model.forecast_interval(
-                y=self.training_data.values[-self.fitted_model.k_ar:],
-                steps=steps,
-                alpha=alpha
-            )
-            
-            # Create confidence interval DataFrames
-            lower_bounds = pd.DataFrame(
-                conf_int[:, :, 0],
-                index=forecast_index,
-                columns=self.training_data.columns
-            )
-            
-            upper_bounds = pd.DataFrame(
-                conf_int[:, :, 1],
-                index=forecast_index,
-                columns=self.training_data.columns
-            )
+            try:
+                conf_int = self.fitted_model.forecast_interval(
+                    y=self.training_data.values[-self.fitted_model.k_ar:],
+                    steps=steps,
+                    alpha=alpha
+                )
+                
+                # Handle different confidence interval formats
+                if isinstance(conf_int, tuple) and len(conf_int) == 2:
+                    # Case: conf_int is a tuple of (lower, upper)
+                    lower_bounds = pd.DataFrame(
+                        conf_int[0],
+                        index=forecast_index,
+                        columns=self.training_data.columns
+                    )
+                    upper_bounds = pd.DataFrame(
+                        conf_int[1],
+                        index=forecast_index,
+                        columns=self.training_data.columns
+                    )
+                elif hasattr(conf_int, 'shape') and len(conf_int.shape) == 3:
+                    # Case: conf_int is a 3D array
+                    lower_bounds = pd.DataFrame(
+                        conf_int[:, :, 0],
+                        index=forecast_index,
+                        columns=self.training_data.columns
+                    )
+                    upper_bounds = pd.DataFrame(
+                        conf_int[:, :, 1],
+                        index=forecast_index,
+                        columns=self.training_data.columns
+                    )
+                else:
+                    # Fallback: create simple confidence intervals
+                    forecast_std = forecast_df.std()
+                    multiplier = 1.96  # Approximate 95% CI
+                    lower_bounds = forecast_df - multiplier * forecast_std
+                    upper_bounds = forecast_df + multiplier * forecast_std
+                    
+            except Exception as e:
+                self.logger.warning(f"Impossibile generare intervalli di confidenza: {e}")
+                # Fallback: create simple confidence intervals based on forecast variance
+                forecast_std = forecast_df.std()
+                multiplier = 1.96  # Approximate 95% CI
+                lower_bounds = forecast_df - multiplier * forecast_std
+                upper_bounds = forecast_df + multiplier * forecast_std
             
             self.logger.info("VAR forecast generated successfully")
             
@@ -193,7 +240,7 @@ class VARForecaster:
                 
         except Exception as e:
             self.logger.error(f"VAR forecasting failed: {e}")
-            raise ForecastError(f"Failed to generate VAR forecast: {e}")
+            raise ForecastError(f"Impossibile generare il forecast VAR: {e}")
     
     def impulse_response(
         self, 
@@ -254,7 +301,7 @@ class VARForecaster:
                 
         except Exception as e:
             self.logger.error(f"Impulse response analysis failed: {e}")
-            raise ForecastError(f"Failed to calculate impulse response: {e}")
+            raise ForecastError(f"Impossibile calcolare la risposta agli impulsi: {e}")
     
     def forecast_error_variance_decomposition(
         self, 
@@ -303,7 +350,7 @@ class VARForecaster:
                 
         except Exception as e:
             self.logger.error(f"FEVD analysis failed: {e}")
-            raise ForecastError(f"Failed to calculate FEVD: {e}")
+            raise ForecastError(f"Impossibile calcolare il FEVD: {e}")
     
     def granger_causality(
         self, 
@@ -351,7 +398,7 @@ class VARForecaster:
                 
         except Exception as e:
             self.logger.error(f"Granger causality test failed: {e}")
-            raise ForecastError(f"Failed to perform Granger causality test: {e}")
+            raise ForecastError(f"Impossibile eseguire il test di causalità di Granger: {e}")
     
     def cointegration_test(self, test_type: str = 'johansen') -> Dict[str, Any]:
         """

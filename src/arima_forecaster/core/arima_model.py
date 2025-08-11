@@ -72,15 +72,15 @@ class ARIMAForecaster:
             self.fitted_model = self.model.fit(**fit_kwargs)
             
             # Log model summary
-            self.logger.info("Model fitted successfully")
+            self.logger.info("Modello ARIMA addestrato con successo")
             self.logger.info(f"AIC: {self.fitted_model.aic:.2f}")
             self.logger.info(f"BIC: {self.fitted_model.bic:.2f}")
             
             return self
             
         except Exception as e:
-            self.logger.error(f"Model fitting failed: {e}")
-            raise ModelTrainingError(f"Failed to fit ARIMA model: {e}")
+            self.logger.error(f"Addestramento modello fallito: {e}")
+            raise ModelTrainingError(f"Impossibile addestrare il modello ARIMA: {e}")
     
     def forecast(
         self, 
@@ -88,7 +88,7 @@ class ARIMAForecaster:
         confidence_intervals: bool = True,
         alpha: float = 0.05,
         return_conf_int: bool = False
-    ) -> Union[pd.Series, Tuple[pd.Series, pd.DataFrame]]:
+    ) -> Union[pd.Series, Tuple[pd.Series, pd.DataFrame], Dict[str, Union[pd.Series, Dict[str, pd.Series]]]]:
         """
         Generate forecasts from fitted model.
         
@@ -106,9 +106,9 @@ class ARIMAForecaster:
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("Model must be fitted before forecasting")
+                raise ForecastError("Il modello deve essere addestrato prima del forecasting")
             
-            self.logger.info(f"Generating {steps}-step forecast")
+            self.logger.info(f"Generazione forecast a {steps} passi")
             
             # Generate forecast
             if confidence_intervals:
@@ -125,27 +125,48 @@ class ARIMAForecaster:
             # Create forecast index
             last_date = self.training_data.index[-1]
             if isinstance(last_date, pd.Timestamp):
-                forecast_index = pd.date_range(
-                    start=last_date + pd.infer_freq(self.training_data.index),
-                    periods=steps,
-                    freq=pd.infer_freq(self.training_data.index)
-                )
+                freq = pd.infer_freq(self.training_data.index)
+                if freq is None:
+                    # Fallback: calculate frequency from first two dates
+                    freq = self.training_data.index[1] - self.training_data.index[0]
+                    forecast_index = pd.date_range(
+                        start=last_date + freq,
+                        periods=steps,
+                        freq=freq
+                    )
+                else:
+                    forecast_index = pd.date_range(
+                        start=last_date,
+                        periods=steps + 1,
+                        freq=freq
+                    )[1:]  # Skip first element to avoid overlap
             else:
                 forecast_index = range(len(self.training_data), len(self.training_data) + steps)
             
             forecast_series = pd.Series(forecast_values, index=forecast_index, name='forecast')
             
-            self.logger.info(f"Forecast generated: {forecast_series.iloc[0]:.2f} to {forecast_series.iloc[-1]:.2f}")
+            self.logger.info(f"Forecast generato: {forecast_series.iloc[0]:.2f} a {forecast_series.iloc[-1]:.2f}")
             
-            if return_conf_int and conf_int is not None:
+            # Return format depends on parameters
+            if confidence_intervals and conf_int is not None:
                 conf_int.index = forecast_index
-                return forecast_series, conf_int
+                if return_conf_int:
+                    return forecast_series, conf_int
+                else:
+                    # Return dictionary format for compatibility with examples
+                    return {
+                        'forecast': forecast_series,
+                        'confidence_intervals': {
+                            'lower': conf_int.iloc[:, 0],
+                            'upper': conf_int.iloc[:, 1]
+                        }
+                    }
             else:
                 return forecast_series
                 
         except Exception as e:
-            self.logger.error(f"Forecasting failed: {e}")
-            raise ForecastError(f"Failed to generate forecast: {e}")
+            self.logger.error(f"Forecasting fallito: {e}")
+            raise ForecastError(f"Impossibile generare il forecast: {e}")
     
     def predict(
         self, 
@@ -166,15 +187,15 @@ class ARIMAForecaster:
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("Model must be fitted before prediction")
+                raise ForecastError("Il modello deve essere addestrato prima della predizione")
             
             predictions = self.fitted_model.predict(start=start, end=end, dynamic=dynamic)
             
             return predictions
             
         except Exception as e:
-            self.logger.error(f"Prediction failed: {e}")
-            raise ForecastError(f"Failed to generate predictions: {e}")
+            self.logger.error(f"Predizione fallita: {e}")
+            raise ForecastError(f"Impossibile generare le predizioni: {e}")
     
     def save(self, filepath: Union[str, Path]) -> None:
         """
@@ -185,7 +206,7 @@ class ARIMAForecaster:
         """
         try:
             if self.fitted_model is None:
-                raise ModelTrainingError("No fitted model to save")
+                raise ModelTrainingError("Nessun modello addestrato da salvare")
             
             filepath = Path(filepath)
             filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -201,11 +222,11 @@ class ARIMAForecaster:
                     'training_metadata': self.training_metadata
                 }, f)
             
-            self.logger.info(f"Model saved to {filepath}")
+            self.logger.info(f"Modello salvato in {filepath}")
             
         except Exception as e:
-            self.logger.error(f"Failed to save model: {e}")
-            raise ModelTrainingError(f"Failed to save model: {e}")
+            self.logger.error(f"Impossibile salvare il modello: {e}")
+            raise ModelTrainingError(f"Impossibile salvare il modello: {e}")
     
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> 'ARIMAForecaster':
@@ -240,14 +261,14 @@ class ARIMAForecaster:
             instance.fitted_model = fitted_model
             instance.training_metadata = training_metadata
             
-            instance.logger.info(f"Model loaded from {filepath}")
+            instance.logger.info(f"Modello caricato da {filepath}")
             
             return instance
             
         except Exception as e:
             logger = get_logger(__name__)
-            logger.error(f"Failed to load model: {e}")
-            raise ModelTrainingError(f"Failed to load model: {e}")
+            logger.error(f"Impossibile caricare il modello: {e}")
+            raise ModelTrainingError(f"Impossibile caricare il modello: {e}")
     
     def get_model_info(self) -> Dict[str, Any]:
         """
@@ -284,17 +305,17 @@ class ARIMAForecaster:
             ModelTrainingError: If validation fails
         """
         if not isinstance(series, pd.Series):
-            raise ModelTrainingError("Input must be a pandas Series")
+            raise ModelTrainingError("L'input deve essere una pandas Series")
         
         if len(series) == 0:
-            raise ModelTrainingError("Series cannot be empty")
+            raise ModelTrainingError("La serie non può essere vuota")
         
         if series.isnull().all():
-            raise ModelTrainingError("Series cannot be all NaN")
+            raise ModelTrainingError("La serie non può contenere solo valori NaN")
         
         if len(series) < 10:
-            self.logger.warning("Series has fewer than 10 observations, model may be unreliable")
+            self.logger.warning("La serie ha meno di 10 osservazioni, il modello potrebbe essere inaffidabile")
         
         if series.isnull().any():
             missing_pct = series.isnull().sum() / len(series) * 100
-            self.logger.warning(f"Series contains {missing_pct:.1f}% missing values")
+            self.logger.warning(f"La serie contiene {missing_pct:.1f}% di valori mancanti")

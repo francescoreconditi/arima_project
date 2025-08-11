@@ -14,6 +14,8 @@ Esecuzione:
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 from pathlib import Path
 
@@ -241,7 +243,8 @@ def main():
         logger.info("Basic forecasting example completed successfully!")
         
         # Display plots (optional - comment out if running headless)
-        plt.show()
+        # plt.show()  # Disabled for Windows compatibility
+    print("Plot saved as 'outputs/plots/forecasting_base.png'")
         
     except Exception as e:
         logger.error(f"Example failed: {e}")
