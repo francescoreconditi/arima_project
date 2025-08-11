@@ -183,6 +183,7 @@ name = "arima-forecaster"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "matplotlib", version = "3.10.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -277,6 +278,7 @@ viz = [
 requires-dist = [
     { name = "arima-forecaster", extras = ["dev", "viz", "jupyter", "docs", "api", "dashboard", "automl"], marker = "extra == 'all'" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
+    { name = "fastapi", specifier = ">=0.116.1" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.104.0" },
     { name = "hyperopt", marker = "extra == 'automl'", specifier = ">=0.2.7" },
     { name = "ipykernel", marker = "extra == 'jupyter'", specifier = ">=6.25.0" },

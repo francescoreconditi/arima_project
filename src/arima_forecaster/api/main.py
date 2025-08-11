@@ -12,9 +12,9 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
-from .models import *
-from .services import ModelManager, ForecastService
-from ..utils.logger import get_logger
+from arima_forecaster.api.models import *
+from arima_forecaster.api.services import ModelManager, ForecastService
+from arima_forecaster.utils.logger import get_logger
 
 
 def create_app(model_storage_path: Optional[str] = None) -> FastAPI:
