@@ -11,8 +11,9 @@ Questa guida completa ti aiuterà a iniziare con la libreria ARIMA Forecaster e 
 6. [Forecasting](#forecasting)
 7. [Valutazione Modello](#valutazione-modello)
 8. [Visualizzazione](#visualizzazione)
-9. [Funzionalità Avanzate](#funzionalità-avanzate)
-10. [Best Practices](#best-practices)
+9. [Generazione Report](#generazione-report)
+10. [Funzionalità Avanzate](#funzionalità-avanzate)
+11. [Best Practices](#best-practices)
 
 ## Installazione
 
@@ -455,6 +456,304 @@ fig = plotter.create_dashboard(
     title="Dashboard Forecasting"
 )
 fig.show()
+```
+
+## Generazione Report
+
+La libreria ARIMA Forecaster include potenti funzionalità per la generazione automatica di report professionali utilizzando Quarto. I report includono analisi automatiche, interpretazioni dei risultati, e visualizzazioni integrate.
+
+### Installazione Dipendenze Reporting
+
+Prima di utilizzare le funzionalità di reporting, installa le dipendenze necessarie:
+
+```bash
+# Con UV (raccomandato)
+uv sync --extra reports
+
+# Con pip tradizionale
+pip install -e ".[reports]"
+
+# Installa anche Quarto CLI (necessario per rendering)
+# Vai su https://quarto.org/docs/get-started/ per istruzioni specifiche OS
+```
+
+### Report Singolo Modello
+
+Genera un report completo per un modello ARIMA o SARIMA:
+
+```python
+from arima_forecaster import ARIMAForecaster, SARIMAForecaster
+from arima_forecaster.visualization import ForecastPlotter
+import pandas as pd
+
+# Addestra modello
+modello = ARIMAForecaster(order=(2, 1, 2))
+modello.fit(serie_dati)
+
+# Opzionale: Crea visualizzazioni personalizzate
+plotter = ForecastPlotter()
+forecast_result = modello.forecast(steps=12, confidence_intervals=True)
+
+# Salva grafici per includerli nel report
+plot_files = {}
+plot_files['forecast'] = plotter.plot_forecast(
+    actual=serie_dati,
+    forecast=forecast_result['forecast'],
+    confidence_intervals=forecast_result['confidence_intervals'],
+    save_path="outputs/plots/forecast.png"
+)
+
+plot_files['residuals'] = plotter.plot_residuals(
+    residuals=modello.fitted_model.resid,
+    save_path="outputs/plots/residuals.png"
+)
+
+# Genera report HTML
+report_path = modello.generate_report(
+    plots_data=plot_files,
+    report_title="Analisi Completa Vendite Q4",
+    output_filename="vendite_q4_analysis",
+    format_type="html",
+    include_diagnostics=True,
+    include_forecast=True,
+    forecast_steps=24
+)
+
+print(f"Report generato: {report_path}")
+# Output: outputs/reports/vendite_q4_analysis.html
+```
+
+### Report Modello SARIMA con Decomposizione Stagionale
+
+```python
+# Modello SARIMA con dati stagionali
+sarima_model = SARIMAForecaster(
+    order=(1, 1, 1), 
+    seasonal_order=(1, 1, 1, 12)  # Stagionalità mensile
+)
+sarima_model.fit(serie_stagionale)
+
+# Genera report con decomposizione stagionale
+sarima_report = sarima_model.generate_report(
+    plots_data=plot_files,
+    report_title="Analisi SARIMA - Vendite Stagionali",
+    output_filename="sarima_seasonal_analysis",
+    format_type="html",
+    include_diagnostics=True,
+    include_forecast=True,
+    include_seasonal_decomposition=True,  # Specifico per SARIMA
+    forecast_steps=36  # 3 anni di previsioni
+)
+```
+
+### Report Comparativo Multi-Modello
+
+Confronta automaticamente le performance di più modelli:
+
+```python
+from arima_forecaster.reporting import QuartoReportGenerator
+from arima_forecaster.evaluation import ModelEvaluator
+
+# Addestra modelli diversi
+arima_model = ARIMAForecaster(order=(2, 1, 2))
+sarima_model = SARIMAForecaster(order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+
+arima_model.fit(serie_dati)
+sarima_model.fit(serie_dati)
+
+# Prepara risultati per confronto
+evaluator = ModelEvaluator()
+
+# Metriche ARIMA
+arima_predictions = arima_model.predict()
+arima_metrics = evaluator.calculate_forecast_metrics(serie_dati, arima_predictions)
+arima_results = {
+    'model_type': 'ARIMA',
+    'order': arima_model.order,
+    'model_info': arima_model.get_model_info(),
+    'metrics': arima_metrics
+}
+
+# Metriche SARIMA  
+sarima_predictions = sarima_model.predict()
+sarima_metrics = evaluator.calculate_forecast_metrics(serie_dati, sarima_predictions)
+sarima_results = {
+    'model_type': 'SARIMA',
+    'order': sarima_model.order,
+    'seasonal_order': sarima_model.seasonal_order,
+    'model_info': sarima_model.get_model_info(),
+    'metrics': sarima_metrics
+}
+
+# Genera report comparativo
+generator = QuartoReportGenerator()
+comparison_report = generator.create_comparison_report(
+    models_results={
+        'ARIMA(2,1,2)': arima_results,
+        'SARIMA(1,1,1)x(1,1,1,12)': sarima_results
+    },
+    report_title="Confronto Modelli: ARIMA vs SARIMA",
+    output_filename="models_comparison_study",
+    format_type="html"
+)
+
+print(f"Report comparativo: {comparison_report}")
+```
+
+### Export Multi-Formato
+
+Esporta lo stesso report in formati diversi:
+
+```python
+# Report HTML per condivisione web
+html_report = modello.generate_report(
+    report_title="Executive Summary - Vendite",
+    output_filename="executive_summary",
+    format_type="html"
+)
+
+# Report PDF per presentazioni (richiede LaTeX installato)
+try:
+    pdf_report = modello.generate_report(
+        report_title="Executive Summary - Vendite",
+        output_filename="executive_summary_pdf",
+        format_type="pdf"
+    )
+    print(f"PDF Report: {pdf_report}")
+except Exception as e:
+    print(f"PDF Export failed: {e}")
+    print("Install LaTeX for PDF support")
+
+# Report DOCX per editing (richiede pandoc installato)
+try:
+    docx_report = modello.generate_report(
+        report_title="Technical Documentation",
+        output_filename="technical_doc",
+        format_type="docx"
+    )
+    print(f"DOCX Report: {docx_report}")
+except Exception as e:
+    print(f"DOCX Export failed: {e}")
+    print("Install pandoc for DOCX support")
+```
+
+### Personalizzazione Report
+
+I report possono essere personalizzati attraverso vari parametri:
+
+```python
+# Report personalizzato completo
+custom_report = modello.generate_report(
+    plots_data=plot_files,
+    report_title="Analisi Personalizzata Vendite E-commerce",
+    output_filename="ecommerce_custom_analysis",
+    format_type="html",
+    include_diagnostics=True,      # Include test diagnostici dettagliati
+    include_forecast=True,         # Include sezione forecasting
+    forecast_steps=52,             # 52 settimane di previsioni
+)
+```
+
+### Contenuto dei Report Automatici
+
+I report generati includono automaticamente:
+
+#### 📋 **Executive Summary**
+- Panoramica del modello e parametri utilizzati
+- Metriche chiave di performance (MAE, RMSE, MAPE, R², AIC, BIC)
+- Data di analisi e informazioni tecniche
+
+#### 🔧 **Metodologia e Approccio**
+- Processo di selezione del modello utilizzato
+- Parametri del modello con interpretazione
+- Preprocessing applicato ai dati
+
+#### 📊 **Analisi dei Risultati**
+- Performance del modello con grafici di confronto
+- Diagnostica residui con test statistici
+- Interpretazione automatica dei risultati
+
+#### 📈 **Visualizzazioni Integrate**
+- Grafici di forecast con intervalli di confidenza
+- Analisi residui multi-pannello
+- Decomposizione stagionale (per SARIMA)
+
+#### 💡 **Raccomandazioni Automatiche**
+- Interpretazione intelligente delle performance
+- Suggerimenti operativi basati sui risultati
+- Avvisi su potenziali problemi del modello
+
+#### 🔍 **Dettagli Tecnici**
+- Configurazione completa del modello
+- Informazioni sull'ambiente di esecuzione
+- Metadati per riproducibilità
+
+### Gestione Errori Reporting
+
+```python
+try:
+    report_path = modello.generate_report()
+    print(f"✓ Report generato: {report_path}")
+except ImportError:
+    print("⚠ Installa le dipendenze reports:")
+    print("uv sync --extra reports")
+except Exception as e:
+    print(f"❌ Errore generazione report: {e}")
+    print("Verifica che Quarto CLI sia installato")
+```
+
+### Workflow Completo con Reporting
+
+Esempio di workflow end-to-end con reporting:
+
+```python
+from arima_forecaster import (
+    ARIMAForecaster, SARIMAForecaster, 
+    TimeSeriesPreprocessor, ForecastPlotter,
+    ModelEvaluator
+)
+from arima_forecaster.core import ARIMAModelSelector
+import pandas as pd
+
+# 1. Carica e preprocessa dati
+serie = pd.read_csv('vendite.csv', index_col='data', parse_dates=True)['vendite']
+preprocessor = TimeSeriesPreprocessor()
+serie_clean = preprocessor.preprocess_pipeline(serie)
+
+# 2. Selezione automatica miglior modello
+selector = ARIMAModelSelector()
+selector.search(serie_clean)
+best_model = selector.get_best_model()
+
+# 3. Genera visualizzazioni
+plotter = ForecastPlotter()
+forecast = best_model.forecast(steps=12, confidence_intervals=True)
+
+plots = {
+    'forecast': plotter.plot_forecast(
+        serie_clean, forecast['forecast'], 
+        confidence_intervals=forecast['confidence_intervals'],
+        save_path="outputs/plots/best_forecast.png"
+    ),
+    'residuals': plotter.plot_residuals(
+        best_model.fitted_model.resid,
+        save_path="outputs/plots/best_residuals.png"
+    )
+}
+
+# 4. Genera report finale
+final_report = best_model.generate_report(
+    plots_data=plots,
+    report_title=f"Analisi Ottimale - Modello ARIMA{best_model.order}",
+    output_filename="optimal_model_analysis",
+    format_type="html",
+    include_diagnostics=True,
+    include_forecast=True,
+    forecast_steps=24
+)
+
+print(f"🎉 Analisi completa: {final_report}")
+print("Apri il file HTML nel browser per visualizzare il report completo")
 ```
 
 ## Funzionalità Avanzate

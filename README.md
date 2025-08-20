@@ -13,6 +13,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **🤖 Auto-ML**: Ottimizzazione automatica con Optuna, Hyperopt e Scikit-Optimize  
 - **🌐 API REST**: Servizi di forecasting production-ready con FastAPI
 - **📊 Dashboard Streamlit**: Interfaccia web interattiva per utenti non tecnici
+- **📄 Report Quarto**: Generazione report dinamici professionali con analisi automatiche
 - **🎯 Ensemble Methods**: Combinazione intelligente di modelli diversi
 - **⚡ Ottimizzazione Parallela**: Selezione modelli veloce su hardware multi-core
 
@@ -41,6 +42,9 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── data/                       # Caricamento dati e preprocessing
 │   ├── evaluation/                 # Metriche valutazione e diagnostica
 │   ├── visualization/              # Grafici e dashboard avanzati
+│   ├── reporting/                  # Sistema reporting Quarto dinamico
+│   │   ├── generator.py           # Generatore report con template automatici
+│   │   └── __init__.py            # Import opzionali per reporting
 │   ├── api/                        # REST API con FastAPI
 │   │   ├── main.py                # Applicazione API principale
 │   │   ├── models.py              # Modelli Pydantic per validazione
@@ -60,7 +64,10 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── run_api.py                 # Lancia API server
 │   └── run_dashboard.py           # Lancia dashboard Streamlit
 ├── tests/                          # Suite test completa
-└── outputs/                        # Modelli salvati e visualizzazioni
+└── outputs/                        # Output generati
+    ├── models/                    # Modelli salvati e metadata
+    ├── plots/                     # Visualizzazioni generate
+    └── reports/                   # Report Quarto in HTML/PDF/DOCX
 ```
 
 ---
@@ -106,6 +113,9 @@ uv sync --extra automl
 
 # Con funzionalità di sviluppo
 uv sync --extra dev
+
+# Con reporting Quarto
+uv sync --extra reports
 
 # Tutte le funzionalità
 uv sync --all-extras
@@ -303,6 +313,85 @@ dashboard = ARIMADashboard()
 dashboard.run()
 ```
 
+#### 7. Report Dinamici con Quarto
+
+```python
+from arima_forecaster import ARIMAForecaster, SARIMAForecaster
+from arima_forecaster.reporting import QuartoReportGenerator
+from arima_forecaster.visualization import ForecastPlotter
+
+# Addestra modelli
+arima_model = ARIMAForecaster(order=(2,1,2))
+sarima_model = SARIMAForecaster(order=(1,1,1), seasonal_order=(1,1,1,12))
+arima_model.fit(serie_pulita)
+sarima_model.fit(serie_pulita)
+
+# Crea visualizzazioni
+plotter = ForecastPlotter()
+forecast_arima = arima_model.forecast(steps=12, confidence_intervals=True)
+forecast_sarima = sarima_model.forecast(steps=12, confidence_intervals=True)
+
+# Salva grafici
+plots_data = {}
+plots_data['arima_forecast'] = plotter.plot_forecast(
+    actual=serie_pulita, 
+    forecast=forecast_arima['forecast'],
+    confidence_intervals=forecast_arima['confidence_intervals'],
+    save_path="outputs/plots/arima_forecast.png"
+)
+
+# Genera report individuale ARIMA
+arima_report = arima_model.generate_report(
+    plots_data=plots_data,
+    report_title="Analisi Completa Vendite ARIMA",
+    output_filename="vendite_arima_analysis",
+    format_type="html",
+    include_diagnostics=True,
+    include_forecast=True,
+    forecast_steps=24
+)
+print(f"Report ARIMA generato: {arima_report}")
+
+# Genera report comparativo
+generator = QuartoReportGenerator()
+comparison_report = generator.create_comparison_report(
+    models_results={
+        'ARIMA(2,1,2)': {
+            'model_type': 'ARIMA',
+            'order': arima_model.order,
+            'model_info': arima_model.get_model_info(),
+            'metrics': evaluator.calculate_forecast_metrics(
+                serie_pulita, arima_model.predict()
+            )
+        },
+        'SARIMA(1,1,1)x(1,1,1,12)': {
+            'model_type': 'SARIMA', 
+            'order': sarima_model.order,
+            'seasonal_order': sarima_model.seasonal_order,
+            'model_info': sarima_model.get_model_info(),
+            'metrics': evaluator.calculate_forecast_metrics(
+                serie_pulita, sarima_model.predict()
+            )
+        }
+    },
+    report_title="Confronto Modelli ARIMA vs SARIMA - Vendite",
+    output_filename="vendite_models_comparison",
+    format_type="html"
+)
+print(f"Report comparativo generato: {comparison_report}")
+
+# Export in formati multipli
+pdf_report = arima_model.generate_report(
+    format_type="pdf",  # Richiede LaTeX
+    output_filename="vendite_executive_summary"
+)
+
+docx_report = arima_model.generate_report(
+    format_type="docx",  # Richiede pandoc
+    output_filename="vendite_technical_doc"
+)
+```
+
 ---
 
 ### 📊 **Capacità Avanzate per Tipo di Modello**
@@ -336,6 +425,14 @@ dashboard.run()
 - **Model Comparison**: Confronto performance modelli diversi
 - **Interactive Plotting**: Grafici Plotly con zoom, filtering
 - **Export Results**: Download forecast e report in CSV/PDF
+
+#### 📄 Reporting Dinamico con Quarto
+- **Report Automatici**: Template professionali con analisi integrate
+- **Multi-Formato**: Export HTML, PDF, DOCX con un comando
+- **Analisi Intelligenti**: Interpretazione automatica metriche e risultati
+- **Visualizzazioni Embed**: Grafici integrati nei report
+- **Report Comparativi**: Confronto automatico tra modelli multipli
+- **Personalizzazione**: Template Quarto modificabili e estendibili
 
 #### Preprocessing Intelligente (Esteso)
 - **Valori Mancanti**: 5 strategie (interpolazione, drop, forward/backward fill, seasonally-adjusted)
@@ -418,6 +515,9 @@ uv run pytest tests/test_api.py -v
 
 # Test Dashboard (richiede browser headless)
 uv run pytest tests/test_dashboard.py -v --browser=chrome
+
+# Test Reporting Quarto (richiede dipendenze reports)
+uv run pytest tests/test_reporting.py -v
 
 # Tutti i test con coverage dettagliata
 uv run pytest tests/ -v --cov=src/arima_forecaster --cov-report=html --cov-report=term-missing
@@ -502,6 +602,9 @@ uv run python examples/model_comparison_study.py
 uv run python examples/forecasting_base.py
 uv run python examples/selezione_automatica.py
 
+# Reporting dinamico con Quarto
+uv run python examples/quarto_reporting.py
+
 # Business Intelligence
 uv run python examples/business_metrics_forecasting.py
 uv run python examples/seasonal_sales_analysis.py
@@ -562,6 +665,13 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 | **scipy** | Algoritmi scientifici | >=1.10.0 | Ottimizzazione, test statistici |
 | **scikit-learn** | ML utilities | >=1.3.0 | Preprocessing, metriche, validation |
 
+#### 📄 Reporting Stack (Opzionale)
+| Libreria | Scopo | Funzionalità |
+|----------|-------|--------------|
+| **quarto** | Document generation | >=1.3.0 | Report dinamici HTML/PDF/DOCX |
+| **jupyter** | Notebook support | >=1.0.0 | Esecuzione codice nei report |
+| **nbformat** | Notebook format | >=5.8.0 | Supporto formato notebook |
+
 #### 📊 Visualization Stack
 | Libreria | Scopo | Funzionalità |
 |----------|-------|--------------|
@@ -604,6 +714,7 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 - [x] **Dashboard Streamlit**: Interfaccia web completa
 - [x] **Auto-ML**: Ottimizzazione con Optuna, Hyperopt, Scikit-Optimize
 - [x] **Ensemble Methods**: Combinazione intelligente modelli
+- [x] **Report Quarto**: Generazione automatica report dinamici HTML/PDF/DOCX
 - [x] **Documentazione**: Teoria completa ARIMA vs SARIMA
 
 #### 🚧 In Sviluppo (v0.4.0)

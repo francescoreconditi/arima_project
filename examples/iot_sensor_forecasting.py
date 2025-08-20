@@ -19,6 +19,7 @@ from arima_forecaster import ARIMAForecaster, TimeSeriesPreprocessor, ForecastPl
 from arima_forecaster.core import ARIMAModelSelector
 from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.utils import setup_logger
+from utils import get_plots_path, get_models_path
 
 warnings.filterwarnings('ignore')
 
@@ -347,8 +348,9 @@ def main():
     plt.tight_layout()
     
     # Salva plot
-    plt.savefig('outputs/plots/iot_sensor_forecast.png', dpi=300, bbox_inches='tight')
-    logger.info("📁 Plot salvato in outputs/plots/iot_sensor_forecast.png")
+    plot_path = get_plots_path('iot_sensor_forecast.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    logger.info(f"📁 Plot salvato in {plot_path}")
     
     # plt.show()  # Disabled for Windows compatibility
     print("Plot salvato come 'outputs/plots/iot_sensor_forecast.png'")
@@ -413,9 +415,38 @@ def main():
         print(f"  Raccomandazione: Calibrazione sensore temperatura")
     
     # Salva modello
-    model_path = 'outputs/models/iot_sensor_arima_model.joblib'
+    model_path = get_models_path('iot_sensor_arima_model.joblib')
     model.save(model_path)
     logger.info(f"💾 Modello salvato in {model_path}")
+
+    # Genera report Quarto
+    logger.info("Generazione report Quarto...")
+    try:
+        # Get the plot filename if it exists
+        plot_files = {}
+        # Try to find the most recent plot file
+        if 'plot_path' in locals():
+            plot_files['main_plot'] = str(plot_path)
+        elif 'plt' in locals():
+            # If we have a matplotlib figure, save it temporarily
+            temp_plot = get_plots_path('temp_report_plot.png')
+            plt.savefig(temp_plot, dpi=300, bbox_inches='tight')
+            plot_files['analysis_plot'] = str(temp_plot)
+        
+        report_path = model.generate_report(
+            plots_data=plot_files if plot_files else None,
+            report_title="Iot Sensor Forecasting Analysis",
+            output_filename="iot_sensor_forecasting_report",
+            format_type="html",
+            include_diagnostics=True,
+            include_forecast=True,
+            forecast_steps=12
+        )
+        logger.info(f"Report HTML generato: {report_path}")
+        print(f"Report HTML salvato in: {report_path}")
+    except Exception as e:
+        logger.warning(f"Impossibile generare report: {e}")
+        print(f"Report non generato: {e}")
     
     print(f"\nAnalisi IoT completata!")
     print(f"Risultati e grafici salvati in outputs/")

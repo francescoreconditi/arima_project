@@ -388,6 +388,181 @@ async def custom_forecasting_endpoint(request: CustomRequest):
     pass
 ```
 
+## 📄 Reporting Dinamico con Quarto
+
+### Panoramica
+Sistema avanzato per la generazione automatica di report professionali utilizzando Quarto, che trasforma i risultati dei modelli ARIMA/SARIMA in documenti di analisi completi.
+
+### Caratteristiche Reporting
+- **Report Automatici**: Generazione con analisi e interpretazioni integrate
+- **Multi-Formato**: Export HTML, PDF, DOCX con un comando
+- **Template Professionali**: Layout publication-ready con branding personalizzabile
+- **Analisi Intelligenti**: Interpretazione automatica di metriche e risultati
+- **Report Comparativi**: Confronto automatico tra modelli multipli
+
+### Installazione Dipendenze
+```bash
+# Installa dipendenze Quarto
+uv sync --extra reports
+
+# Installa Quarto CLI (necessario per rendering)
+# Windows: winget install --id RStudio.quarto
+# macOS: brew install --cask quarto  
+# Linux: https://quarto.org/docs/get-started/
+```
+
+### Report Singolo Modello
+```python
+from arima_forecaster import ARIMAForecaster, SARIMAForecaster
+from arima_forecaster.visualization import ForecastPlotter
+
+# Addestra modello
+model = ARIMAForecaster(order=(2, 1, 2))
+model.fit(data)
+
+# Crea visualizzazioni per report
+plotter = ForecastPlotter()
+forecast_result = model.forecast(steps=12, confidence_intervals=True)
+
+plots_data = {
+    'forecast': plotter.plot_forecast(
+        actual=data,
+        forecast=forecast_result['forecast'],
+        confidence_intervals=forecast_result['confidence_intervals'],
+        save_path="outputs/plots/forecast.png"
+    ),
+    'residuals': plotter.plot_residuals(
+        residuals=model.fitted_model.resid,
+        save_path="outputs/plots/residuals.png"  
+    )
+}
+
+# Genera report completo
+report_path = model.generate_report(
+    plots_data=plots_data,
+    report_title="Analisi Completa Vendite Q4",
+    output_filename="vendite_q4_analysis",
+    format_type="html",  # Oppure "pdf" o "docx"
+    include_diagnostics=True,
+    include_forecast=True,
+    forecast_steps=24
+)
+
+print(f"Report generato: {report_path}")
+# Output: outputs/reports/vendite_q4_analysis.html
+```
+
+### Report Comparativo Multi-Modello
+```python
+from arima_forecaster.reporting import QuartoReportGenerator
+from arima_forecaster.evaluation import ModelEvaluator
+
+# Addestra modelli diversi
+arima_model = ARIMAForecaster(order=(2, 1, 2))
+sarima_model = SARIMAForecaster(order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+
+arima_model.fit(data)
+sarima_model.fit(data)
+
+# Raccoglie metriche per confronto
+evaluator = ModelEvaluator()
+
+arima_results = {
+    'model_type': 'ARIMA',
+    'order': arima_model.order,
+    'model_info': arima_model.get_model_info(),
+    'metrics': evaluator.calculate_forecast_metrics(
+        data, arima_model.predict()
+    )
+}
+
+sarima_results = {
+    'model_type': 'SARIMA',
+    'order': sarima_model.order,
+    'seasonal_order': sarima_model.seasonal_order,
+    'model_info': sarima_model.get_model_info(),
+    'metrics': evaluator.calculate_forecast_metrics(
+        data, sarima_model.predict()
+    )
+}
+
+# Genera report comparativo
+generator = QuartoReportGenerator()
+comparison_report = generator.create_comparison_report(
+    models_results={
+        'ARIMA(2,1,2)': arima_results,
+        'SARIMA(1,1,1)x(1,1,1,12)': sarima_results
+    },
+    report_title="Confronto Modelli: ARIMA vs SARIMA",
+    output_filename="models_comparison_study",
+    format_type="html"
+)
+
+print(f"Report comparativo: {comparison_report}")
+```
+
+### Contenuto Report Automatici
+
+I report generati includono automaticamente:
+
+#### 📋 Executive Summary
+- Panoramica modello e parametri utilizzati
+- Metriche chiave di performance (MAE, RMSE, MAPE, R², AIC, BIC)
+- Data di analisi e informazioni tecniche
+
+#### 🔧 Metodologia e Approccio  
+- Processo di selezione del modello utilizzato
+- Parametri del modello con interpretazione
+- Preprocessing applicato ai dati
+
+#### 📊 Analisi dei Risultati
+- Performance del modello con grafici di confronto
+- Diagnostica residui con test statistici
+- Interpretazione automatica dei risultati
+
+#### 📈 Visualizzazioni Integrate
+- Grafici di forecast con intervalli di confidenza
+- Analisi residui multi-pannello
+- Decomposizione stagionale (per modelli SARIMA)
+
+#### 💡 Raccomandazioni Automatiche
+- Interpretazione intelligente delle performance
+- Suggerimenti operativi basati sui risultati
+- Avvisi su potenziali problemi del modello
+
+#### 🔍 Dettagli Tecnici
+- Configurazione completa del modello
+- Informazioni sull'ambiente di esecuzione
+- Metadata per riproducibilità
+
+### Export Multi-Formato
+```python
+# Report HTML per condivisione web
+html_report = model.generate_report(
+    report_title="Executive Summary",
+    format_type="html"
+)
+
+# Report PDF per presentazioni (richiede LaTeX)
+pdf_report = model.generate_report(
+    report_title="Executive Summary", 
+    format_type="pdf"
+)
+
+# Report DOCX per editing (richiede pandoc)
+docx_report = model.generate_report(
+    report_title="Technical Documentation",
+    format_type="docx"
+)
+```
+
+### Applicazioni
+- **Report Esecutivi**: Risultati forecasting per management
+- **Documentazione Tecnica**: Audit trail per compliance
+- **Confronti Modelli**: Selezione modello basata su evidenze
+- **Presentazioni Client**: Output professionale per stakeholder
+- **Ricerca e Sviluppo**: Documentazione esperimenti e risultati
+
 ## 📄 Licenza
 
 Questo progetto è rilasciato sotto Licenza MIT - vedi il file LICENSE per i dettagli.
@@ -397,6 +572,7 @@ Questo progetto è rilasciato sotto Licenza MIT - vedi il file LICENSE per i det
 - **Optuna**: Framework di ottimizzazione avanzata
 - **FastAPI**: Framework API moderno
 - **Streamlit**: Applicazioni web interattive
+- **Quarto**: Sistema di publishing scientifico per report dinamici
 - **Statsmodels**: Fondamento per modellazione statistica
 - **Plotly**: Visualizzazioni interattive
 

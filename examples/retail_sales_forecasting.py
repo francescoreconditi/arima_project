@@ -14,11 +14,13 @@ matplotlib.use('Agg')  # Non-interactive backend for Windows
 import matplotlib.pyplot as plt
 import warnings
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from arima_forecaster import ARIMAForecaster, TimeSeriesPreprocessor, ForecastPlotter
 from arima_forecaster.core import ARIMAModelSelector
 from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.utils import setup_logger
+from utils import get_plots_path, get_models_path, get_reports_path
 
 warnings.filterwarnings('ignore')
 
@@ -58,55 +60,55 @@ def generate_retail_sales_data():
 
 def main():
     logger = setup_logger('retail_forecasting', level='INFO')
-    logger.info("🛍️ Avvio analisi forecasting vendite retail")
+    logger.info("Avvio analisi forecasting vendite retail")
     
     # Genera dati
-    logger.info("📊 Generazione dati vendite retail...")
+    logger.info("Generazione dati vendite retail...")
     sales_data = generate_retail_sales_data()
     
-    print(f"📈 Dataset generato: {len(sales_data)} punti dati")
-    print(f"📅 Periodo: {sales_data.index[0].strftime('%Y-%m')} - {sales_data.index[-1].strftime('%Y-%m')}")
-    print(f"💰 Vendite media mensile: €{sales_data.mean():,.0f}")
-    print(f"📊 Range vendite: €{sales_data.min():,.0f} - €{sales_data.max():,.0f}")
+    print(f"Dataset generato: {len(sales_data)} punti dati")
+    print(f"Periodo: {sales_data.index[0].strftime('%Y-%m')} - {sales_data.index[-1].strftime('%Y-%m')}")
+    print(f"Vendite media mensile: €{sales_data.mean():,.0f}")
+    print(f"Range vendite: €{sales_data.min():,.0f} - €{sales_data.max():,.0f}")
     
     # Split train/test
     train_size = int(len(sales_data) * 0.8)
     train_data = sales_data[:train_size]
     test_data = sales_data[train_size:]
     
-    print(f"\n🔄 Split dataset:")
-    print(f"  📚 Training: {len(train_data)} mesi ({train_data.index[0].strftime('%Y-%m')} - {train_data.index[-1].strftime('%Y-%m')})")
-    print(f"  🧪 Test: {len(test_data)} mesi ({test_data.index[0].strftime('%Y-%m')} - {test_data.index[-1].strftime('%Y-%m')})")
+    print(f"\nSplit dataset:")
+    print(f"  Training: {len(train_data)} mesi ({train_data.index[0].strftime('%Y-%m')} - {train_data.index[-1].strftime('%Y-%m')})")
+    print(f"  Test: {len(test_data)} mesi ({test_data.index[0].strftime('%Y-%m')} - {test_data.index[-1].strftime('%Y-%m')})")
     
     # Preprocessing
-    logger.info("🔧 Preprocessing dati...")
+    logger.info("Preprocessing dati...")
     preprocessor = TimeSeriesPreprocessor()
     
     # Check stazionarietà
     stationarity_result = preprocessor.check_stationarity(train_data)
     is_stationary = stationarity_result['is_stationary']
     if not is_stationary:
-        print("📈 Serie non stazionaria - applicando differenziazione")
+        print("Serie non stazionaria - applicando differenziazione")
     
     # Selezione automatica modello
-    logger.info("🔍 Selezione automatica modello ARIMA...")
+    logger.info("Selezione automatica modello ARIMA...")
     # Use simple ARIMA model for demonstration
     print("Utilizzo modello ARIMA(1,1,1) per dati retail...")
     best_order = (1, 1, 1)
     seasonal_order = None
     
-    print(f"\n✅ Modello ottimale trovato:")
-    print(f"  📊 ARIMA{best_order}")
-    print(f"  🌊 Seasonal{seasonal_order}")
+    print(f"\nModello ottimale trovato:")
+    print(f"  ARIMA{best_order}")
+    print(f"  Seasonal{seasonal_order}")
     
     # Training modello
-    logger.info("🎯 Training modello ARIMA...")
+    logger.info("Training modello ARIMA...")
     model = ARIMAForecaster(order=best_order)
     model.fit(train_data)
     
     # Forecast
     forecast_steps = len(test_data)
-    logger.info(f"🔮 Generazione forecast per {forecast_steps} mesi...")
+    logger.info(f"Generazione forecast per {forecast_steps} mesi...")
     forecast_result = model.forecast(
         steps=forecast_steps, 
         confidence_intervals=True,
@@ -114,25 +116,25 @@ def main():
     )
     
     # Valutazione
-    logger.info("📊 Valutazione performance modello...")
+    logger.info("Valutazione performance modello...")
     evaluator = ModelEvaluator()
     metrics = evaluator.calculate_forecast_metrics(test_data, forecast_result['forecast'])
     
-    print(f"\n📊 Metriche Performance:")
-    print(f"  📈 MAPE: {metrics['mape']:.2f}%")
-    print(f"  📉 MAE: €{metrics['mae']:,.0f}")
-    print(f"  🎯 RMSE: €{metrics['rmse']:,.0f}")
+    print(f"\nMetriche Performance:")
+    print(f"  MAPE: {metrics['mape']:.2f}%")
+    print(f"  MAE: €{metrics['mae']:,.0f}")
+    print(f"  RMSE: €{metrics['rmse']:,.0f}")
     
     # Check for R² score with different possible key names
     if 'r2_score' in metrics:
-        print(f"  📊 R²: {metrics['r2_score']:.3f}")
+        print(f"  R²: {metrics['r2_score']:.3f}")
     elif 'r_squared' in metrics:
-        print(f"  📊 R²: {metrics['r_squared']:.3f}")
+        print(f"  R²: {metrics['r_squared']:.3f}")
     else:
-        print(f"  📊 R²: N/A")
+        print(f"  R²: N/A")
     
     # Forecast futuro
-    logger.info("🚀 Forecast per i prossimi 12 mesi...")
+    logger.info("Forecast per i prossimi 12 mesi...")
     future_forecast = model.forecast(steps=12, confidence_intervals=True)
     
     # Visualizzazione
@@ -153,7 +155,7 @@ def main():
                      forecast_result['confidence_intervals']['upper'],
                      color='red', alpha=0.2, label='95% CI')
     
-    plt.title('📊 Retail Sales Forecasting - Overview Completo')
+    plt.title('Retail Sales Forecasting - Overview Completo')
     plt.ylabel('Vendite Mensili (€)')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -170,7 +172,7 @@ def main():
                      forecast_result['confidence_intervals']['upper'],
                      color='red', alpha=0.2, label='95% CI')
     
-    plt.title('🎯 Performance su Test Set')
+    plt.title('Performance su Test Set')
     plt.ylabel('Vendite Mensili (€)')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -199,7 +201,7 @@ def main():
                      future_forecast['confidence_intervals']['upper'],
                      color='purple', alpha=0.2, label='95% CI')
     
-    plt.title('🚀 Forecast Prossimi 12 Mesi')
+    plt.title('Forecast Prossimi 12 Mesi')
     plt.ylabel('Vendite Mensili (€)')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -213,7 +215,7 @@ def main():
     plt.axhline(y=residuals.std(), color='red', linestyle='--', alpha=0.5, label='+1σ')
     plt.axhline(y=-residuals.std(), color='red', linestyle='--', alpha=0.5, label='-1σ')
     
-    plt.title('📉 Analisi Residui')
+    plt.title('Analisi Residui')
     plt.ylabel('Residui (€)')
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -222,22 +224,23 @@ def main():
     plt.tight_layout()
     
     # Salva plot
-    plt.savefig('outputs/plots/retail_sales_forecast.png', dpi=300, bbox_inches='tight')
-    logger.info("📁 Plot salvato in outputs/plots/retail_sales_forecast.png")
+    plot_path = get_plots_path('retail_sales_forecast.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    logger.info(f"Plot salvato in {plot_path}")
     
     # plt.show()  # Disabled for Windows compatibility
-    print("Plot saved as 'outputs/plots/retail_sales_forecast.png'")
+    print(f"Plot saved as '{plot_path}'")
     
     # Insights business
-    print(f"\n🎯 Business Insights:")
+    print(f"\nBusiness Insights:")
     
     # Previsioni future con interpretazioni
     future_total = future_forecast['forecast'].sum()
     current_year_total = sales_data[-12:].sum()
     growth_rate = ((future_total - current_year_total) / current_year_total) * 100
     
-    print(f"  📊 Vendite previste prossimi 12 mesi: €{future_total:,.0f}")
-    print(f"  📈 Crescita stimata: {growth_rate:+.1f}% vs ultimo anno")
+    print(f"  Vendite previste prossimi 12 mesi: €{future_total:,.0f}")
+    print(f"  Crescita stimata: {growth_rate:+.1f}% vs ultimo anno")
     
     # Mesi con vendite più alte
     future_df = pd.DataFrame({
@@ -246,17 +249,37 @@ def main():
     })
     best_months = future_df.nlargest(3, 'forecast')
     
-    print(f"  🏆 Top 3 mesi previsti:")
+    print(f"  Top 3 mesi previsti:")
     for idx, row in best_months.iterrows():
         print(f"    {row['month']}: €{row['forecast']:,.0f}")
     
     # Salva modello
-    model_path = 'outputs/models/retail_sales_arima_model.joblib'
+    model_path = get_models_path('retail_sales_arima_model.joblib')
     model.save(model_path)
-    logger.info(f"💾 Modello salvato in {model_path}")
+    logger.info(f"Modello salvato in {model_path}")
     
-    print(f"\n✅ Analisi completata!")
-    print(f"📁 Risultati salvati in outputs/")
+    # Genera report Quarto
+    logger.info("Generazione report Quarto...")
+    try:
+        report_path = model.generate_report(
+            plots_data={
+                'forecast_plot': str(plot_path)
+            },
+            report_title="Retail Sales Forecasting Analysis",
+            output_filename="retail_sales_report",
+            format_type="html",
+            include_diagnostics=True,
+            include_forecast=True,
+            forecast_steps=12
+        )
+        logger.info(f"Report HTML generato: {report_path}")
+        print(f"Report HTML salvato in: {report_path}")
+    except Exception as e:
+        logger.warning(f"Impossibile generare report: {e}")
+        print(f"Report non generato: {e}")
+    
+    print(f"\nAnalisi completata!")
+    print(f"Risultati salvati in outputs/")
 
 if __name__ == "__main__":
     main()

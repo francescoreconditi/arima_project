@@ -28,6 +28,13 @@ from .visualization.plotter import ForecastPlotter
 from .automl.optimizer import ARIMAOptimizer, SARIMAOptimizer, VAROptimizer, optimize_model
 from .automl.tuner import HyperparameterTuner
 
+# Reporting (optional import - requires reports extra)
+try:
+    from .reporting.generator import QuartoReportGenerator
+    _has_reporting = True
+except ImportError:
+    _has_reporting = False
+
 __all__ = [
     # Core models
     "ARIMAForecaster",
@@ -51,3 +58,7 @@ __all__ = [
     "HyperparameterTuner",
     "optimize_model"
 ]
+
+# Add QuartoReportGenerator to __all__ if available
+if _has_reporting:
+    __all__.append("QuartoReportGenerator")

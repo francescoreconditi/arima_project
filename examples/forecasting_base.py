@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from arima_forecaster import ARIMAForecaster, TimeSeriesPreprocessor, ForecastPlotter
 from arima_forecaster.data import DataLoader
 from arima_forecaster.utils import setup_logger
+from utils import get_plots_path, get_models_path, get_reports_path
 
 def generate_sample_data():
     """Generate sample time series data for demonstration."""
@@ -210,6 +211,31 @@ def main():
         model_path = model_dir / "basic_arima_model.pkl"
         model.save(model_path)
         logger.info(f"Model saved to {model_path}")
+
+        # Genera report Quarto
+        logger.info("Generazione report Quarto...")
+        try:
+            # Get the plot filename if it exists
+            plot_files = {}
+            # Try to find the most recent plot file
+            dashboard_path = plots_dir / "dashboard.png"
+            if dashboard_path.exists():
+                plot_files['main_plot'] = str(dashboard_path)
+            
+            report_path = model.generate_report(
+                plots_data=plot_files if plot_files else None,
+                report_title="Basic Forecasting Analysis",
+                output_filename="forecasting_base_report",
+                format_type="html",
+                include_diagnostics=True,
+                include_forecast=True,
+                forecast_steps=12
+            )
+            logger.info(f"Report HTML generato: {report_path}")
+            print(f"Report HTML salvato in: {report_path}")
+        except Exception as e:
+            logger.warning(f"Impossibile generare report: {e}")
+            print(f"Report non generato: {e}")
         
         # Step 9: Generate future forecasts
         logger.info("Generating future forecasts...")

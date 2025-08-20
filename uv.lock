@@ -184,8 +184,10 @@ version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "jupyter" },
     { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "matplotlib", version = "3.10.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "nbformat" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -197,6 +199,7 @@ dependencies = [
     { name = "scipy", version = "1.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "seaborn" },
     { name = "statsmodels" },
+    { name = "tabulate" },
     { name = "tqdm" },
 ]
 
@@ -214,6 +217,7 @@ all = [
     { name = "mkdocstrings", extra = ["python"] },
     { name = "mypy" },
     { name = "nbconvert" },
+    { name = "nbformat" },
     { name = "optuna" },
     { name = "plotly" },
     { name = "pre-commit" },
@@ -269,6 +273,10 @@ jupyter = [
     { name = "jupyterlab" },
     { name = "nbconvert" },
 ]
+reports = [
+    { name = "jupyter" },
+    { name = "nbformat" },
+]
 viz = [
     { name = "kaleido" },
     { name = "plotly" },
@@ -276,13 +284,15 @@ viz = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arima-forecaster", extras = ["dev", "viz", "jupyter", "docs", "api", "dashboard", "automl"], marker = "extra == 'all'" },
+    { name = "arima-forecaster", extras = ["dev", "viz", "jupyter", "docs", "reports", "api", "dashboard", "automl"], marker = "extra == 'all'" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "fastapi", specifier = ">=0.116.1" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.104.0" },
     { name = "hyperopt", marker = "extra == 'automl'", specifier = ">=0.2.7" },
     { name = "ipykernel", marker = "extra == 'jupyter'", specifier = ">=6.25.0" },
+    { name = "jupyter", specifier = ">=1.1.1" },
     { name = "jupyter", marker = "extra == 'jupyter'", specifier = ">=1.0.0" },
+    { name = "jupyter", marker = "extra == 'reports'", specifier = ">=1.0.0" },
     { name = "jupyterlab", marker = "extra == 'jupyter'", specifier = ">=4.0.0" },
     { name = "kaleido", marker = "extra == 'viz'", specifier = ">=0.2.1" },
     { name = "matplotlib", specifier = ">=3.6.0" },
@@ -291,6 +301,8 @@ requires-dist = [
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.22.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.5.0" },
     { name = "nbconvert", marker = "extra == 'jupyter'", specifier = ">=7.0.0" },
+    { name = "nbformat", specifier = ">=5.10.4" },
+    { name = "nbformat", marker = "extra == 'reports'", specifier = ">=5.8.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "optuna", marker = "extra == 'automl'", specifier = ">=3.4.0" },
     { name = "pandas", specifier = ">=2.0.0" },
@@ -310,11 +322,12 @@ requires-dist = [
     { name = "streamlit", marker = "extra == 'dashboard'", specifier = ">=1.28.0" },
     { name = "streamlit-aggrid", marker = "extra == 'dashboard'", specifier = ">=0.3.4" },
     { name = "streamlit-plotly-events", marker = "extra == 'dashboard'", specifier = ">=0.0.6" },
+    { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "tqdm", marker = "extra == 'automl'", specifier = ">=4.66.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.24.0" },
 ]
-provides-extras = ["dev", "viz", "jupyter", "docs", "api", "dashboard", "automl", "all"]
+provides-extras = ["dev", "viz", "jupyter", "docs", "reports", "api", "dashboard", "automl", "all"]
 
 [[package]]
 name = "arrow"
@@ -4931,6 +4944,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/61/8c/e51c4867cc4d819f8452811199241d0edbcec73621768270ada66153f874/streamlit-plotly-events-0.0.6.tar.gz", hash = "sha256:1fe25dbf0e5d803aeb90253be04d7b395f5bcfdf3c654f96ff3c19424e7f9582", size = 4874598, upload-time = "2021-04-26T23:36:16.973Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/08/51dd5c822e27410f6452c3cfe61f7163fdeb40f4d285f2da6c2b9f88584d/streamlit_plotly_events-0.0.6-py3-none-any.whl", hash = "sha256:e63fbe3c6a0746fdfce20060fc45ba5cd97805505c332b27372dcbd02c2ede29", size = 14802161, upload-time = "2021-04-26T23:36:09.194Z" },
+]
+
+[[package]]
+name = "tabulate"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c", size = 81090, upload-time = "2022-10-06T17:21:48.54Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/44/4a5f08c96eb108af5cb50b41f76142f0afa346dfa99d5296fe7202a11854/tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f", size = 35252, upload-time = "2022-10-06T17:21:44.262Z" },
 ]
 
 [[package]]

@@ -35,7 +35,8 @@ arima_project/
 │   └── processed/                 # Dataset processati
 ├── outputs/                       # Output generati
 │   ├── models/                    # Modelli salvati
-│   └── plots/                     # Visualizzazioni generate
+│   ├── plots/                     # Visualizzazioni generate
+│   └── reports/                   # Report Quarto generati
 └── config/                        # File di configurazione
 ```
 
@@ -132,12 +133,16 @@ uv run python examples/forecasting_base.py
 
 # Esempio selezione automatica modello
 uv run python examples/selezione_automatica.py
+
+# Esempio reporting Quarto (richiede dipendenze reports)
+uv run python examples/quarto_reporting.py
 ```
 
 #### Tradizionale
 ```bash
 python examples/forecasting_base.py
 python examples/selezione_automatica.py
+python examples/quarto_reporting.py
 ```
 
 ## Architettura del Codice
@@ -178,6 +183,13 @@ Strumenti visualizzazione avanzati:
 - `plot_acf_pacf()`: Analisi autocorrelazione
 - `create_dashboard()`: Dashboard forecasting completo
 
+#### QuartoReportGenerator (`src/arima_forecaster/reporting/generator.py`)
+Generazione report dinamici con Quarto:
+- `generate_model_report()`: Report completo per singolo modello (ARIMA/SARIMA)
+- `create_comparison_report()`: Report comparativo tra modelli multipli
+- Supporto export HTML, PDF, DOCX
+- Template personalizzabili con analisi automatiche
+
 ### Caratteristiche Chiave
 
 1. **Gestione Errori Robusta**: Gerarchia eccezioni personalizzate con messaggi dettagliati
@@ -195,7 +207,8 @@ Strumenti visualizzazione avanzati:
 4. **Addestramento**: `ARIMAForecaster` addestra modelli con metadata complete
 5. **Valutazione**: `ModelEvaluator` fornisce analisi performance dettagliate
 6. **Visualizzazione**: `ForecastPlotter` crea grafici pronti per pubblicazione
-7. **Persistenza**: Modelli salvati con metadata per riproducibilità
+7. **Reporting**: `QuartoReportGenerator` genera report dinamici e interattivi
+8. **Persistenza**: Modelli salvati con metadata per riproducibilità
 
 ## Configurazione e Personalizzazione
 
@@ -225,12 +238,15 @@ logger = setup_logger(
 ### Struttura Import
 ```python
 # Classi principali
-from arima_forecaster import ARIMAForecaster, TimeSeriesPreprocessor, ForecastPlotter
+from arima_forecaster import ARIMAForecaster, SARIMAForecaster, TimeSeriesPreprocessor, ForecastPlotter
 
 # Funzionalità specializzate
-from arima_forecaster.core import ARIMAModelSelector
+from arima_forecaster.core import ARIMAModelSelector, SARIMAModelSelector
 from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.data import DataLoader
+
+# Reporting (opzionale - richiede dipendenze reports)
+from arima_forecaster.reporting import QuartoReportGenerator
 ```
 
 ### Pattern Gestione Errori
@@ -252,11 +268,19 @@ except ModelTrainingError as e:
 ### Workflow Tipico
 1. Carica dati con `DataLoader`
 2. Preprocessa con `TimeSeriesPreprocessor`
-3. Seleziona modello con `ARIMAModelSelector` o specifica manualmente
-4. Addestra con `ARIMAForecaster`
+3. Seleziona modello con `ARIMAModelSelector`/`SARIMAModelSelector` o specifica manualmente
+4. Addestra con `ARIMAForecaster`/`SARIMAForecaster`
 5. Valuta con `ModelEvaluator`
 6. Visualizza con `ForecastPlotter`
-7. Genera previsioni e salva risultati
+7. Genera report con `QuartoReportGenerator` (opzionale)
+8. Genera previsioni e salva risultati
+
+### Workflow Reporting Avanzato
+1. Addestra modelli multipli (ARIMA, SARIMA, etc.)
+2. Crea visualizzazioni con `ForecastPlotter`
+3. Genera report individuali con `model.generate_report()`
+4. Crea report comparativo con `QuartoReportGenerator.create_comparison_report()`
+5. Esporta in formati multipli (HTML, PDF, DOCX)
 
 ## Dipendenze Chiave e Loro Ruoli
 
@@ -266,6 +290,8 @@ except ModelTrainingError as e:
 - **matplotlib/seaborn**: Visualizzazione e grafici
 - **scipy**: Funzioni statistiche e test
 - **scikit-learn**: Utilità ML aggiuntive e metriche
+- **quarto** (opzionale): Generazione report dinamici e pubblicazione
+- **jupyter** (opzionale): Supporto notebook per report interattivi
 
 ## Considerazioni Performance
 

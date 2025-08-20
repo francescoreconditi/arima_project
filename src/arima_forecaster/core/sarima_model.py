@@ -410,3 +410,151 @@ class SARIMAForecaster:
                     f"Monthly data with seasonal period {seasonal_period} may not be appropriate. "
                     "Consider 12 (yearly)."
                 )
+    
+    def generate_report(
+        self,
+        plots_data: Optional[Dict[str, str]] = None,
+        report_title: str = None,
+        output_filename: str = None,
+        format_type: str = "html",
+        include_diagnostics: bool = True,
+        include_forecast: bool = True,
+        forecast_steps: int = 12,
+        include_seasonal_decomposition: bool = True
+    ) -> Path:
+        """
+        Generate comprehensive Quarto report for the SARIMA model analysis.
+        
+        Args:
+            plots_data: Dictionary with plot file paths {'plot_name': 'path/to/plot.png'}
+            report_title: Custom title for the report
+            output_filename: Custom filename for the report
+            format_type: Output format ('html', 'pdf', 'docx')
+            include_diagnostics: Whether to include model diagnostics
+            include_forecast: Whether to include forecast analysis
+            forecast_steps: Number of steps to forecast for the report
+            include_seasonal_decomposition: Whether to include seasonal decomposition
+            
+        Returns:
+            Path to generated report
+            
+        Raises:
+            ModelTrainingError: If model is not fitted
+            ForecastError: If report generation fails
+        """
+        try:
+            from ..reporting import QuartoReportGenerator
+            from ..evaluation.metrics import ModelEvaluator
+            
+            if self.fitted_model is None:
+                raise ModelTrainingError("Il modello deve essere addestrato prima di generare il report")
+            
+            # Set default title
+            if report_title is None:
+                report_title = f"Analisi Modello SARIMA{self.order}x{self.seasonal_order}"
+            
+            # Collect model results
+            model_results = {
+                'model_type': 'SARIMA',
+                'order': self.order,
+                'seasonal_order': self.seasonal_order,
+                'trend': self.trend,
+                'model_info': self.get_model_info(),
+                'training_data': {
+                    'start_date': str(self.training_metadata.get('training_start', 'N/A')),
+                    'end_date': str(self.training_metadata.get('training_end', 'N/A')),
+                    'observations': self.training_metadata.get('training_observations', 0)
+                }
+            }
+            
+            # Add seasonal decomposition if requested
+            if include_seasonal_decomposition and self.training_data is not None:
+                try:
+                    decomposition = self.seasonal_decompose()
+                    if decomposition is not None:
+                        model_results['seasonal_decomposition'] = {
+                            'trend_mean': float(np.nanmean(decomposition.trend.dropna())),
+                            'seasonal_amplitude': float(np.nanstd(decomposition.seasonal.dropna())),
+                            'residual_variance': float(np.nanvar(decomposition.resid.dropna()))
+                        }
+                except Exception as e:
+                    self.logger.warning(f"Non è stato possibile includere la decomposizione stagionale: {e}")
+            
+            # Add metrics if training data is available
+            if self.training_data is not None and len(self.training_data) > 0:
+                evaluator = ModelEvaluator()
+                
+                # Get in-sample predictions for evaluation
+                predictions = self.predict()
+                
+                # Calculate metrics
+                if len(predictions) == len(self.training_data):
+                    metrics = evaluator.calculate_forecast_metrics(
+                        actual=self.training_data,
+                        predicted=predictions
+                    )
+                    model_results['metrics'] = metrics
+                
+                # Add diagnostics if requested
+                if include_diagnostics:
+                    try:
+                        diagnostics = evaluator.evaluate_residuals(
+                            residuals=self.fitted_model.resid,
+                            return_dict=True
+                        )
+                        model_results['diagnostics'] = diagnostics
+                    except Exception as e:
+                        self.logger.warning(f"Non è stato possibile calcolare i diagnostici: {e}")
+            
+            # Add forecast if requested
+            if include_forecast:
+                try:
+                    forecast_result = self.forecast(
+                        steps=forecast_steps,
+                        confidence_intervals=True
+                    )
+                    if isinstance(forecast_result, dict):
+                        model_results['forecast'] = {
+                            'steps': forecast_steps,
+                            'values': forecast_result['forecast'].tolist(),
+                            'confidence_intervals': {
+                                'lower': forecast_result['confidence_intervals']['lower'].tolist(),
+                                'upper': forecast_result['confidence_intervals']['upper'].tolist()
+                            },
+                            'index': forecast_result['forecast'].index.astype(str).tolist()
+                        }
+                    else:
+                        model_results['forecast'] = {
+                            'steps': forecast_steps,
+                            'values': forecast_result.tolist(),
+                            'index': forecast_result.index.astype(str).tolist()
+                        }
+                except Exception as e:
+                    self.logger.warning(f"Non è stato possibile generare il forecast per il report: {e}")
+            
+            # Add technical information
+            model_results.update({
+                'python_version': f"{np.__version__}",
+                'environment': 'ARIMA Forecaster Library',
+                'generation_timestamp': pd.Timestamp.now().isoformat()
+            })
+            
+            # Generate report
+            generator = QuartoReportGenerator()
+            report_path = generator.generate_model_report(
+                model_results=model_results,
+                plots_data=plots_data,
+                report_title=report_title,
+                output_filename=output_filename,
+                format_type=format_type
+            )
+            
+            return report_path
+            
+        except ImportError as e:
+            raise ForecastError(
+                "Moduli di reporting non disponibili. Installa le dipendenze con: pip install 'arima-forecaster[reports]'"
+            )
+        except Exception as e:
+            self.logger.error(f"Generazione report fallita: {e}")
+            raise ForecastError(f"Impossibile generare il report: {e}")

@@ -23,6 +23,7 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from arima_forecaster import (
+from utils import get_plots_path, get_models_path, get_reports_path
     ARIMAForecaster, SARIMAForecaster, VARForecaster,
     ARIMAModelSelector, SARIMAModelSelector,
     TimeSeriesPreprocessor, ModelEvaluator,
