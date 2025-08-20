@@ -25,9 +25,24 @@ class QuartoReportGenerator:
         Initialize Quarto report generator.
         
         Args:
-            output_dir: Directory where reports will be saved
+            output_dir: Directory where reports will be saved (relative to project root)
         """
-        self.output_dir = Path(output_dir)
+        # Always save to project root outputs/, regardless of current working directory
+        if not os.path.isabs(output_dir):
+            # Find project root by looking for pyproject.toml or other indicators
+            current_path = Path(__file__).parent
+            while current_path.parent != current_path:
+                if (current_path / 'pyproject.toml').exists() or (current_path / 'CLAUDE.md').exists():
+                    project_root = current_path
+                    break
+                current_path = current_path.parent
+            else:
+                # Fallback to 3 levels up from this file (src/arima_forecaster/reporting/generator.py)
+                project_root = Path(__file__).parent.parent.parent.parent
+            
+            self.output_dir = project_root / output_dir
+        else:
+            self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.logger = get_logger(__name__)
         
@@ -143,7 +158,186 @@ class QuartoReportGenerator:
     fig-width: 8
     fig-height: 5
     fig-align: center
-    embed-resources: false'''
+    embed-resources: true
+    include-in-header: |
+      <style>
+      /* TOC Navigation Improvements */
+      #TOC {
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+      
+      #TOC li {
+        margin: 3px 0;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+      }
+      
+      #TOC li:hover {
+        background-color: #e9ecef;
+      }
+      
+      #TOC li.active {
+        background-color: #e3f2fd !important;
+        border-left: 4px solid #2196f3 !important;
+        padding-left: 8px;
+      }
+      
+      #TOC li.active > a {
+        color: #1976d2 !important;
+        font-weight: 600 !important;
+      }
+      
+      #TOC a {
+        display: block;
+        padding: 8px 12px;
+        text-decoration: none;
+        color: #495057;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+      
+      #TOC a:hover {
+        background-color: rgba(33, 150, 243, 0.1);
+        color: #1976d2;
+      }
+      
+      /* Table Professional Styling */
+      .table {
+        border-collapse: separate;
+        border-spacing: 0;
+        margin: 20px 0;
+        font-size: 0.95em;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+      }
+      
+      .table thead th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85em;
+        letter-spacing: 0.5px;
+        padding: 15px 12px;
+        border: none;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      
+      .table tbody tr {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid #e9ecef;
+      }
+      
+      .table tbody tr:nth-child(even) {
+        background-color: #f8f9fa;
+      }
+      
+      .table tbody tr:hover {
+        background-color: #e3f2fd;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      
+      .table tbody td {
+        padding: 12px 12px;
+        border: none;
+        vertical-align: middle;
+      }
+      
+      .table tbody td:first-child {
+        font-weight: 500;
+        color: #495057;
+      }
+      
+      /* Responsive table wrapper */
+      .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      
+      /* Metrics badges */
+      .metric-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 500;
+        margin-right: 5px;
+      }
+      
+      .metric-good { background-color: #d4edda; color: #155724; }
+      .metric-warning { background-color: #fff3cd; color: #856404; }
+      .metric-danger { background-color: #f8d7da; color: #721c24; }
+      
+      /* Card styling for sections */
+      .content-block {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid #667eea;
+      }
+      
+      /* Header improvements */
+      h2, h3 {
+        color: #2c3e50;
+        border-bottom: 2px solid #ecf0f1;
+        padding-bottom: 8px;
+        margin-top: 30px;
+      }
+      
+      h2 {
+        font-size: 1.8em;
+        color: #34495e;
+      }
+      
+      h3 {
+        font-size: 1.4em;
+        color: #7f8c8d;
+        border-bottom: 1px solid #bdc3c7;
+      }
+      </style>
+      <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Add active highlighting to TOC based on scroll position
+        const sections = document.querySelectorAll('section[id]');
+        const tocLinks = document.querySelectorAll('#TOC a[href^="#"]');
+        
+        function highlightTOC() {
+          let current = '';
+          const scrollY = window.pageYOffset;
+          
+          sections.forEach(section => {
+            const sectionTop = section.offsetTop - 100;
+            const sectionHeight = section.offsetHeight;
+            
+            if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
+              current = section.getAttribute('id');
+            }
+          });
+          
+          tocLinks.forEach(link => {
+            const parent = link.parentElement;
+            parent.classList.remove('active');
+            
+            if (link.getAttribute('href') === '#' + current) {
+              parent.classList.add('active');
+            }
+          });
+        }
+        
+        window.addEventListener('scroll', highlightTOC);
+        highlightTOC(); // Initial call
+      });
+      </script>'''
         elif format_type == "pdf":
             format_yaml = '''format:
   pdf:
@@ -172,7 +366,7 @@ class QuartoReportGenerator:
     fig-width: 8
     fig-height: 5
     fig-align: center
-    embed-resources: false'''
+    embed-resources: true'''
         
         qmd_content = f'''---
 title: "{title}"
@@ -235,7 +429,11 @@ if metrics:
         ['AIC (Akaike Information Criterion)', f"{{metrics.get('aic', 'N/A'):.2f}}" if isinstance(metrics.get('aic'), (int, float)) else 'N/A'],
         ['BIC (Bayesian Information Criterion)', f"{{metrics.get('bic', 'N/A'):.2f}}" if isinstance(metrics.get('bic'), (int, float)) else 'N/A'],
     ], columns=['Metrica', 'Valore'])
-    print(metrics_df.to_markdown(index=False))
+    
+    # Display as rendered HTML table
+    from IPython.display import HTML, display
+    html_table = metrics_df.to_html(index=False, classes='table table-striped', escape=False, table_id='metrics-table')
+    display(HTML(html_table))
 else:
     print("Nessuna metrica disponibile")
 ```
@@ -299,7 +497,9 @@ if model_info:
     
     if params_data:
         params_df = pd.DataFrame(params_data, columns=['Parametro', 'Valore'])
-        print(params_df.to_markdown(index=False))
+        from IPython.display import HTML, display
+        html_table = params_df.to_html(index=False, classes='table table-striped', escape=False, table_id='params-table')
+        display(HTML(html_table))
     else:
         print("Parametri del modello non disponibili")
 else:
@@ -368,7 +568,9 @@ if diagnostics:
     
     if diag_data:
         diag_df = pd.DataFrame(diag_data, columns=['Test', 'Risultato', 'P-Value'])
-        print(diag_df.to_markdown(index=False))
+        from IPython.display import HTML, display
+        html_table = diag_df.to_html(index=False, classes='table table-striped', escape=False, table_id='diagnostics-table')
+        display(HTML(html_table))
     else:
         print("Nessun risultato diagnostico disponibile")
 else:
@@ -397,9 +599,7 @@ else:
                 qmd_content += f'''
 ### {section_title}
 
-::{{.figure}}
-![{section_title}]({plot_path})
-::
+![{section_title}]({plot_path}){{.figure-img}}
 
 '''
         
@@ -494,7 +694,9 @@ if 'data_info' in model_results:
         process_info.append([key.replace('_', ' ').title(), str(value)])
 
 process_df = pd.DataFrame(process_info, columns=['Parametro', 'Valore'])
-print(process_df.to_markdown(index=False))
+from IPython.display import HTML, display
+html_table = process_df.to_html(index=False, classes='table table-striped', escape=False, table_id='process-table')
+display(HTML(html_table))
 ```
 
 ### Configurazione Completa

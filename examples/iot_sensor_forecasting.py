@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 matplotlib.use("Agg")  # Non-interactive backend for Windows
+import matplotlib.pyplot as plt
 import warnings
 from datetime import datetime, timedelta
 
