@@ -507,7 +507,7 @@ uv run python examples/user_engagement_forecasting.py
 jupyter lab notebooks/
 
 # Oppure esegui il notebook R&D direttamente
-jupyter nbconvert --execute notebooks/research_and_development.ipynb
+jupyter nbconvert --execute --to notebook --inplace notebooks/research_and_development.ipynb
 
 # Notebook R&D include:
 # - Benchmarking sistematico di algoritmi ARIMA, SARIMA, ML
