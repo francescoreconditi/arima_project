@@ -61,7 +61,7 @@ class ARIMADashboard:
     
     def run(self):
         """Run the main dashboard."""
-        st.title("📈 ARIMA Forecaster Dashboard")
+        st.title("📈 Dashboard ARIMA Forecaster")
         st.markdown("Interactive dashboard for time series forecasting with ARIMA models")
         
         # Sidebar navigation
@@ -87,10 +87,10 @@ class ARIMADashboard:
     
     def data_upload_page(self):
         """Data upload and preprocessing page."""
-        st.header("📁 Data Upload and Preprocessing")
+        st.header("📁 Caricamento Dati e Preprocessing")
         
         # Data upload section
-        st.subheader("Upload Data")
+        st.subheader("Caricamento Dati")
         uploaded_file = st.file_uploader(
             "Upload CSV file",
             type=['csv'],
@@ -101,10 +101,10 @@ class ARIMADashboard:
             try:
                 # Load data
                 df = pd.read_csv(uploaded_file)
-                st.success("Data uploaded successfully!")
+                st.success("Dati caricati con successo!")
                 
                 # Show data info
-                st.subheader("Data Overview")
+                st.subheader("Panoramica Dati")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Rows", df.shape[0])
@@ -114,11 +114,11 @@ class ARIMADashboard:
                     st.metric("Missing Values", df.isnull().sum().sum())
                 
                 # Show first few rows
-                st.subheader("Data Preview")
+                st.subheader("Anteprima Dati")
                 st.dataframe(df.head(10))
                 
                 # Column selection
-                st.subheader("Column Configuration")
+                st.subheader("Configurazione Colonne")
                 timestamp_col = st.selectbox("Select timestamp column", df.columns)
                 value_col = st.selectbox("Select value column", df.columns)
                 
@@ -136,17 +136,17 @@ class ARIMADashboard:
                         st.session_state.data = series
                         st.session_state.data_loaded = True
                         
-                        st.success("Data processed successfully!")
-                        st.info("Go to 'Data Exploration' to explore your data.")
+                        st.success("Dati elaborati con successo!")
+                        st.info("Vai su 'Data Exploration' per esplorare i tuoi dati.")
                         
                     except Exception as e:
-                        st.error(f"Error processing data: {e}")
+                        st.error(f"Errore nell'elaborazione dati: {e}")
                         
             except Exception as e:
-                st.error(f"Error loading file: {e}")
+                st.error(f"Errore nel caricamento file: {e}")
         
         # Sample data option
-        st.subheader("Or Use Sample Data")
+        st.subheader("Oppure Usa Dati di Esempio")
         if st.button("Generate Sample Data"):
             # Generate sample time series data
             dates = pd.date_range('2020-01-01', periods=365, freq='D')
@@ -161,21 +161,21 @@ class ARIMADashboard:
             st.session_state.data = series
             st.session_state.data_loaded = True
             
-            st.success("Sample data generated!")
-            st.info("Go to 'Data Exploration' to explore the sample data.")
+            st.success("Dati di esempio generati!")
+            st.info("Vai su 'Data Exploration' per esplorare i dati di esempio.")
     
     def data_exploration_page(self):
         """Data exploration and visualization page."""
-        st.header("🔍 Data Exploration")
+        st.header("🔍 Esplorazione Dati")
         
         if not st.session_state.get('data_loaded', False):
-            st.warning("Please upload data first in the 'Data Upload' page.")
+            st.warning("Per favore carica prima i dati nella pagina 'Data Upload'.")
             return
         
         data = st.session_state.data
         
         # Data statistics
-        st.subheader("Data Statistics")
+        st.subheader("Statistiche Dati")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Count", len(data))
@@ -187,7 +187,7 @@ class ARIMADashboard:
             st.metric("Missing", data.isnull().sum())
         
         # Time series plot
-        st.subheader("Time Series Plot")
+        st.subheader("Grafico Serie Temporale")
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=data.index,
@@ -270,10 +270,10 @@ class ARIMADashboard:
                 fig.update_layout(height=600, showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
                 
-                st.success("Preprocessing completed!")
+                st.success("Preprocessing completato!")
                 
             except Exception as e:
-                st.error(f"Preprocessing failed: {e}")
+                st.error(f"Preprocessing fallito: {e}")
         
         # Show stationarity test results
         if st.button("Check Stationarity"):
@@ -283,7 +283,7 @@ class ARIMADashboard:
             
             result = adfuller(current_data.dropna())
             
-            st.subheader("Augmented Dickey-Fuller Test")
+            st.subheader("Test di Dickey-Fuller Aumentato")
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("ADF Statistic", f"{result[0]:.4f}")
@@ -295,17 +295,17 @@ class ARIMADashboard:
     
     def model_training_page(self):
         """Model training page."""
-        st.header("🤖 Model Training")
+        st.header("🤖 Addestramento Modello")
         
         if not st.session_state.get('data_loaded', False):
-            st.warning("Please upload data first in the 'Data Upload' page.")
+            st.warning("Per favore carica prima i dati nella pagina 'Data Upload'.")
             return
         
         # Get data
         data = st.session_state.get('preprocessed_data', st.session_state.data)
         
         # Model selection
-        st.subheader("Model Configuration")
+        st.subheader("Configurazione Modello")
         
         col1, col2 = st.columns(2)
         
@@ -316,7 +316,7 @@ class ARIMADashboard:
             )
             
             if model_type in ['ARIMA', 'SARIMA']:
-                st.subheader("Manual Parameters")
+                st.subheader("Parametri Manuali")
                 p = st.number_input("AR order (p)", min_value=0, max_value=5, value=1)
                 d = st.number_input("Differencing (d)", min_value=0, max_value=2, value=1)
                 q = st.number_input("MA order (q)", min_value=0, max_value=5, value=1)
@@ -330,7 +330,7 @@ class ARIMADashboard:
         
         with col2:
             if model_type.startswith('Auto'):
-                st.subheader("Auto-selection Parameters")
+                st.subheader("Parametri Auto-selezione")
                 max_p = st.number_input("Max AR order", min_value=0, max_value=5, value=3)
                 max_d = st.number_input("Max Differencing", min_value=0, max_value=2, value=2)
                 max_q = st.number_input("Max MA order", min_value=0, max_value=5, value=3)
@@ -376,7 +376,7 @@ class ARIMADashboard:
                         model = selector.get_best_model()
                         
                         # Show selection results
-                        st.subheader("Best Model Selection")
+                        st.subheader("Selezione Miglior Modello")
                         st.write(f"Selected order: {selector.best_order}")
                         results_df = selector.get_results_summary(10)
                         st.dataframe(results_df)
@@ -397,7 +397,7 @@ class ARIMADashboard:
                         model = selector.get_best_model()
                         
                         # Show selection results
-                        st.subheader("Best Model Selection")
+                        st.subheader("Selezione Miglior Modello")
                         st.write(f"Selected order: {selector.best_order}")
                         st.write(f"Selected seasonal order: {selector.best_seasonal_order}")
                         results_df = selector.get_results_summary(10)
@@ -408,10 +408,10 @@ class ARIMADashboard:
                     st.session_state.model_trained = True
                     
                     # Show model information
-                    st.success("Model trained successfully!")
+                    st.success("Modello addestrato con successo!")
                     
                     model_info = model.get_model_info()
-                    st.subheader("Model Information")
+                    st.subheader("Informazioni Modello")
                     
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -422,7 +422,7 @@ class ARIMADashboard:
                         st.metric("HQIC", f"{model_info.get('hqic', 0):.2f}")
                     
                     # Show fitted values vs actual
-                    st.subheader("Model Fit")
+                    st.subheader("Adattamento Modello")
                     
                     fitted_values = model.predict()
                     
@@ -450,7 +450,7 @@ class ARIMADashboard:
                     st.plotly_chart(fig, use_container_width=True)
                     
             except Exception as e:
-                st.error(f"Model training failed: {e}")
+                st.error(f"Addestramento modello fallito: {e}")
                 logger.error(f"Model training failed: {e}")
     
     def forecasting_page(self):
@@ -458,14 +458,14 @@ class ARIMADashboard:
         st.header("📊 Forecasting")
         
         if not st.session_state.get('model_trained', False):
-            st.warning("Please train a model first in the 'Model Training' page.")
+            st.warning("Per favore addestra prima un modello nella pagina 'Model Training'.")
             return
         
         model = st.session_state.model
         data = st.session_state.get('preprocessed_data', st.session_state.data)
         
         # Forecast parameters
-        st.subheader("Forecast Configuration")
+        st.subheader("Configurazione Forecast")
         
         col1, col2 = st.columns(2)
         with col1:
@@ -513,7 +513,7 @@ class ARIMADashboard:
                     st.session_state.forecast_generated = True
                     
                     # Plot forecast
-                    st.subheader("Forecast Results")
+                    st.subheader("Risultati Forecast")
                     
                     fig = go.Figure()
                     
@@ -567,7 +567,7 @@ class ARIMADashboard:
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Show forecast values
-                    st.subheader("Forecast Values")
+                    st.subheader("Valori Forecast")
                     
                     forecast_df = pd.DataFrame({
                         'Date': forecast.index,
@@ -590,21 +590,21 @@ class ARIMADashboard:
                     )
                     
             except Exception as e:
-                st.error(f"Forecast generation failed: {e}")
+                st.error(f"Generazione forecast fallita: {e}")
                 logger.error(f"Forecast generation failed: {e}")
     
     def diagnostics_page(self):
         """Model diagnostics page."""
-        st.header("🔧 Model Diagnostics")
+        st.header("🔧 Diagnostica Modello")
         
         if not st.session_state.get('model_trained', False):
-            st.warning("Please train a model first in the 'Model Training' page.")
+            st.warning("Per favore addestra prima un modello nella pagina 'Model Training'.")
             return
         
         model = st.session_state.model
         data = st.session_state.get('preprocessed_data', st.session_state.data)
         
-        st.subheader("Model Summary")
+        st.subheader("Sommario Modello")
         model_info = model.get_model_info()
         
         col1, col2, col3, col4 = st.columns(4)
@@ -619,7 +619,7 @@ class ARIMADashboard:
         
         # Residuals analysis
         if hasattr(model, 'fitted_model'):
-            st.subheader("Residuals Analysis")
+            st.subheader("Analisi Residui")
             
             try:
                 residuals = model.fitted_model.resid
@@ -672,7 +672,7 @@ class ARIMADashboard:
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Residuals statistics
-                st.subheader("Residuals Statistics")
+                st.subheader("Statistiche Residui")
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Mean", f"{residuals.mean():.4f}")
@@ -684,7 +684,7 @@ class ARIMADashboard:
                     st.metric("Kurtosis", f"{residuals.kurtosis():.4f}")
                 
                 # Statistical tests
-                st.subheader("Statistical Tests")
+                st.subheader("Test Statistici")
                 
                 # Normality test
                 try:
@@ -707,14 +707,14 @@ class ARIMADashboard:
                     st.write("Could not perform Ljung-Box test")
                     
             except Exception as e:
-                st.error(f"Could not generate residuals analysis: {e}")
+                st.error(f"Impossibile generare analisi residui: {e}")
     
     def report_generation_page(self):
         """Report generation page with proper state management."""
-        st.header("📄 Report Generation")
+        st.header("📄 Generazione Report")
         
         if not st.session_state.get('model_trained', False):
-            st.warning("Please train a model first in the 'Model Training' page.")
+            st.warning("Per favore addestra prima un modello nella pagina 'Model Training'.")
             return
         
         st.markdown("""
@@ -733,7 +733,7 @@ class ARIMADashboard:
     
     def _show_report_configuration(self):
         """Show report configuration form."""
-        st.subheader("Report Configuration")
+        st.subheader("Configurazione Report")
         
         col1, col2 = st.columns(2)
         
@@ -782,16 +782,16 @@ class ARIMADashboard:
                 forecast_steps = 12
         
         # Additional options
-        st.subheader("Advanced Options")
+        st.subheader("Opzioni Avanzate")
         
         col1, col2 = st.columns(2)
         with col1:
             if format_type == "pdf":
-                st.info("📋 PDF export requires LaTeX installation")
+                st.info("📋 L'export PDF richiede l'installazione di LaTeX")
             elif format_type == "docx":
-                st.info("📄 DOCX export requires pandoc")
+                st.info("📄 L'export DOCX richiede pandoc")
             else:
-                st.info("🌐 HTML format is recommended for web viewing")
+                st.info("🌐 Il formato HTML è raccomandato per la visualizzazione web")
         
         with col2:
             auto_open = st.checkbox(
@@ -801,7 +801,7 @@ class ARIMADashboard:
             )
         
         # Generate report button
-        st.subheader("Generate Report")
+        st.subheader("Genera Report")
         
         if st.button("🚀 Generate Report", type="primary", use_container_width=True):
             self._generate_report(
@@ -852,11 +852,11 @@ class ARIMADashboard:
                 if auto_open:
                     self._auto_open_report(report_path)
                 
-                st.success("🎉 Report generated successfully!")
+                st.success("🎉 Report generato con successo!")
                 st.rerun()  # Refresh to show the generated report section
                 
         except Exception as e:
-            st.error(f"❌ Report generation failed: {e}")
+            st.error(f"❌ Generazione report fallita: {e}")
             logger.error(f"Report generation failed: {e}")
             self._show_troubleshooting(format_type)
     
@@ -908,7 +908,7 @@ class ARIMADashboard:
                 return {'main_plot': str(plot_path)}
                 
         except Exception as e:
-            st.warning(f"Could not create plot for report: {e}")
+            st.warning(f"Impossibile creare grafico per report: {e}")
             return None
     
     def _auto_open_report(self, report_path):
@@ -924,21 +924,21 @@ class ARIMADashboard:
             else:  # Linux
                 subprocess.run(["xdg-open", str(report_path)], check=False)
             
-            st.success("✅ Report opened automatically!")
+            st.success("✅ Report aperto automaticamente!")
             
         except Exception as e:
-            st.info(f"💡 Auto-open failed, but report was generated: {report_path}")
+            st.info(f"💡 Apertura automatica fallita, ma report generato: {report_path}")
     
     def _show_generated_report(self):
         """Show the already generated report with actions."""
-        st.success("🎉 Report generated successfully!")
+        st.success("🎉 Report generato con successo!")
         
         report_path = st.session_state.last_report_path
         config = st.session_state.last_report_config
         format_type = config.get('format_type', 'html')
         
         # Show report info
-        st.subheader("Report Information")
+        st.subheader("Informazioni Report")
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -953,7 +953,7 @@ class ARIMADashboard:
             st.metric("Location", "outputs/reports/")
         
         # Display report path
-        st.info(f"📁 Report saved to: `{report_path}`")
+        st.info(f"📁 Report salvato in: `{report_path}`")
         
         # Action buttons
         if Path(report_path).exists():
@@ -988,7 +988,7 @@ class ARIMADashboard:
     
     def _show_html_preview(self, report_path):
         """Show HTML preview with proper state management."""
-        st.subheader("Report Preview")
+        st.subheader("Anteprima Report")
         
         # Use a unique key for the radio button to maintain state
         preview_key = f"preview_option_{hash(report_path)}"
@@ -1010,7 +1010,7 @@ class ARIMADashboard:
                 self._show_full_html_preview(html_content)
                 
         except Exception as e:
-            st.error(f"Cannot display preview: {e}")
+            st.error(f"Impossibile mostrare anteprima: {e}")
             st.markdown(f"""
             **Alternative options:**
             - Use the **Download** button to save the report
@@ -1053,16 +1053,16 @@ class ARIMADashboard:
         st.write(f"📁 **File Size:** {file_size:.1f} KB")
         st.write(f"📂 **Location:** {report_path}")
         
-        st.info("💡 Click 'Full Report' above to see the complete HTML preview")
+        st.info("💡 Clicca 'Full Report' sopra per vedere l'anteprima HTML completa")
     
     def _show_full_html_preview(self, html_content):
         """Show full HTML preview."""
-        st.warning("⚠️ Large reports may take time to load. If preview is slow, use the download/open buttons instead.")
+        st.warning("⚠️ Report grandi potrebbero richiedere tempo per caricare. Se l'anteprima è lenta, usa i pulsanti download/open.")
         
         # Limit HTML size for performance
         max_size = 1024 * 1024 * 2  # 2MB limit
         if len(html_content) > max_size:
-            st.warning("Report is very large. Showing truncated preview...")
+            st.warning("Report molto grande. Mostrando anteprima troncata...")
             html_content = html_content[:max_size] + "\n<!-- Content truncated for preview -->"
         
         st.components.v1.html(
@@ -1073,7 +1073,7 @@ class ARIMADashboard:
     
     def _show_tips(self, format_type):
         """Show tips based on format type."""
-        st.subheader("💡 Tips")
+        st.subheader("💡 Suggerimenti")
         if format_type == "html":
             st.markdown("""
             - HTML reports are interactive and work best for web viewing
@@ -1095,7 +1095,7 @@ class ARIMADashboard:
     
     def _show_troubleshooting(self, format_type):
         """Show troubleshooting information."""
-        st.subheader("🔧 Troubleshooting")
+        st.subheader("🔧 Risoluzione Problemi")
         if format_type == "pdf":
             st.markdown("""
             **PDF generation issues:**

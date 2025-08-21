@@ -35,7 +35,7 @@ class TimeSeriesPreprocessor:
         Returns:
             Series with missing values handled
         """
-        self.logger.info(f"Handling missing values using method: {method}")
+        self.logger.info(f"Gestione valori mancanti usando metodo: {method}")
         
         if method == 'drop':
             result = series.dropna()
@@ -46,10 +46,10 @@ class TimeSeriesPreprocessor:
         elif method == 'backward_fill':
             result = series.fillna(method='bfill')
         else:
-            raise DataProcessingError(f"Unknown missing value method: {method}")
+            raise DataProcessingError(f"Metodo valori mancanti sconosciuto: {method}")
         
         self.preprocessing_steps.append(f"Missing values handled: {method}")
-        self.logger.info(f"Missing values handled: {series.isnull().sum()} -> {result.isnull().sum()}")
+        self.logger.info(f"Valori mancanti gestiti: {series.isnull().sum()} -> {result.isnull().sum()}")
         
         return result
     
@@ -70,7 +70,7 @@ class TimeSeriesPreprocessor:
         Returns:
             Series with outliers removed
         """
-        self.logger.info(f"Removing outliers using method: {method}")
+        self.logger.info(f"Rimozione outliers usando metodo: {method}")
         
         if method == 'iqr':
             Q1 = series.quantile(0.25)
@@ -91,13 +91,13 @@ class TimeSeriesPreprocessor:
             mask = np.abs(modified_z_scores) < threshold
             
         else:
-            raise DataProcessingError(f"Unknown outlier detection method: {method}")
+            raise DataProcessingError(f"Metodo rilevamento outlier sconosciuto: {method}")
         
         outliers_removed = (~mask).sum()
         result = series[mask]
         
         self.preprocessing_steps.append(f"Outliers removed: {outliers_removed} using {method}")
-        self.logger.info(f"Outliers removed: {outliers_removed}")
+        self.logger.info(f"Outliers rimossi: {outliers_removed}")
         
         return result
     
@@ -116,14 +116,14 @@ class TimeSeriesPreprocessor:
         Returns:
             Dictionary with stationarity test results
         """
-        self.logger.info("Checking stationarity using ADF test")
+        self.logger.info("Verifica stazionarietà usando test ADF")
         
         try:
             # Remove any infinite or NaN values for the test
             clean_series = series.replace([np.inf, -np.inf], np.nan).dropna()
             
             if len(clean_series) < 10:
-                raise DataProcessingError("Insufficient data for stationarity test")
+                raise DataProcessingError("Dati insufficienti per test di stazionarietà")
             
             adf_result = adfuller(clean_series)
             
@@ -136,14 +136,14 @@ class TimeSeriesPreprocessor:
                 'n_observations': adf_result[3]
             }
             
-            status = "stationary" if results['is_stationary'] else "non-stationary"
-            self.logger.info(f"Series is {status} (p-value: {results['p_value']:.4f})")
+            status = "stazionaria" if results['is_stationary'] else "non-stazionaria"
+            self.logger.info(f"Serie è {status} (p-value: {results['p_value']:.4f})")
             
             return results
             
         except Exception as e:
-            self.logger.error(f"Error in stationarity test: {e}")
-            raise DataProcessingError(f"Stationarity test failed: {e}")
+            self.logger.error(f"Errore nel test di stazionarietà: {e}")
+            raise DataProcessingError(f"Test di stazionarietà fallito: {e}")
     
     def make_stationary(
         self, 
@@ -162,7 +162,7 @@ class TimeSeriesPreprocessor:
         Returns:
             Tuple of (stationary series, number of differences applied)
         """
-        self.logger.info(f"Making series stationary using method: {method}")
+        self.logger.info(f"Rendendo serie stazionaria usando metodo: {method}")
         
         current_series = series.copy()
         n_diff = 0
@@ -174,24 +174,24 @@ class TimeSeriesPreprocessor:
                 break
             
             if i == max_diff:
-                self.logger.warning(f"Series still not stationary after {max_diff} differences")
+                self.logger.warning(f"Serie ancora non stazionaria dopo {max_diff} differenze")
                 break
             
             if method == 'difference':
                 current_series = current_series.diff().dropna()
             elif method == 'log_difference':
                 if (current_series <= 0).any():
-                    self.logger.warning("Cannot apply log transformation to non-positive values, using regular difference")
+                    self.logger.warning("Impossibile applicare trasformazione logaritmica a valori non positivi, uso differenza regolare")
                     current_series = current_series.diff().dropna()
                 else:
                     current_series = np.log(current_series).diff().dropna()
             else:
-                raise DataProcessingError(f"Unknown stationarity method: {method}")
+                raise DataProcessingError(f"Metodo di stazionarietà sconosciuto: {method}")
             
             n_diff += 1
             
         self.preprocessing_steps.append(f"Made stationary: {n_diff} differences applied")
-        self.logger.info(f"Applied {n_diff} differences to achieve stationarity")
+        self.logger.info(f"Applicate {n_diff} differenze per ottenere stazionarietà")
         
         return current_series, n_diff
     
@@ -220,7 +220,7 @@ class TimeSeriesPreprocessor:
         Returns:
             Tuple of (processed series, preprocessing metadata)
         """
-        self.logger.info("Starting preprocessing pipeline")
+        self.logger.info("Avvio pipeline preprocessing")
         self.preprocessing_steps = []
         
         result = series.copy()
@@ -247,6 +247,6 @@ class TimeSeriesPreprocessor:
         metadata['final_length'] = len(result)
         metadata['preprocessing_steps'] = self.preprocessing_steps.copy()
         
-        self.logger.info(f"Preprocessing complete: {metadata['original_length']} -> {metadata['final_length']} observations")
+        self.logger.info(f"Preprocessing completato: {metadata['original_length']} -> {metadata['final_length']} osservazioni")
         
         return result, metadata

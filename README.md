@@ -60,6 +60,8 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   └── arima_vs_sarima.md         # Confronto dettagliato modelli
 ├── examples/                       # Script esempio pratici
 │   └── advanced_forecasting_showcase.py  # Demo funzionalità avanzate
+├── notebooks/                      # Jupyter notebooks per ricerca e sviluppo
+│   └── research_and_development.ipynb # Ambiente R&D per sperimentazione algoritmi
 ├── scripts/                        # Script di utilità
 │   ├── run_api.py                 # Lancia API server
 │   └── run_dashboard.py           # Lancia dashboard Streamlit
@@ -498,6 +500,23 @@ uv run python examples/user_engagement_forecasting.py
 
 ### 🧪 **Testing e Qualità**
 
+#### 🧪 **Ambiente R&D per Ricerca Algoritmi**
+
+```bash
+# Lancia Jupyter Lab per ambiente ricerca
+jupyter lab notebooks/
+
+# Oppure esegui il notebook R&D direttamente
+jupyter nbconvert --execute notebooks/research_and_development.ipynb
+
+# Notebook R&D include:
+# - Benchmarking sistematico di algoritmi ARIMA, SARIMA, ML
+# - Generazione dataset sintetici con diverse caratteristiche
+# - Analisi performance e visualizzazioni avanzate
+# - Metodi ensemble e confronti statistici
+# - Export automatico risultati e report di ricerca
+```
+
 #### Test Completi delle Funzionalità
 
 ```bash
@@ -664,6 +683,14 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 | **numpy** | Computing numerico | >=1.24.0 | Array operations, linear algebra |
 | **scipy** | Algoritmi scientifici | >=1.10.0 | Ottimizzazione, test statistici |
 | **scikit-learn** | ML utilities | >=1.3.0 | Preprocessing, metriche, validation |
+
+#### 🧪 **R&D Stack (Notebook Ricerca)**
+| Libreria | Scopo | Funzionalità |
+|----------|-------|--------------|
+| **jupyter** | Notebook environment | >=1.0.0 | Ambiente interattivo ricerca |
+| **psutil** | System monitoring | >=5.9.0 | Monitoraggio performance algoritmi |
+| **xgboost** | Gradient boosting | >=1.7.0 | Algoritmi ML avanzati per confronti |
+| **memory-profiler** | Memory profiling | >=0.60.0 | Analisi utilizzo memoria |
 
 #### 📄 Reporting Stack (Opzionale)
 | Libreria | Scopo | Funzionalità |

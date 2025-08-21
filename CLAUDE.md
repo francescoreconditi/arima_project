@@ -30,6 +30,8 @@ arima_project/
 ├── examples/                      # Script di esempio
 │   ├── forecasting_base.py        # Esempio uso base
 │   └── selezione_automatica.py    # Selezione modello avanzata
+├── notebooks/                     # Jupyter notebooks per ricerca e sviluppo
+│   └── research_and_development.ipynb # Ambiente R&D per sperimentazione algoritmi
 ├── tests/                         # Suite di test completa
 ├── data/                          # Directory dati
 │   └── processed/                 # Dataset processati

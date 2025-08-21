@@ -55,14 +55,14 @@ class DataLoader:
             
             # Validate data
             if df.empty:
-                raise DataProcessingError("Loaded DataFrame is empty")
+                raise DataProcessingError("DataFrame caricato è vuoto")
             
             # Ensure datetime index
             if not isinstance(df.index, pd.DatetimeIndex):
                 try:
                     df.index = pd.to_datetime(df.index)
                 except Exception as e:
-                    raise DataProcessingError(f"Cannot convert index to datetime: {e}")
+                    raise DataProcessingError(f"Impossibile convertire indice a datetime: {e}")
             
             # Sort by date
             df = df.sort_index()
@@ -73,7 +73,7 @@ class DataLoader:
             
         except Exception as e:
             self.logger.error(f"Error loading data from {file_path}: {e}")
-            raise DataProcessingError(f"Failed to load data: {e}")
+            raise DataProcessingError(f"Fallito caricamento dati: {e}")
     
     def validate_time_series(self, df: pd.DataFrame, value_column: str) -> Dict[str, Any]:
         """
