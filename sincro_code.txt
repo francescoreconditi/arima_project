@@ -1,0 +1,883 @@
+╭───────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                         │
+│                                                   │
+│   /help for help, /status for your current setup  │
+│                                                   │
+│   cwd: C:\Progetti\arima_project                  │
+╰───────────────────────────────────────────────────╯
+
+> il comando "/init" deve essere lanciato solo 1 volta oppure periodicamente man 
+  mano che il progetto cresce ?
+
+● Il comando /init va lanciato:
+
+  1. Una volta sola all'inizio - quando inizi a lavorare su un nuovo progetto
+  2. Dopo modifiche strutturali significative - quando aggiungi nuove directory,
+  moduli importanti o cambi l'architettura
+  3. Periodicamente durante la crescita - quando il progetto evolve
+  sostanzialmente (nuove funzionalità maggiori, refactoring importanti)
+
+  Non serve lanciarlo per ogni piccola modifica, ma è utile aggiornarlo quando la
+  struttura o lo scopo del progetto cambiano in modo rilevante.
+
+> /init is analyzing your codebase… 
+
+● I'll analyze your codebase and suggest improvements to the existing CLAUDE.md
+  file.
+
+● Read(CLAUDE.md)
+  ⎿  Read 316 lines (ctrl+r to expand)
+
+● Now let me analyze the codebase structure and check for any recent additions or
+  changes that should be reflected in the CLAUDE.md:
+
+● Task(Analyze codebase structure)
+  ⎿  Done (21 tool uses · 66.1k tokens · 1m 26.6s)                                
+
+● Now let me check for the README.md to incorporate important parts:
+
+● Read(README.md)
+  ⎿  Read 100 lines (ctrl+r to expand)
+
+● Let me check the pyproject.toml for additional development commands:
+
+● Read(pyproject.toml)
+  ⎿  Read 246 lines (ctrl+r to expand)
+
+● Now let me check for any additional scripts or automation tools:
+
+● Search(pattern: "**/justfile")
+  ⎿  Found 1 file (ctrl+r to expand)
+
+● Read(justfile)
+  ⎿  Read 137 lines (ctrl+r to expand)
+
+● Now let me check if there are scripts for running the API and dashboard:
+
+● Search(pattern: "scripts/*.py")
+  ⎿  Found 6 files (ctrl+r to expand)
+
+● Perfect! Now I'll create an improved CLAUDE.md file with the updated
+  information:
+
+● Update(CLAUDE.md)
+  ⎿  Updated CLAUDE.md with 2 additions and 2 removals                            
+        1    # CLAUDE.md
+        2    
+        3 -  Questo file fornisce indicazioni a Claude Code (claude.ai/code) per 
+     lavorare con il codice in questo repository.
+          - lavorare con il codice in questo repository.
+        3 +  This file provides guidance to Claude Code (claude.ai/code) when 
+     working with code in this repository.
+          + working with code in this repository.
+        4    
+        5    ## Panoramica del Progetto
+        6    
+        7 -  Questa è una libreria completa per il forecasting di serie temporali 
+     ARIMA (Autoregressive Integrated Moving Average) sviluppata in Python. Il
+     progetto fornisce un approccio professionale e modulare per l'analisi delle
+     serie temporali, addestramento dei modelli, valutazione e forecasting con
+     documentazione estesa e best practices.
+          - ARIMA (Autoregressive Integrated Moving Average) sviluppata in Python. 
+          - Il progetto fornisce un approccio professionale e modulare per 
+          - l'analisi delle serie temporali, addestramento dei modelli, 
+     valutazione
+          -  e forecasting con documentazione estesa e best practices.
+        7 +  Libreria Python avanzata per forecasting serie temporali con modelli 
+     ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API
+     REST, dashboard interattiva e reporting dinamico con Quarto.
+          + ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come 
+          + Auto-ML, API REST, dashboard interattiva e reporting dinamico con 
+          + Quarto.
+        8    
+        9    ## Struttura del Progetto
+       10    
+
+     Tip: Use # to memorize shortcut to quickly add to CLAUDE.md
+
+● Update(CLAUDE.md)
+  ⎿  Updated CLAUDE.md with 24 additions and 33 removals                          
+        6    
+        7    Libreria Python avanzata per forecasting serie temporali con modelli 
+            ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come 
+            Auto-ML, API REST, dashboard interattiva e reporting dinamico con 
+            Quarto.
+        8    
+        9 -  ## Struttura del Progetto
+        9 +  ## Comandi di Sviluppo Essenziali
+       10    
+       11 +  ### Con Just (Cross-platform - Raccomandato)
+       12 +  ```bash
+       13 +  # Setup completo ambiente
+       14 +  just setup
+       15 +  
+       16 +  # Test con coverage
+       17 +  just test-cov
+       18 +  
+       19 +  # Formattazione e linting
+       20 +  just format
+       21 +  just lint
+       22 +  
+       23 +  # Esegui tutti i controlli (format, lint, test)
+       24 +  just check
+       25 +  
+       26 +  # Esegui esempi
+       27 +  just examples
+       28 +  
+       29 +  # Lancia API server
+       30 +  uv run python scripts/run_api.py
+       31 +  
+       32 +  # Lancia dashboard Streamlit
+       33 +  uv run python scripts/run_dashboard.py
+       34    ```
+       35 -  arima_project/
+       36 -  ├── src/arima_forecaster/          # Codice sorgente del package 
+          - principale
+       37 -  │   ├── core/                      # Modellazione ARIMA di base
+       38 -  │   │   ├── arima_model.py         # Classe principale 
+     ARIMAForecaster
+       39 -  │   │   └── model_selection.py     # Selezione automatica del modello
+       40 -  │   ├── data/                      # Gestione dati e preprocessing
+       41 -  │   │   ├── loader.py              # Utilità per caricamento dati
+       42 -  │   │   └── preprocessor.py        # Preprocessing serie temporali
+       43 -  │   ├── evaluation/                # Valutazione modelli e metriche
+       44 -  │   │   └── metrics.py             # Metriche di valutazione complete
+       45 -  │   ├── visualization/             # Grafici e visualizzazione
+       46 -  │   │   └── plotter.py             # Utilità grafiche avanzate
+       47 -  │   └── utils/                     # Utilità e helper
+       48 -  │       ├── logger.py              # Configurazione logging
+       49 -  │       └── exceptions.py          # Eccezioni personalizzate
+       50 -  ├── docs/                          # Documentazione
+       51 -  │   ├── teoria_arima.md            # Teoria ARIMA completa
+       52 -  │   └── guida_utente.md            # Guida pratica all'uso
+       53 -  ├── examples/                      # Script di esempio
+       54 -  │   ├── forecasting_base.py        # Esempio uso base
+       55 -  │   └── selezione_automatica.py    # Selezione modello avanzata
+       56 -  ├── notebooks/                     # Jupyter notebooks per ricerca e 
+          - sviluppo
+       57 -  │   └── research_and_development.ipynb # Ambiente R&D per 
+          - sperimentazione algoritmi
+       58 -  ├── tests/                         # Suite di test completa
+       59 -  ├── data/                          # Directory dati
+       60 -  │   └── processed/                 # Dataset processati
+       61 -  ├── outputs/                       # Output generati
+       62 -  │   ├── models/                    # Modelli salvati
+       63 -  │   ├── plots/                     # Visualizzazioni generate
+       64 -  │   └── reports/                   # Report Quarto generati
+       65 -  └── config/                        # File di configurazione
+       66 -  ```
+       35    
+       36    ## Comandi di Sviluppo Comuni
+       37    
+
+     Tip: Use # to memorize shortcut to quickly add to CLAUDE.md
+
+● Update(CLAUDE.md)
+  ⎿  Updated CLAUDE.md with 1 addition and 5 removals           
+       33    uv run python scripts/run_dashboard.py
+       34    ```
+       35    
+       36 -  ## Comandi di Sviluppo Comuni
+       37 -  
+       38 -  ### Configurazione Ambiente
+       39 -  
+       40 -  #### Con UV (Raccomandato)
+       36 +  ### Con UV (Veloce)
+       37    ```bash
+       38    # Installa uv se non installato
+       39    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+     Tip: Use # to memorize shortcut to quickly add to CLAUDE.md
+
+● Update(CLAUDE.md)
+  ⎿  Error editing file
+
+● Let me check the current state and continue editing:
+
+● Read(CLAUDE.md)
+  ⎿  Read 50 lines (ctrl+r to expand)
+
+● Update(CLAUDE.md)
+  ⎿  Error editing file
+
+● Let me rewrite the entire CLAUDE.md file with the improved version:
+
+● Write(CLAUDE.md)
+  ⎿  Updated CLAUDE.md with 210 additions and 303 removals                        
+         1 -  # CLAUDE.md
+         2 -  
+         3 -  This file provides guidance to Claude Code (claude.ai/code) when 
+           - working with code in this repository.
+         4 -  
+         5 -  ## Panoramica del Progetto
+         6 -  
+         7 -  Libreria Python avanzata per forecasting serie temporali con modelli 
+           - ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come 
+           - Auto-ML, API REST, dashboard interattiva e reporting dinamico con 
+           - Quarto.
+         8 -  
+         9 -  ## Comandi di Sviluppo Essenziali
+        10 -  
+        11 -  ### Con Just (Cross-platform - Raccomandato)
+        12 -  ```bash
+        13 -  # Setup completo ambiente
+        14 -  just setup
+        15 -  
+        16 -  # Test con coverage
+        17 -  just test-cov
+        18 -  
+        19 -  # Formattazione e linting
+        20 -  just format
+        21 -  just lint
+        22 -  
+        23 -  # Esegui tutti i controlli (format, lint, test)
+        24 -  just check
+        25 -  
+        26 -  # Esegui esempi
+        27 -  just examples
+        28 -  
+        29 -  # Lancia API server
+        30 -  uv run python scripts/run_api.py
+        31 -  
+        32 -  # Lancia dashboard Streamlit
+        33 -  uv run python scripts/run_dashboard.py
+        34 -  ```
+        35 -  
+        36 -  ### Con UV (Veloce)
+        37 -  ```bash
+        38 -  # Installa uv se non installato
+        39 -  curl -LsSf https://astral.sh/uv/install.sh | sh
+        40 -  
+        41 -  # Sincronizza ambiente e installa tutte le dipendenze
+        42 -  uv sync --all-extras
+        43 -  
+        44 -  # Attiva ambiente virtuale
+        45 -  source .venv/bin/activate  # Linux/macOS
+        46 -  # .venv\Scripts\activate   # Windows
+        47 -  
+        48 -  # Configura directory logging
+        49 -  mkdir -p logs
+        50 -  ```
+        51 -  
+        52 -  #### Con pip (Alternativa)
+        53 -  ```bash
+        54 -  # Installa dipendenze
+        55 -  pip install -r requirements.txt
+        56 -  
+        57 -  # Installa package in modalità sviluppo con tutti gli extra
+        58 -  pip install -e ".[all]"
+        59 -  
+        60 -  # Configura directory logging
+        61 -  mkdir -p logs
+        62 -  ```
+        63 -  
+        64 -  ### Testing
+        65 -  
+        66 -  #### Con UV
+        67 -  ```bash
+        68 -  # Esegui tutti i test
+        69 -  uv run pytest tests/ -v
+        70 -  
+        71 -  # Esegui test con coverage
+        72 -  uv run pytest tests/ --cov=src/arima_forecaster --cov-report=html
+        73 -  
+        74 -  # Esegui moduli di test specifici
+        75 -  uv run pytest tests/test_arima_model.py -v
+        76 -  uv run pytest tests/test_preprocessing.py -v
+        77 -  
+        78 -  # Esegui test per funzionalità specifiche
+        79 -  uv run pytest -k "test_forecast" -v
+        80 -  
+        81 -  # Test paralleli per velocità
+        82 -  uv run pytest tests/ -v -n auto
+        83 -  ```
+        84 -  
+        85 -  #### Con python tradizionale
+        86 -  ```bash
+        87 -  python -m pytest tests/ -v
+        88 -  python -m pytest tests/ --cov=src/arima_forecaster --cov-report=html
+        89 -  ```
+        90 -  
+        91 -  ### Qualità del Codice
+        92 -  
+        93 -  #### Con UV
+        94 -  ```bash
+        95 -  # Formatta codice
+        96 -  uv run black src/ tests/ examples/
+        97 -  
+        98 -  # Lint codice (ruff è più veloce di flake8)
+        99 -  uv run ruff check src/ tests/ examples/
+       100 -  uv run ruff format src/ tests/ examples/  # formatting alternativo a 
+           - black
+       101 -  
+       102 -  # Type checking
+       103 -  uv run mypy src/arima_forecaster/
+       104 -  
+       105 -  # Pre-commit hooks (tutto insieme)
+       106 -  uv run pre-commit run --all-files
+       107 -  ```
+       108 -  
+       109 -  #### Comandi tradizionali
+       110 -  ```bash
+       111 -  black src/ tests/ examples/
+       112 -  ruff check src/ tests/ examples/
+       113 -  mypy src/arima_forecaster/
+       114 -  ```
+       115 -  
+       116 -  ### Esecuzione Esempi
+       117 -  
+       118 -  #### Con UV
+       119 -  ```bash
+       120 -  # Esempio forecasting di base
+       121 -  uv run python examples/forecasting_base.py
+       122 -  
+       123 -  # Esempio selezione automatica modello
+       124 -  uv run python examples/selezione_automatica.py
+       125 -  
+       126 -  # Esempio reporting Quarto (richiede dipendenze reports)
+       127 -  uv run python examples/quarto_reporting.py
+       128 -  ```
+       129 -  
+       130 -  #### Tradizionale
+       131 -  ```bash
+       132 -  python examples/forecasting_base.py
+       133 -  python examples/selezione_automatica.py
+       134 -  python examples/quarto_reporting.py
+       135 -  ```
+       136 -  
+       137 -  ## Architettura del Codice
+       138 -  
+       139 -  ### Classi Principali e Loro Utilizzo
+       140 -  
+       141 -  #### ARIMAForecaster (`src/arima_forecaster/core/arima_model.py`)
+       142 -  Classe principale per operazioni modello ARIMA:
+       143 -  - `ARIMAForecaster(order=(p,d,q))`: Inizializza modello con ordine 
+           - specifico
+       144 -  - `fit(series)`: Addestra modello su dati serie temporali
+       145 -  - `forecast(steps, confidence_intervals=True)`: Genera previsioni
+       146 -  - `save(path)` / `load(path)`: Persistenza modello
+       147 -  - `get_model_info()`: Informazioni complete del modello
+       148 -  
+       149 -  #### ARIMAModelSelector 
+           - (`src/arima_forecaster/core/model_selection.py`)
+       150 -  Selezione automatica modello usando grid search:
+       151 -  - `search(series, verbose=True)`: Trova ordine ARIMA ottimale
+       152 -  - `get_results_summary(top_n=10)`: Ottieni top modelli performanti
+       153 -  - `plot_selection_results()`: Visualizza processo selezione
+       154 -  
+       155 -  #### TimeSeriesPreprocessor 
+           - (`src/arima_forecaster/data/preprocessor.py`)
+       156 -  Utilità preprocessing complete:
+       157 -  - `preprocess_pipeline()`: Preprocessing completo con tutte le 
+           - opzioni
+       158 -  - `handle_missing_values()`: Strategie multiple per valori mancanti
+       159 -  - `remove_outliers()`: Vari metodi rilevamento outlier
+       160 -  - `check_stationarity()` / `make_stationary()`: Gestione 
+           - stazionarietà
+       161 -  
+       162 -  #### ModelEvaluator (`src/arima_forecaster/evaluation/metrics.py`)
+       163 -  Capacità valutazione estese:
+       164 -  - `calculate_forecast_metrics()`: 15+ metriche accuratezza forecast
+       165 -  - `evaluate_residuals()`: Diagnostica residui completa
+       166 -  - `generate_evaluation_report()`: Valutazione modello completa
+       167 -  
+       168 -  #### ForecastPlotter 
+           - (`src/arima_forecaster/visualization/plotter.py`)
+       169 -  Strumenti visualizzazione avanzati:
+       170 -  - `plot_forecast()`: Grafici forecast con intervalli confidenza
+       171 -  - `plot_residuals()`: Analisi residui 6-pannelli
+       172 -  - `plot_acf_pacf()`: Analisi autocorrelazione
+       173 -  - `create_dashboard()`: Dashboard forecasting completo
+       174 -  
+       175 -  #### QuartoReportGenerator 
+           - (`src/arima_forecaster/reporting/generator.py`)
+       176 -  Generazione report dinamici con Quarto:
+       177 -  - `generate_model_report()`: Report completo per singolo modello 
+           - (ARIMA/SARIMA)
+       178 -  - `create_comparison_report()`: Report comparativo tra modelli 
+           - multipli
+       179 -  - Supporto export HTML, PDF, DOCX
+       180 -  - Template personalizzabili con analisi automatiche
+       181 -  
+       182 -  ### Caratteristiche Chiave
+       183 -  
+       184 -  1. **Gestione Errori Robusta**: Gerarchia eccezioni personalizzate 
+           - con messaggi dettagliati
+       185 -  2. **Logging Completo**: Logging configurabile attraverso tutto il 
+           - package
+       186 -  3. **Testing Esteso**: Test unitari per tutte le funzionalità 
+           - principali
+       187 -  4. **Type Hints**: Annotazioni tipo complete per migliore supporto 
+           - IDE
+       188 -  5. **Documentazione**: Sia teorica (teoria ARIMA) che pratica (guida 
+           - utente)
+       189 -  6. **Best Practices**: Segue standard packaging Python e sviluppo
+       190 -  
+       191 -  ### Architettura Pipeline Dati
+       192 -  
+       193 -  1. **Caricamento Dati**: `DataLoader` gestisce file CSV con 
+           - validazione
+       194 -  2. **Preprocessing**: `TimeSeriesPreprocessor` applica preprocessing 
+           - configurabile
+       195 -  3. **Selezione Modello**: `ARIMAModelSelector` trova parametri 
+           - ottimali
+       196 -  4. **Addestramento**: `ARIMAForecaster` addestra modelli con 
+     metadata
+           -  complete
+       197 -  5. **Valutazione**: `ModelEvaluator` fornisce analisi performance 
+           - dettagliate
+       198 -  6. **Visualizzazione**: `ForecastPlotter` crea grafici pronti per 
+           - pubblicazione
+       199 -  7. **Reporting**: `QuartoReportGenerator` genera report dinamici e 
+           - interattivi
+       200 -  8. **Persistenza**: Modelli salvati con metadata per riproducibilità
+       201 -  
+       202 -  ## Configurazione e Personalizzazione
+       203 -  
+       204 -  ### Configurazione Logging
+       205 -  ```python
+       206 -  from arima_forecaster.utils import setup_logger
+       207 -  
+       208 -  logger = setup_logger(
+       209 -      name='mio_forecaster',
+       210 -      level='INFO',
+       211 -      log_file='logs/forecasting.log'
+       212 -  )
+       213 -  ```
+       214 -  
+       215 -  ### Opzioni Preprocessing
+       216 -  - **Valori Mancanti**: 'interpolate', 'drop', 'forward_fill', 
+           - 'backward_fill'
+       217 -  - **Rilevamento Outlier**: 'iqr', 'zscore', 'modified_zscore'
+       218 -  - **Stazionarietà**: 'difference', 'log_difference'
+       219 -  
+       220 -  ### Criteri Selezione Modello
+       221 -  - **Criteri Informativi**: 'aic', 'bic', 'hqic'
+       222 -  - **Range Personalizzati**: Range p, d, q configurabili
+       223 -  - **Ottimizzazione Performance**: Supporto elaborazione parallela
+       224 -  
+       225 -  ## Best Practices di Sviluppo
+       226 -  
+       227 -  ### Struttura Import
+       228 -  ```python
+       229 -  # Classi principali
+       230 -  from arima_forecaster import ARIMAForecaster, SARIMAForecaster, 
+           - TimeSeriesPreprocessor, ForecastPlotter
+       231 -  
+       232 -  # Funzionalità specializzate
+       233 -  from arima_forecaster.core import ARIMAModelSelector, 
+           - SARIMAModelSelector
+       234 -  from arima_forecaster.evaluation import ModelEvaluator
+       235 -  from arima_forecaster.data import DataLoader
+       236 -  
+       237 -  # Reporting (opzionale - richiede dipendenze reports)
+       238 -  from arima_forecaster.reporting import QuartoReportGenerator
+       239 -  ```
+       240 -  
+       241 -  ### Pattern Gestione Errori
+       242 -  ```python
+       243 -  from arima_forecaster.utils.exceptions import (
+       244 -      ModelTrainingError, 
+       245 -      ForecastError,
+       246 -      DataProcessingError
+       247 -  )
+       248 -  
+       249 -  try:
+       250 -      model = ARIMAForecaster(order=(1,1,1))
+       251 -      model.fit(series)
+       252 -  except ModelTrainingError as e:
+       253 -      logger.error(f"Addestramento fallito: {e}")
+       254 -      # Gestisci con grazia
+       255 -  ```
+       256 -  
+       257 -  ### Workflow Tipico
+       258 -  1. Carica dati con `DataLoader`
+       259 -  2. Preprocessa con `TimeSeriesPreprocessor`
+       260 -  3. Seleziona modello con `ARIMAModelSelector`/`SARIMAModelSelector` 
+     o
+           -  specifica manualmente
+       261 -  4. Addestra con `ARIMAForecaster`/`SARIMAForecaster`
+       262 -  5. Valuta con `ModelEvaluator`
+       263 -  6. Visualizza con `ForecastPlotter`
+       264 -  7. Genera report con `QuartoReportGenerator` (opzionale)
+       265 -  8. Genera previsioni e salva risultati
+       266 -  
+       267 -  ### Workflow Reporting Avanzato
+       268 -  1. Addestra modelli multipli (ARIMA, SARIMA, etc.)
+       269 -  2. Crea visualizzazioni con `ForecastPlotter`
+       270 -  3. Genera report individuali con `model.generate_report()`
+       271 -  4. Crea report comparativo con 
+           - `QuartoReportGenerator.create_comparison_report()`
+       272 -  5. Esporta in formati multipli (HTML, PDF, DOCX)
+       273 -  
+       274 -  ## Dipendenze Chiave e Loro Ruoli
+       275 -  
+       276 -  - **statsmodels**: Implementazione modelli ARIMA, test statistici
+       277 -  - **pandas**: Manipolazione dati serie temporali, gestione datetime
+       278 -  - **numpy**: Calcoli numerici, operazioni array
+       279 -  - **matplotlib/seaborn**: Visualizzazione e grafici
+       280 -  - **scipy**: Funzioni statistiche e test
+       281 -  - **scikit-learn**: Utilità ML aggiuntive e metriche
+       282 -  - **quarto** (opzionale): Generazione report dinamici e 
+     pubblicazione
+       283 -  - **jupyter** (opzionale): Supporto notebook per report interattivi
+       284 -  
+       285 -  ## Considerazioni Performance
+       286 -  
+       287 -  - Usa `validate_input=False` per elaborazione batch dopo validazione 
+           - iniziale
+       288 -  - Cache risultati preprocessing per addestramento modelli ripetuto
+       289 -  - Considera elaborazione parallela per selezione modello su grandi 
+           - griglie parametri
+       290 -  - Usa parametro `max_models` per limitare spazio ricerca per 
+           - risultati più veloci
+       291 -  
+       292 -  ## Testing e Assicurazione Qualità
+       293 -  
+       294 -  Il progetto include testing completo:
+       295 -  - **Test Unitari**: Tutte le funzionalità principali testate
+       296 -  - **Test Integrazione**: Testing workflow end-to-end
+       297 -  - **Fixtures**: Dati test realistici con varie caratteristiche
+       298 -  - **Coverage**: Coverage test alta con reporting dettagliato
+       299 -  
+       300 -  Esegui test prima di apportare modifiche:
+       301 -  ```bash
+       302 -  python -m pytest tests/ -v --cov=src/arima_forecaster
+       303 -  ```
+         1   \ No newline at end of file
+         2 +  # CLAUDE.md
+         3 +  
+         4 +  This file provides guidance to Claude Code (claude.ai/code) when 
+           + working with code in this repository.
+         5 +  
+         6 +  ## Panoramica del Progetto
+         7 +  
+         8 +  Libreria Python avanzata per forecasting serie temporali con modelli 
+           + ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come 
+           + Auto-ML, API REST, dashboard interattiva e reporting dinamico con 
+           + Quarto.
+         9 +  
+        10 +  ## Comandi di Sviluppo Essenziali
+        11 +  
+        12 +  ### Setup Rapido
+        13 +  ```bash
+        14 +  # Installa UV (10x più veloce di pip)
+        15 +  curl -LsSf https://astral.sh/uv/install.sh | sh  # Linux/macOS
+        16 +  # winget install --id=astral-sh.uv  # Windows
+        17 +  
+        18 +  # Setup completo con Just
+        19 +  just setup  # Installa dipendenze e configura ambiente
+        20 +  
+        21 +  # Oppure manualmente
+        22 +  uv sync --all-extras
+        23 +  ```
+        24 +  
+        25 +  ### Testing
+        26 +  ```bash
+        27 +  # Tutti i test
+        28 +  uv run pytest tests/ -v
+        29 +  
+        30 +  # Con coverage
+        31 +  uv run pytest tests/ --cov=src/arima_forecaster --cov-report=html
+        32 +  
+        33 +  # Test specifici
+        34 +  uv run pytest tests/test_arima_model.py -v
+        35 +  uv run pytest tests/test_sarima_model.py -v  
+        36 +  uv run pytest tests/test_reporting.py -v
+        37 +  
+        38 +  # Test paralleli (veloce)
+        39 +  uv run pytest tests/ -v -n auto
+        40 +  ```
+        41 +  
+        42 +  ### Qualità del Codice
+        43 +  ```bash
+        44 +  # Formattazione
+        45 +  uv run black src/ tests/ examples/
+        46 +  uv run ruff format src/ tests/ examples/
+        47 +  
+        48 +  # Linting
+        49 +  uv run ruff check src/ tests/ examples/
+        50 +  uv run mypy src/arima_forecaster/
+        51 +  
+        52 +  # Tutti i controlli
+        53 +  just check  # O: uv run pre-commit run --all-files
+        54 +  ```
+        55 +  
+        56 +  ### Servizi Production
+        57 +  ```bash
+        58 +  # API REST (FastAPI)
+        59 +  uv run python scripts/run_api.py
+        60 +  # Swagger UI: http://localhost:8000/docs
+        61 +  
+        62 +  # Dashboard Web (Streamlit)  
+        63 +  uv run python scripts/run_dashboard.py
+        64 +  # URL: http://localhost:8501
+        65 +  
+        66 +  # Script training
+        67 +  uv run python scripts/train.py --data path/to/data.csv --model 
+     sarima
+        68 +  
+        69 +  # Script forecasting
+        70 +  uv run python scripts/forecast.py --model path/to/model.pkl --steps 
+           + 30
+        71 +  ```
+        72 +  
+        73 +  ## Architettura del Codice
+        74 +  
+        75 +  ### Moduli Principali
+        76 +  
+        77 +  #### Modelli Core (`src/arima_forecaster/core/`)
+        78 +  - **ARIMAForecaster** (`arima_model.py`): Modello ARIMA base con 
+           + parametri (p,d,q)
+        79 +  - **SARIMAForecaster** (`sarima_model.py`): ARIMA stagionale con 
+           + (P,D,Q,s) 
+        80 +  - **VARForecaster** (`var_model.py`): Vector Autoregression per 
+     serie
+           +  multivariate
+        81 +  - **ARIMAModelSelector** (`model_selection.py`): Grid search 
+           + automatico per ARIMA
+        82 +  - **SARIMAModelSelector** (`sarima_selection.py`): Selezione 
+           + automatica SARIMA
+        83 +  
+        84 +  #### Data Processing (`src/arima_forecaster/data/`)
+        85 +  - **DataLoader**: Caricamento CSV con validazione automatica
+        86 +  - **TimeSeriesPreprocessor**: Pipeline preprocessing configurabile
+        87 +    - Gestione valori mancanti: interpolate, drop, forward_fill, 
+           + backward_fill
+        88 +    - Rilevamento outlier: IQR, z-score, modified z-score
+        89 +    - Stazionarietà: difference, log_difference, test ADF/KPSS
+        90 +  
+        91 +  #### Valutazione (`src/arima_forecaster/evaluation/`)
+        92 +  - **ModelEvaluator**: 15+ metriche (MAE, RMSE, MAPE, sMAPE, MASE, 
+           + etc.)
+        93 +  - Diagnostica residui completa (Ljung-Box, Jarque-Bera, ACF/PACF)
+        94 +  - Test statistici e analisi performance
+        95 +  
+        96 +  #### Visualizzazione (`src/arima_forecaster/visualization/`)
+        97 +  - **ForecastPlotter**: Grafici forecast con intervalli confidenza
+        98 +  - Dashboard interattivi con decomposizione stagionale
+        99 +  - Analisi residui multi-pannello
+       100 +  
+       101 +  #### Reporting (`src/arima_forecaster/reporting/`)
+       102 +  - **QuartoReportGenerator**: Report dinamici HTML/PDF/DOCX
+       103 +  - Template personalizzabili con analisi automatiche
+       104 +  - Comparazione modelli side-by-side
+       105 +  
+       106 +  #### Auto-ML (`src/arima_forecaster/automl/`)
+       107 +  - **HyperparameterOptimizer**: Ottimizzazione con Optuna/Hyperopt
+       108 +  - **ModelTuner**: Tuning avanzato multi-obiettivo
+       109 +  - Ensemble methods e stacking
+       110 +  
+       111 +  #### API & Dashboard
+       112 +  - **FastAPI REST API** (`src/arima_forecaster/api/`): Endpoints 
+           + production-ready
+       113 +  - **Streamlit Dashboard** (`src/arima_forecaster/dashboard/`): UI 
+     web
+           +  interattiva
+       114 +  
+       115 +  ### Pipeline Dati Tipica
+       116 +  
+       117 +  1. **Caricamento**: `DataLoader.load_data()` con validazione
+       118 +  2. **Preprocessing**: `TimeSeriesPreprocessor.preprocess_pipeline()`
+       119 +  3. **Selezione Modello**: `ARIMAModelSelector.search()` o manuale
+       120 +  4. **Training**: `model.fit(series)` con metadata
+       121 +  5. **Valutazione**: `ModelEvaluator.evaluate()`
+       122 +  6. **Visualizzazione**: `ForecastPlotter.create_dashboard()`
+       123 +  7. **Reporting**: `QuartoReportGenerator.generate_report()`
+       124 +  8. **Deployment**: API REST o dashboard web
+       125 +  
+       126 +  ### Pattern Import Consigliati
+       127 +  
+       128 +  ```python
+       129 +  # Import base
+       130 +  from arima_forecaster import (
+       131 +      ARIMAForecaster, 
+       132 +      SARIMAForecaster,
+       133 +      TimeSeriesPreprocessor,
+       134 +      ForecastPlotter
+       135 +  )
+       136 +  
+       137 +  # Import avanzati
+       138 +  from arima_forecaster.core import ARIMAModelSelector, VARForecaster
+       139 +  from arima_forecaster.evaluation import ModelEvaluator
+       140 +  from arima_forecaster.reporting import QuartoReportGenerator  # 
+           + Richiede [reports]
+       141 +  from arima_forecaster.automl import HyperparameterOptimizer  # 
+           + Richiede [automl]
+       142 +  ```
+       143 +  
+       144 +  ### Gestione Errori
+       145 +  
+       146 +  ```python
+       147 +  from arima_forecaster.utils.exceptions import (
+       148 +      ModelTrainingError,
+       149 +      ForecastError, 
+       150 +      DataProcessingError
+       151 +  )
+       152 +  
+       153 +  try:
+       154 +      model = SARIMAForecaster(order=(1,1,1), 
+           + seasonal_order=(1,1,1,12))
+       155 +      model.fit(series)
+       156 +  except ModelTrainingError as e:
+       157 +      logger.error(f"Training failed: {e}")
+       158 +  ```
+       159 +  
+       160 +  ## Considerazioni Performance
+       161 +  
+       162 +  - Usa `validate_input=False` per batch processing dopo validazione 
+           + iniziale
+       163 +  - Cache preprocessing per training ripetuto 
+           + (`preprocessor.cache_results=True`)
+       164 +  - Elaborazione parallela: `selector.search(n_jobs=-1)`
+       165 +  - Limita spazio ricerca: `selector.search(max_models=100)`
+       166 +  
+       167 +  ## Workflow con Just
+       168 +  
+       169 +  ```bash
+       170 +  just setup       # Setup iniziale ambiente
+       171 +  just test-cov    # Test con coverage
+       172 +  just format      # Formatta codice
+       173 +  just lint        # Controlli qualità
+       174 +  just check       # Tutti i controlli
+       175 +  just examples    # Esegui esempi
+       176 +  just clean       # Pulizia file temporanei
+       177 +  just build       # Build package per distribuzione
+       178 +  ```
+       179 +  
+       180 +  ## Note Implementative
+       181 +  
+       182 +  ### Modelli Disponibili
+       183 +  - **ARIMA**: Serie univariate non stagionali
+       184 +  - **SARIMA**: Serie con componente stagionale (nuovo)
+       185 +  - **VAR**: Serie temporali multivariate (nuovo)
+       186 +  - **Auto-ARIMA**: Selezione automatica parametri ottimali
+       187 +  
+       188 +  ### Features Avanzate Verificate
+       189 +  - ✅ SARIMA con decomposizione stagionale automatica
+       190 +  - ✅ VAR con test causalità Granger e impulse response
+       191 +  - ✅ Auto-ML con Optuna, Hyperopt, Scikit-Optimize
+       192 +  - ✅ API REST production-ready con FastAPI
+       193 +  - ✅ Dashboard Streamlit interattiva
+       194 +  - ✅ Reporting Quarto con export multi-formato
+       195 +  - ✅ Ensemble methods e model stacking
+       196 +  
+       197 +  ### Directory Output
+       198 +  - `outputs/models/`: Modelli serializzati (.pkl)
+       199 +  - `outputs/plots/`: Visualizzazioni (.png, .html)  
+       200 +  - `outputs/reports/`: Report Quarto (.html, .pdf, .docx)
+       201 +  - `logs/`: File di log applicazione
+       202 +  
+       203 +  ## Dipendenze Chiave
+       204 +  
+       205 +  - **statsmodels**: Implementazione modelli ARIMA/SARIMA/VAR
+       206 +  - **pandas/numpy**: Manipolazione dati e calcoli
+       207 +  - **matplotlib/seaborn/plotly**: Visualizzazioni
+       208 +  - **fastapi/uvicorn**: API REST
+       209 +  - **streamlit**: Dashboard web
+       210 +  - **quarto**: Report dinamici (opzionale)
+       211 +  - **optuna/hyperopt**: Auto-ML (opzionale)
+       212   \ No newline at end of file
+
+     Tip: Use # to memorize shortcut to quickly add to CLAUDE.md
+
+● Ho aggiornato il CLAUDE.md con miglioramenti significativi:
+
+  🎯 Principali Miglioramenti
+
+  1. Header corretto: Aggiunto il prefisso standard richiesto in inglese
+  2. Comandi essenziali in cima: Spostati i comandi più usati all'inizio per
+  accesso rapido
+  3. Semplificazione: Rimosso duplicazioni e ridotto verbosità
+  4. Focus su UV e Just: Enfasi sugli strumenti moderni e veloci
+  5. Servizi Production: Aggiunto sezione per API, dashboard e script utility
+  6. Architettura concisa: Descrizione modulare senza ripetizioni
+  7. Features verificate: Conferma delle funzionalità avanzate implementate
+  8. Performance tips: Consigli pratici per ottimizzazione
+
+  📋 Struttura Ottimizzata
+
+  - Setup rapido → Testing → Qualità codice → Servizi production
+  - Architettura modulare con descrizioni essenziali
+  - Pattern di utilizzo pratici con esempi di codice
+  - Workflow con Just per automazione cross-platform
+  - Note implementative su features disponibili e verificate
+
+  Il file ora è più snello (210 righe vs 316), meglio organizzato e fornisce a
+  Claude Code tutte le informazioni essenziali per lavorare efficacemente sul
+  progetto.
+
+> /agents 
+  ⎿  (no content)
+
+> utilizzo "claude code" sia in questo PC (di casa) che in un altro (a lavoro), in
+   quello di lavoro ho creato un "agent" che in questo PC non vedo, inoltre sempre
+   nel PC di lavoro ho impostato delle regole per la creazione dei file che 
+  utilizzi per i test e i debug ... come faccio a tenere allineate le 
+  configurazioni di Claude Code per i 2 PC ?
+
+● Per tenere allineate le configurazioni di Claude Code tra i due PC, ecco le
+  opzioni disponibili:
+
+  📁 File di Configurazione Locali
+
+  Claude Code salva le configurazioni in file JSON locali che puoi sincronizzare:
+
+  Windows
+
+  %APPDATA%\claude-code\settings.json     # Impostazioni generali
+  %APPDATA%\claude-code\agents.json       # Agents personalizzati
+
+  macOS/Linux
+
+  ~/.config/claude-code/settings.json
+  ~/.config/claude-code/agents.json
+
+  🔄 Metodi di Sincronizzazione
+
+  1. Git Repository Privato (Consigliato)
+
+  # Crea repo per le configurazioni
+  cd %APPDATA%\claude-code  # o ~/.config/claude-code
+  git init
+  git add settings.json agents.json
+  git commit -m "Claude Code config"
+  git remote add origin <tuo-repo-privato>
+  git push
+
+  # Sul secondo PC
+  git clone <tuo-repo-privato> %APPDATA%\claude-code
+
+  2. Cloud Storage Simbolico
+
+  # Sposta config in OneDrive/Dropbox/Google Drive
+  move %APPDATA%\claude-code "C:\OneDrive\claude-code-config"
+
+  # Crea link simbolico
+  mklink /D %APPDATA%\claude-code "C:\OneDrive\claude-code-config"
+
+  3. Script di Sincronizzazione
+
+  # Copia manuale tra PC
+  robocopy \\PC-LAVORO\c$\Users\%USERNAME%\AppData\Roaming\claude-code ^
+           %APPDATA%\claude-code /MIR
+
+  🛠️ Regole per Test/Debug nel Progetto
+
+  Per le regole specifiche del progetto (non globali), usa:
+
+  1. .claude/rules.md nella root del progetto
+  2. CLAUDE.md per istruzioni specifiche del codebase
+  3. .clauderc per configurazioni progetto-specifiche
+
+  Questi file viaggiano con il repository Git del progetto stesso.
+
+  💡 Best Practice
+
+  1. Configurazioni globali (agents, settings) → Sincronizza via Git/Cloud
+  2. Regole progetto-specifiche → Nel repository del progetto
+  3. Backup periodico delle configurazioni
+  4. Documentazione delle customizzazioni in un README personale
+
+  Vuoi che ti aiuti a configurare uno di questi metodi di sincronizzazione?
+
