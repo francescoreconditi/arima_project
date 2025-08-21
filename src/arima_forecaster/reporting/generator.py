@@ -304,9 +304,155 @@ class QuartoReportGenerator:
         color: #7f8c8d;
         border-bottom: 1px solid #bdc3c7;
       }
+      
+      /* Image zoom styles */
+      .zoomable-image {
+        cursor: zoom-in;
+        transition: transform 0.2s;
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+      
+      .zoomable-image:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      
+      /* Modal for zoomed image */
+      .image-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        padding-top: 60px;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.9);
+        cursor: zoom-out;
+      }
+      
+      .modal-content {
+        margin: auto;
+        display: block;
+        max-width: 90%;
+        max-height: 90%;
+        animation: zoom 0.3s;
+      }
+      
+      @keyframes zoom {
+        from {transform: scale(0.5)}
+        to {transform: scale(1)}
+      }
+      
+      .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+        cursor: pointer;
+      }
+      
+      .close-modal:hover,
+      .close-modal:focus {
+        color: #bbb;
+        text-decoration: none;
+      }
+      
+      /* Caption for zoomed image */
+      .image-caption {
+        margin: auto;
+        display: block;
+        width: 80%;
+        max-width: 700px;
+        text-align: center;
+        color: #ccc;
+        padding: 10px 0;
+      }
+      
+      /* Magnifying glass icon on hover */
+      .image-container {
+        position: relative;
+        display: inline-block;
+      }
+      
+      .image-container::after {
+        content: "🔍";
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 24px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        background: rgba(255,255,255,0.9);
+        padding: 5px;
+        border-radius: 50%;
+      }
+      
+      .image-container:hover::after {
+        opacity: 1;
+      }
       </style>
       <script>
       document.addEventListener('DOMContentLoaded', function() {
+        // Image zoom functionality
+        const images = document.querySelectorAll('img');
+        
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.className = 'image-modal';
+        modal.innerHTML = '<span class="close-modal">&times;</span><img class="modal-content"><div class="image-caption"></div>';
+        document.body.appendChild(modal);
+        
+        const modalImg = modal.querySelector('.modal-content');
+        const captionText = modal.querySelector('.image-caption');
+        const closeBtn = modal.querySelector('.close-modal');
+        
+        images.forEach(img => {
+          // Skip small images (icons, etc.)
+          if (img.width > 100) {
+            // Wrap image in container
+            const container = document.createElement('div');
+            container.className = 'image-container';
+            img.parentNode.insertBefore(container, img);
+            container.appendChild(img);
+            
+            // Add zoomable class
+            img.classList.add('zoomable-image');
+            
+            // Add click event
+            img.addEventListener('click', function() {
+              modal.style.display = 'block';
+              modalImg.src = this.src;
+              captionText.innerHTML = this.alt || 'Clicca fuori dall\\'immagine o premi ESC per chiudere';
+            });
+          }
+        });
+        
+        // Close modal on click
+        closeBtn.addEventListener('click', function() {
+          modal.style.display = 'none';
+        });
+        
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            modal.style.display = 'none';
+          }
+        });
+        
+        // Close modal on ESC key
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && modal.style.display === 'block') {
+            modal.style.display = 'none';
+          }
+        });
+        
         // Add active highlighting to TOC based on scroll position
         const sections = document.querySelectorAll('section[id]');
         const tocLinks = document.querySelectorAll('#TOC a[href^="#"]');
