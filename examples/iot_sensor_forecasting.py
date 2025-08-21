@@ -490,19 +490,13 @@ def main():
     # Genera report Quarto
     logger.info("Generazione report Quarto...")
     try:
-        # Get the plot filename if it exists
-        plot_files = {}
-        # Try to find the most recent plot file
-        if "plot_path" in locals():
-            plot_files["main_plot"] = str(plot_path)
-        elif "plt" in locals():
-            # If we have a matplotlib figure, save it temporarily
-            temp_plot = get_plots_path("temp_report_plot.png")
-            plt.savefig(temp_plot, dpi=300, bbox_inches="tight")
-            plot_files["analysis_plot"] = str(temp_plot)
+        # Passa il percorso dell'immagine salvata
+        plot_files = {
+            'main_plot': str(plot_path)  # plot_path è definito sopra quando salviamo l'immagine
+        }
 
         report_path = model.generate_report(
-            plots_data=plot_files if plot_files else None,
+            plots_data=plot_files,
             report_title="Iot Sensor Forecasting Analysis",
             output_filename="iot_sensor_forecasting_report",
             format_type="html",

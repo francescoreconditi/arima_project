@@ -333,16 +333,14 @@ def main():
     # Genera report Quarto
     logger.info("Generazione report Quarto...")
     try:
-        # Get the plot filename if it exists
-        plot_files = {}
-        # Try to find the most recent plot file
-        if 'plot_path' in locals():
-            plot_files['main_plot'] = str(plot_path)
-        elif 'plt' in locals():
-            # If we have a matplotlib figure, save it temporarily
-            temp_plot = get_plots_path('temp_report_plot.png')
-            plt.savefig(temp_plot, dpi=300, bbox_inches='tight')
-            plot_files['analysis_plot'] = str(temp_plot)
+        # Usa il dashboard come plot principale per il report
+        dashboard_path = plots_dir / "best_model_dashboard.png"
+        plot_files = {
+            'main_plot': str(dashboard_path) if dashboard_path.exists() else None
+        }
+        
+        # Rimuovi None values dal dizionario
+        plot_files = {k: v for k, v in plot_files.items() if v is not None}
         
         report_path = model.generate_report(
             plots_data=plot_files if plot_files else None,

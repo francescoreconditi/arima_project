@@ -600,7 +600,8 @@ def main():
     ax10.set_xlim(-0.5, 23.5)
     
     # Salva plot
-    plt.savefig(get_plots_path('web_traffic_forecast.png'), dpi=300, bbox_inches='tight')
+    plot_path = get_plots_path('web_traffic_forecast.png')
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
     logger.info("📁 Plot salvato in outputs/plots/web_traffic_forecast.png")
     
     # plt.show()  # Disabled for Windows compatibility
@@ -675,19 +676,13 @@ def main():
     # Genera report Quarto
     logger.info("Generazione report Quarto...")
     try:
-        # Get the plot filename if it exists
-        plot_files = {}
-        # Try to find the most recent plot file
-        if 'plot_path' in locals():
-            plot_files['main_plot'] = str(plot_path)
-        elif 'plt' in locals():
-            # If we have a matplotlib figure, save it temporarily
-            temp_plot = get_plots_path('temp_report_plot.png')
-            plt.savefig(temp_plot, dpi=300, bbox_inches='tight')
-            plot_files['analysis_plot'] = str(temp_plot)
+        # Passa il percorso dell'immagine salvata
+        plot_files = {
+            'main_plot': str(plot_path)  # plot_path è definito sopra quando salviamo l'immagine
+        }
         
         report_path = model.generate_report(
-            plots_data=plot_files if plot_files else None,
+            plots_data=plot_files,
             report_title="Web Traffic Forecasting Analysis",
             output_filename="web_traffic_forecasting_report",
             format_type="html",

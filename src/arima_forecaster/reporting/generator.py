@@ -703,12 +703,91 @@ display(HTML(html_table))
 
 ```{python}
 #| label: full-config
-#| code-fold: true
-#| code-summary: "Mostra configurazione completa"
+#| code-fold: false
+#| echo: false
 
-print("```json")
-print(json.dumps(model_results, indent=2, default=str))
-print("```")
+import pandas as pd
+from IPython.display import HTML, display
+
+def flatten_dict(d, parent_key='', sep='.'):
+    """Appiattisce un dizionario nested in formato chiave-valore"""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        # Formatta la chiave in modo più leggibile
+        formatted_key = new_key.replace('_', ' ').title()
+        
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            # Se è una lista, mostrala come stringa formattata
+            if len(v) > 0 and isinstance(v[0], (int, float)):
+                # Se è una lista di numeri, mostra solo i primi elementi
+                if len(v) > 5:
+                    v_str = f"[{', '.join(map(str, v[:5]))}, ... ({len(v)} valori totali)]"
+                else:
+                    v_str = f"[{', '.join(map(str, v))}]"
+            else:
+                v_str = str(v)
+            items.append((formatted_key, v_str))
+        else:
+            # Formatta i valori numerici
+            if isinstance(v, float):
+                if abs(v) > 1000:
+                    v_str = f"{v:,.2f}"
+                else:
+                    v_str = f"{v:.4f}"
+            else:
+                v_str = str(v)
+            items.append((formatted_key, v_str))
+    return dict(items)
+
+# Crea tabella con configurazione completa
+config_data = flatten_dict(model_results)
+
+# Organizza i dati in categorie
+categories = {
+    'Informazioni Modello': [],
+    'Parametri': [],
+    'Metriche Performance': [],
+    'Diagnostica': [],
+    'Training Data': [],
+    'Forecast': [],
+    'Altro': []
+}
+
+for key, value in config_data.items():
+    key_lower = key.lower()
+    if 'model' in key_lower or 'type' in key_lower or 'status' in key_lower:
+        categories['Informazioni Modello'].append((key, value))
+    elif 'order' in key_lower or 'seasonal' in key_lower or 'trend' in key_lower:
+        categories['Parametri'].append((key, value))
+    elif any(metric in key_lower for metric in ['mae', 'rmse', 'mape', 'r2', 'aic', 'bic', 'accuracy']):
+        categories['Metriche Performance'].append((key, value))
+    elif any(diag in key_lower for diag in ['ljung', 'jarque', 'heteroscedasticity', 'stationarity', 'residual']):
+        categories['Diagnostica'].append((key, value))
+    elif 'training' in key_lower or 'observations' in key_lower:
+        categories['Training Data'].append((key, value))
+    elif 'forecast' in key_lower or 'prediction' in key_lower:
+        categories['Forecast'].append((key, value))
+    else:
+        categories['Altro'].append((key, value))
+
+# Crea HTML con tabelle separate per categoria
+html_output = ""
+for category, items in categories.items():
+    if items:
+        html_output += f"<h4 style='color: #495057; margin-top: 20px;'>{category}</h4>"
+        df = pd.DataFrame(items, columns=['Parametro', 'Valore'])
+        html_table = df.to_html(
+            index=False, 
+            classes='table table-striped table-hover', 
+            escape=False,
+            table_id=f'config-{category.lower().replace(" ", "-")}'
+        )
+        html_output += html_table
+
+display(HTML(html_output))
 ```
 
 ---
