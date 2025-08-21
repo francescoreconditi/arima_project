@@ -324,6 +324,76 @@ def create_app(model_storage_path: Optional[str] = None) -> FastAPI:
             logger.error(f"Failed to generate diagnostics: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     
+    @app.post("/models/{model_id}/report", response_model=ReportGenerationResponse)
+    async def generate_model_report(
+        model_id: str,
+        request: ReportGenerationRequest,
+        background_tasks: BackgroundTasks
+    ):
+        """
+        Generate a comprehensive report for a trained model.
+        """
+        try:
+            if not model_manager.model_exists(model_id):
+                raise HTTPException(status_code=404, detail="Model not found")
+            
+            start_time = time.time()
+            
+            # Generate report
+            report_result = await forecast_service.generate_report(
+                model_id=model_id,
+                report_title=request.report_title,
+                output_filename=request.output_filename,
+                format_type=request.format_type,
+                include_diagnostics=request.include_diagnostics,
+                include_forecast=request.include_forecast,
+                forecast_steps=request.forecast_steps
+            )
+            
+            generation_time = time.time() - start_time
+            
+            # Calculate file size
+            report_path = Path(report_result["report_path"])
+            file_size_mb = report_path.stat().st_size / (1024 * 1024) if report_path.exists() else None
+            
+            return ReportGenerationResponse(
+                model_id=model_id,
+                report_path=str(report_path),
+                format_type=request.format_type,
+                generation_time=generation_time,
+                file_size_mb=file_size_mb,
+                download_url=f"/reports/{report_path.name}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to generate report: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.get("/reports/{filename}")
+    async def download_report(filename: str):
+        """
+        Download a generated report file.
+        """
+        try:
+            from fastapi.responses import FileResponse
+            
+            # Report storage path (should match where reports are generated)
+            reports_dir = Path("outputs/reports")
+            report_path = reports_dir / filename
+            
+            if not report_path.exists():
+                raise HTTPException(status_code=404, detail="Report file not found")
+            
+            return FileResponse(
+                path=str(report_path),
+                filename=filename,
+                media_type='application/octet-stream'
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to download report: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
     return app
 
 

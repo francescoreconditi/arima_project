@@ -618,3 +618,83 @@ class ForecastService:
         except Exception as e:
             self.logger.error(f"Diagnostics generation failed: {e}")
             raise ForecastError(f"Failed to generate diagnostics: {e}")
+    
+    async def generate_report(
+        self,
+        model_id: str,
+        report_title: Optional[str] = None,
+        output_filename: Optional[str] = None,
+        format_type: str = "html",
+        include_diagnostics: bool = True,
+        include_forecast: bool = True,
+        forecast_steps: int = 12
+    ) -> Dict[str, Any]:
+        """
+        Generate a comprehensive report for a trained model.
+        
+        Args:
+            model_id: ID of the trained model
+            report_title: Custom title for the report
+            output_filename: Custom filename for the report
+            format_type: Output format (html, pdf, docx)
+            include_diagnostics: Whether to include model diagnostics
+            include_forecast: Whether to include forecast analysis
+            forecast_steps: Number of forecast steps
+            
+        Returns:
+            Dictionary with report information
+        """
+        try:
+            # Load model
+            model = self.model_manager.load_model(model_id)
+            
+            # Set default title and filename
+            if report_title is None:
+                model_info = self.model_manager.get_model_info(model_id)
+                model_type = model_info.get("model_type", "ARIMA").upper()
+                report_title = f"{model_type} Model Analysis Report"
+            
+            if output_filename is None:
+                timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+                output_filename = f"dashboard_report_{model_id[:8]}_{timestamp}"
+            
+            # Generate any plots if needed (optional - can be None for basic reports)
+            plots_data = None
+            
+            # Create visualization if forecast is requested
+            if include_forecast and hasattr(model, 'forecast'):
+                try:
+                    # Generate forecast for visualization
+                    forecast_result = model.forecast(
+                        steps=forecast_steps,
+                        confidence_intervals=True
+                    )
+                    
+                    # We could create a plot here and save it, but for simplicity
+                    # we'll let the report generator handle the visualization
+                    plots_data = {}
+                    
+                except Exception as e:
+                    self.logger.warning(f"Could not generate forecast for report: {e}")
+            
+            # Generate the report using the model's built-in report generation
+            report_path = model.generate_report(
+                plots_data=plots_data,
+                report_title=report_title,
+                output_filename=output_filename,
+                format_type=format_type,
+                include_diagnostics=include_diagnostics,
+                include_forecast=include_forecast,
+                forecast_steps=forecast_steps
+            )
+            
+            return {
+                "model_id": model_id,
+                "report_path": str(report_path),
+                "format_type": format_type,
+                "report_title": report_title
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Report generation failed: {e}")
+            raise ForecastError(f"Failed to generate report: {e}")

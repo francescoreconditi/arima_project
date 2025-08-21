@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any, Union, Tuple
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
 import pandas as pd
+from pathlib import Path
 
 
 class TimeSeriesData(BaseModel):
@@ -217,3 +218,32 @@ class ModelDiagnostics(BaseModel):
     heteroscedasticity_test: Optional[Dict[str, float]] = None
     acf_values: Optional[List[float]] = None
     pacf_values: Optional[List[float]] = None
+
+
+class ReportGenerationRequest(BaseModel):
+    """Request for generating model report."""
+    
+    model_id: str = Field(..., description="ID of the trained model")
+    report_title: Optional[str] = Field(default=None, description="Custom title for the report")
+    output_filename: Optional[str] = Field(default=None, description="Custom filename for the report")
+    format_type: str = Field(default="html", description="Output format (html, pdf, docx)")
+    include_diagnostics: bool = Field(default=True, description="Include model diagnostics")
+    include_forecast: bool = Field(default=True, description="Include forecast analysis")
+    forecast_steps: int = Field(default=12, ge=1, le=100, description="Number of forecast steps")
+    
+    @validator('format_type')
+    def validate_format_type(cls, v):
+        if v not in ['html', 'pdf', 'docx']:
+            raise ValueError("format_type must be 'html', 'pdf', or 'docx'")
+        return v
+
+
+class ReportGenerationResponse(BaseModel):
+    """Response for report generation."""
+    
+    model_id: str
+    report_path: str
+    format_type: str
+    generation_time: float
+    file_size_mb: Optional[float] = None
+    download_url: Optional[str] = None

@@ -52,6 +52,12 @@ class ARIMADashboard:
             st.session_state.model_trained = False
         if 'forecast_generated' not in st.session_state:
             st.session_state.forecast_generated = False
+        if 'report_generated' not in st.session_state:
+            st.session_state.report_generated = False
+        if 'last_report_path' not in st.session_state:
+            st.session_state.last_report_path = None
+        if 'last_report_config' not in st.session_state:
+            st.session_state.last_report_config = {}
     
     def run(self):
         """Run the main dashboard."""
@@ -62,7 +68,7 @@ class ARIMADashboard:
         st.sidebar.title("Navigation")
         page = st.sidebar.selectbox(
             "Select Page",
-            ["Data Upload", "Data Exploration", "Model Training", "Forecasting", "Model Diagnostics"]
+            ["Data Upload", "Data Exploration", "Model Training", "Forecasting", "Model Diagnostics", "Report Generation"]
         )
         
         # Route to appropriate page
@@ -76,6 +82,8 @@ class ARIMADashboard:
             self.forecasting_page()
         elif page == "Model Diagnostics":
             self.diagnostics_page()
+        elif page == "Report Generation":
+            self.report_generation_page()
     
     def data_upload_page(self):
         """Data upload and preprocessing page."""
@@ -231,11 +239,14 @@ class ARIMADashboard:
         
         if st.button("Apply Preprocessing"):
             try:
-                processed_data = preprocessor.preprocess_pipeline(
+                processed_data, metadata = preprocessor.preprocess_pipeline(
                     data.copy(),
-                    missing_values=missing_method if missing_method != 'none' else None,
-                    outlier_detection=outlier_method if outlier_detection else None,
-                    make_stationary=stationary_method if make_stationary else None
+                    handle_missing=missing_method != 'none',
+                    missing_method=missing_method if missing_method != 'none' else 'interpolate',
+                    remove_outliers_flag=outlier_detection,
+                    outlier_method=outlier_method,
+                    make_stationary_flag=make_stationary,
+                    stationarity_method=stationary_method
                 )
                 
                 st.session_state.preprocessed_data = processed_data
@@ -697,6 +708,435 @@ class ARIMADashboard:
                     
             except Exception as e:
                 st.error(f"Could not generate residuals analysis: {e}")
+    
+    def report_generation_page(self):
+        """Report generation page with proper state management."""
+        st.header("📄 Report Generation")
+        
+        if not st.session_state.get('model_trained', False):
+            st.warning("Please train a model first in the 'Model Training' page.")
+            return
+        
+        st.markdown("""
+        Generate comprehensive reports for your trained model including:
+        - Model summary and configuration
+        - Performance metrics and diagnostics  
+        - Forecast visualizations and analysis
+        - Statistical tests and validation
+        """)
+        
+        # Check if report was already generated
+        if st.session_state.get('report_generated', False) and st.session_state.get('last_report_path'):
+            self._show_generated_report()
+        else:
+            self._show_report_configuration()
+    
+    def _show_report_configuration(self):
+        """Show report configuration form."""
+        st.subheader("Report Configuration")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            report_title = st.text_input(
+                "Report Title", 
+                value="Time Series Analysis Report",
+                help="Custom title for your report"
+            )
+            
+            output_filename = st.text_input(
+                "Output Filename",
+                value="",
+                help="Leave empty for auto-generated filename"
+            )
+            
+            format_type = st.selectbox(
+                "Output Format",
+                ["html", "pdf", "docx"],
+                index=0,
+                help="Choose the output format for your report"
+            )
+        
+        with col2:
+            include_diagnostics = st.checkbox(
+                "Include Model Diagnostics", 
+                value=True,
+                help="Include residual analysis, statistical tests, and model validation"
+            )
+            
+            include_forecast = st.checkbox(
+                "Include Forecast Analysis", 
+                value=True,
+                help="Include forecast visualizations and confidence intervals"
+            )
+            
+            if include_forecast:
+                forecast_steps = st.number_input(
+                    "Forecast Steps",
+                    min_value=1,
+                    max_value=100,
+                    value=12,
+                    help="Number of forecast steps to include in the report"
+                )
+            else:
+                forecast_steps = 12
+        
+        # Additional options
+        st.subheader("Advanced Options")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if format_type == "pdf":
+                st.info("📋 PDF export requires LaTeX installation")
+            elif format_type == "docx":
+                st.info("📄 DOCX export requires pandoc")
+            else:
+                st.info("🌐 HTML format is recommended for web viewing")
+        
+        with col2:
+            auto_open = st.checkbox(
+                "Auto-open report after generation",
+                value=True,
+                help="Automatically open the report in your default browser/application"
+            )
+        
+        # Generate report button
+        st.subheader("Generate Report")
+        
+        if st.button("🚀 Generate Report", type="primary", use_container_width=True):
+            self._generate_report(
+                report_title, output_filename, format_type, 
+                include_diagnostics, include_forecast, forecast_steps, auto_open
+            )
+    
+    def _generate_report(self, report_title, output_filename, format_type, 
+                        include_diagnostics, include_forecast, forecast_steps, auto_open):
+        """Generate the report and handle the process."""
+        try:
+            with st.spinner("Generating comprehensive report... This may take a few minutes."):
+                
+                # Use the model's built-in report generation
+                model = st.session_state.model
+                
+                # Set output filename if not provided
+                if not output_filename.strip():
+                    timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+                    output_filename = f"dashboard_report_{timestamp}"
+                
+                # Generate plots data if we have forecast data
+                plots_data = None
+                if st.session_state.get('forecast_generated', False) and include_forecast:
+                    plots_data = self._create_forecast_plot(output_filename)
+                
+                # Generate the report
+                report_path = model.generate_report(
+                    plots_data=plots_data,
+                    report_title=report_title,
+                    output_filename=output_filename,
+                    format_type=format_type,
+                    include_diagnostics=include_diagnostics,
+                    include_forecast=include_forecast,
+                    forecast_steps=forecast_steps
+                )
+                
+                # Store in session state
+                st.session_state.report_generated = True
+                st.session_state.last_report_path = report_path
+                st.session_state.last_report_config = {
+                    'format_type': format_type,
+                    'auto_open': auto_open,
+                    'report_title': report_title
+                }
+                
+                # Auto-open if requested
+                if auto_open:
+                    self._auto_open_report(report_path)
+                
+                st.success("🎉 Report generated successfully!")
+                st.rerun()  # Refresh to show the generated report section
+                
+        except Exception as e:
+            st.error(f"❌ Report generation failed: {e}")
+            logger.error(f"Report generation failed: {e}")
+            self._show_troubleshooting(format_type)
+    
+    def _create_forecast_plot(self, output_filename):
+        """Create forecast plot for report."""
+        try:
+            import matplotlib.pyplot as plt
+            from pathlib import Path
+            
+            # Get data
+            data = st.session_state.get('preprocessed_data', st.session_state.data)
+            forecast_result = st.session_state.get('forecast_result', {})
+            
+            if forecast_result:
+                # Create plot
+                fig, ax = plt.subplots(figsize=(12, 6))
+                
+                # Plot historical data (last 50 points)
+                ax.plot(data.index[-50:], data.values[-50:], 
+                       label='Historical', color='blue', linewidth=1.5)
+                
+                # Plot forecast
+                forecast = forecast_result['forecast']
+                ax.plot(forecast.index, forecast.values, 
+                       label='Forecast', color='red', linewidth=2, marker='o', markersize=4)
+                
+                # Plot confidence intervals if available
+                conf_int = forecast_result.get('conf_int')
+                if conf_int is not None:
+                    confidence_level = forecast_result.get('confidence_level', 0.95)
+                    ax.fill_between(forecast.index, 
+                                   conf_int.iloc[:, 0], conf_int.iloc[:, 1],
+                                   alpha=0.3, color='red', 
+                                   label=f'{confidence_level:.0%} Confidence Interval')
+                
+                ax.set_title('Time Series Forecast')
+                ax.set_xlabel('Time')
+                ax.set_ylabel('Value')
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+                
+                # Save plot
+                plots_dir = Path("outputs/plots")
+                plots_dir.mkdir(parents=True, exist_ok=True)
+                plot_path = plots_dir / f"{output_filename}_dashboard_plot.png"
+                plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+                plt.close()
+                
+                return {'main_plot': str(plot_path)}
+                
+        except Exception as e:
+            st.warning(f"Could not create plot for report: {e}")
+            return None
+    
+    def _auto_open_report(self, report_path):
+        """Attempt to auto-open the report."""
+        try:
+            import subprocess
+            import platform
+            
+            if platform.system() == "Windows":
+                subprocess.run(["start", str(report_path)], shell=True, check=False)
+            elif platform.system() == "Darwin":  # macOS
+                subprocess.run(["open", str(report_path)], check=False)
+            else:  # Linux
+                subprocess.run(["xdg-open", str(report_path)], check=False)
+            
+            st.success("✅ Report opened automatically!")
+            
+        except Exception as e:
+            st.info(f"💡 Auto-open failed, but report was generated: {report_path}")
+    
+    def _show_generated_report(self):
+        """Show the already generated report with actions."""
+        st.success("🎉 Report generated successfully!")
+        
+        report_path = st.session_state.last_report_path
+        config = st.session_state.last_report_config
+        format_type = config.get('format_type', 'html')
+        
+        # Show report info
+        st.subheader("Report Information")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Format", format_type.upper())
+        with col2:
+            if Path(report_path).exists():
+                report_size = Path(report_path).stat().st_size / (1024 * 1024)
+                st.metric("File Size", f"{report_size:.1f} MB")
+            else:
+                st.metric("File Size", "N/A")
+        with col3:
+            st.metric("Location", "outputs/reports/")
+        
+        # Display report path
+        st.info(f"📁 Report saved to: `{report_path}`")
+        
+        # Action buttons
+        if Path(report_path).exists():
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                with open(report_path, "rb") as file:
+                    st.download_button(
+                        label=f"📥 Download {format_type.upper()} Report",
+                        data=file.read(),
+                        file_name=Path(report_path).name,
+                        mime=f"application/{format_type}" if format_type != "html" else "text/html",
+                        use_container_width=True
+                    )
+            
+            with col2:
+                if st.button(f"🌐 Open {format_type.upper()} Report", use_container_width=True):
+                    self._auto_open_report(report_path)
+            
+            with col3:
+                if st.button("🔄 Generate New Report", use_container_width=True):
+                    # Reset state to show configuration again
+                    st.session_state.report_generated = False
+                    st.session_state.last_report_path = None
+                    st.rerun()
+            
+            # Preview for HTML
+            if format_type == "html":
+                self._show_html_preview(report_path)
+        
+        self._show_tips(format_type)
+    
+    def _show_html_preview(self, report_path):
+        """Show HTML preview with proper state management."""
+        st.subheader("Report Preview")
+        
+        # Use a unique key for the radio button to maintain state
+        preview_key = f"preview_option_{hash(report_path)}"
+        preview_option = st.radio(
+            "Preview type:",
+            ["Summary Only", "Full Report"],
+            index=0,
+            key=preview_key,
+            help="Summary shows key info, Full Report shows complete HTML content"
+        )
+        
+        try:
+            with open(report_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            if preview_option == "Summary Only":
+                self._show_html_summary(html_content, report_path)
+            else:
+                self._show_full_html_preview(html_content)
+                
+        except Exception as e:
+            st.error(f"Cannot display preview: {e}")
+            st.markdown(f"""
+            **Alternative options:**
+            - Use the **Download** button to save the report
+            - Use the **Open** button to view in your browser
+            - File location: `{report_path}`
+            """)
+    
+    def _show_html_summary(self, html_content, report_path):
+        """Show HTML summary information."""
+        st.write("**Report Summary:**")
+        
+        # Extract key information from HTML
+        import re
+        
+        # Try to extract title
+        title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_content, re.IGNORECASE)
+        if title_match:
+            st.write(f"📋 **Title:** {title_match.group(1)}")
+        
+        # Check for presence of sections
+        sections = []
+        if "Model Information" in html_content or "Informazioni Modello" in html_content:
+            sections.append("✅ Model Information")
+        if "Forecast" in html_content or "forecast" in html_content:
+            sections.append("✅ Forecast Analysis") 
+        if "Diagnostics" in html_content or "Diagnostica" in html_content:
+            sections.append("✅ Model Diagnostics")
+        if "table" in html_content.lower():
+            sections.append("✅ Data Tables")
+        if "img" in html_content.lower() or "plot" in html_content.lower():
+            sections.append("✅ Visualizations")
+        
+        if sections:
+            st.write("**Report Sections:**")
+            for section in sections:
+                st.write(f"- {section}")
+        
+        # File info
+        file_size = Path(report_path).stat().st_size / 1024
+        st.write(f"📁 **File Size:** {file_size:.1f} KB")
+        st.write(f"📂 **Location:** {report_path}")
+        
+        st.info("💡 Click 'Full Report' above to see the complete HTML preview")
+    
+    def _show_full_html_preview(self, html_content):
+        """Show full HTML preview."""
+        st.warning("⚠️ Large reports may take time to load. If preview is slow, use the download/open buttons instead.")
+        
+        # Limit HTML size for performance
+        max_size = 1024 * 1024 * 2  # 2MB limit
+        if len(html_content) > max_size:
+            st.warning("Report is very large. Showing truncated preview...")
+            html_content = html_content[:max_size] + "\n<!-- Content truncated for preview -->"
+        
+        st.components.v1.html(
+            html_content,
+            height=800,
+            scrolling=True
+        )
+    
+    def _show_tips(self, format_type):
+        """Show tips based on format type."""
+        st.subheader("💡 Tips")
+        if format_type == "html":
+            st.markdown("""
+            - HTML reports are interactive and work best for web viewing
+            - Share the HTML file for collaborative review
+            - Use browser print function to create PDF if needed
+            """)
+        elif format_type == "pdf":
+            st.markdown("""
+            - PDF reports are perfect for presentations and formal documentation
+            - Requires LaTeX installation for full functionality
+            - Best for printing and archival purposes
+            """)
+        elif format_type == "docx":
+            st.markdown("""
+            - DOCX reports can be edited in Microsoft Word
+            - Perfect for collaborative editing and custom formatting
+            - Requires pandoc for advanced features
+            """)
+    
+    def _show_troubleshooting(self, format_type):
+        """Show troubleshooting information."""
+        st.subheader("🔧 Troubleshooting")
+        if format_type == "pdf":
+            st.markdown("""
+            **PDF generation issues:**
+            - Install LaTeX: `winget install MiKTeX.MiKTeX` (Windows)
+            - Or try HTML format instead
+            """)
+        elif format_type == "docx":
+            st.markdown("""
+            **DOCX generation issues:**
+            - Install pandoc: `winget install --id JohnMacFarlane.Pandoc`
+            - Or try HTML format instead
+            """)
+        else:
+            st.markdown("""
+            **General issues:**
+            - Ensure model is properly trained
+            - Check that forecast data is available if including forecasts
+            - Try with minimal options (HTML format, basic settings)
+            """)
+        
+        # Show debug info
+        with st.expander("🔍 Debug Information"):
+            st.write("**Session State:**")
+            debug_info = {
+                "Data Loaded": st.session_state.get('data_loaded', False),
+                "Model Trained": st.session_state.get('model_trained', False), 
+                "Forecast Generated": st.session_state.get('forecast_generated', False),
+                "Report Generated": st.session_state.get('report_generated', False)
+            }
+            
+            if st.session_state.get('model_trained', False):
+                model = st.session_state.model
+                model_info = model.get_model_info()
+                debug_info.update({
+                    "Model Type": type(model).__name__,
+                    "Model Order": model_info.get('order', 'N/A'),
+                    "AIC": f"{model_info.get('aic', 0):.2f}",
+                    "BIC": f"{model_info.get('bic', 0):.2f}"
+                })
+            
+            st.json(debug_info)
 
 
 def main():
