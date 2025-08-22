@@ -1,5 +1,5 @@
 """
-Core ARIMA model implementation with enhanced functionality.
+Implementazione del modello ARIMA core con funzionalità avanzate.
 """
 
 import pandas as pd
@@ -15,15 +15,15 @@ from ..utils.exceptions import ModelTrainingError, ForecastError
 
 class ARIMAForecaster:
     """
-    Enhanced ARIMA forecaster with comprehensive functionality.
+    Previsore ARIMA avanzato con funzionalità complete.
     """
     
     def __init__(self, order: Tuple[int, int, int] = (1, 1, 1)):
         """
-        Initialize ARIMA forecaster.
+        Inizializza il previsore ARIMA.
         
         Args:
-            order: ARIMA order (p, d, q)
+            order: Ordine ARIMA (p, d, q)
         """
         self.order = order
         self.model = None
@@ -39,18 +39,18 @@ class ARIMAForecaster:
         **fit_kwargs
     ) -> 'ARIMAForecaster':
         """
-        Fit ARIMA model to time series data.
+        Addestra il modello ARIMA sui dati delle serie temporali.
         
         Args:
-            series: Time series data to fit
-            validate_input: Whether to validate input data
-            **fit_kwargs: Additional arguments for model fitting
+            series: Dati delle serie temporali da addestrare
+            validate_input: Se validare i dati di input
+            **fit_kwargs: Argomenti aggiuntivi per l'addestramento del modello
             
         Returns:
-            Self for method chaining
+            Self per concatenamento dei metodi
             
         Raises:
-            ModelTrainingError: If model training fails
+            ModelTrainingError: Se l'addestramento del modello fallisce
         """
         try:
             self.logger.info(f"Fitting ARIMA{self.order} model to {len(series)} observations")
@@ -58,7 +58,7 @@ class ARIMAForecaster:
             if validate_input:
                 self._validate_series(series)
             
-            # Store training data and metadata
+            # Memorizza i dati di addestramento e i metadati
             self.training_data = series.copy()
             self.training_metadata = {
                 'training_start': series.index.min(),
@@ -67,11 +67,11 @@ class ARIMAForecaster:
                 'order': self.order
             }
             
-            # Create and fit model
+            # Crea e addestra il modello
             self.model = ARIMA(series, order=self.order)
             self.fitted_model = self.model.fit(**fit_kwargs)
             
-            # Log model summary
+            # Registra il riepilogo del modello
             self.logger.info("Modello ARIMA addestrato con successo")
             self.logger.info(f"AIC: {self.fitted_model.aic:.2f}")
             self.logger.info(f"BIC: {self.fitted_model.bic:.2f}")
@@ -90,19 +90,19 @@ class ARIMAForecaster:
         return_conf_int: bool = False
     ) -> Union[pd.Series, Tuple[pd.Series, pd.DataFrame], Dict[str, Union[pd.Series, Dict[str, pd.Series]]]]:
         """
-        Generate forecasts from fitted model.
+        Genera previsioni dal modello addestrato.
         
         Args:
-            steps: Number of steps to forecast
-            confidence_intervals: Whether to calculate confidence intervals
-            alpha: Alpha level for confidence intervals (1-alpha = confidence level)
-            return_conf_int: Whether to return confidence intervals
+            steps: Numero di passi da prevedere
+            confidence_intervals: Se calcolare gli intervalli di confidenza
+            alpha: Livello alpha per gli intervalli di confidenza (1-alpha = livello di confidenza)
+            return_conf_int: Se restituire gli intervalli di confidenza
             
         Returns:
-            Forecast series, optionally with confidence intervals
+            Serie di previsioni, opzionalmente con intervalli di confidenza
             
         Raises:
-            ForecastError: If forecasting fails
+            ForecastError: Se la previsione fallisce
         """
         try:
             if self.fitted_model is None:
@@ -110,7 +110,7 @@ class ARIMAForecaster:
             
             self.logger.info(f"Generazione forecast a {steps} passi")
             
-            # Generate forecast
+            # Genera previsione
             if confidence_intervals:
                 forecast_result = self.fitted_model.forecast(
                     steps=steps, 
@@ -122,12 +122,12 @@ class ARIMAForecaster:
                 forecast_values = self.fitted_model.forecast(steps=steps)
                 conf_int = None
             
-            # Create forecast index
+            # Crea indice di previsione
             last_date = self.training_data.index[-1]
             if isinstance(last_date, pd.Timestamp):
                 freq = pd.infer_freq(self.training_data.index)
                 if freq is None:
-                    # Fallback: calculate frequency from first two dates
+                    # Fallback: calcola la frequenza dalle prime due date
                     freq = self.training_data.index[1] - self.training_data.index[0]
                     forecast_index = pd.date_range(
                         start=last_date + freq,
@@ -139,7 +139,7 @@ class ARIMAForecaster:
                         start=last_date,
                         periods=steps + 1,
                         freq=freq
-                    )[1:]  # Skip first element to avoid overlap
+                    )[1:]  # Salta il primo elemento per evitare sovrapposizioni
             else:
                 forecast_index = range(len(self.training_data), len(self.training_data) + steps)
             
@@ -147,13 +147,13 @@ class ARIMAForecaster:
             
             self.logger.info(f"Forecast generato: {forecast_series.iloc[0]:.2f} a {forecast_series.iloc[-1]:.2f}")
             
-            # Return format depends on parameters
+            # Il formato di ritorno dipende dai parametri
             if confidence_intervals and conf_int is not None:
                 conf_int.index = forecast_index
                 if return_conf_int:
                     return forecast_series, conf_int
                 else:
-                    # Return dictionary format for compatibility with examples
+                    # Restituisce formato dizionario per compatibilità con gli esempi
                     return {
                         'forecast': forecast_series,
                         'confidence_intervals': {
@@ -175,15 +175,15 @@ class ARIMAForecaster:
         dynamic: bool = False
     ) -> pd.Series:
         """
-        Generate in-sample and out-of-sample predictions.
+        Genera predizioni in-sample e out-of-sample.
         
         Args:
-            start: Start of prediction period
-            end: End of prediction period  
-            dynamic: Whether to use dynamic prediction
+            start: Inizio del periodo di predizione
+            end: Fine del periodo di predizione  
+            dynamic: Se usare la predizione dinamica
             
         Returns:
-            Series of predictions
+            Serie di predizioni
         """
         try:
             if self.fitted_model is None:
@@ -199,10 +199,10 @@ class ARIMAForecaster:
     
     def save(self, filepath: Union[str, Path]) -> None:
         """
-        Save fitted model to disk.
+        Salva il modello addestrato su disco.
         
         Args:
-            filepath: Path to save model
+            filepath: Percorso dove salvare il modello
         """
         try:
             if self.fitted_model is None:
@@ -211,10 +211,10 @@ class ARIMAForecaster:
             filepath = Path(filepath)
             filepath.parent.mkdir(parents=True, exist_ok=True)
             
-            # Save using statsmodels built-in method
+            # Salva usando il metodo built-in di statsmodels
             self.fitted_model.save(str(filepath))
             
-            # Also save metadata
+            # Salva anche i metadati
             metadata_path = filepath.with_suffix('.metadata.pkl')
             with open(metadata_path, 'wb') as f:
                 pickle.dump({
@@ -231,21 +231,21 @@ class ARIMAForecaster:
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> 'ARIMAForecaster':
         """
-        Load fitted model from disk.
+        Carica il modello addestrato dal disco.
         
         Args:
-            filepath: Path to saved model
+            filepath: Percorso del modello salvato
             
         Returns:
-            Loaded ARIMAForecaster instance
+            Istanza ARIMAForecaster caricata
         """
         try:
             filepath = Path(filepath)
             
-            # Load the fitted model
+            # Carica il modello addestrato
             fitted_model = ARIMAResults.load(str(filepath))
             
-            # Load metadata if available
+            # Carica i metadati se disponibili
             metadata_path = filepath.with_suffix('.metadata.pkl')
             if metadata_path.exists():
                 with open(metadata_path, 'rb') as f:
@@ -253,10 +253,10 @@ class ARIMAForecaster:
                 order = metadata.get('order', (1, 1, 1))
                 training_metadata = metadata.get('training_metadata', {})
             else:
-                order = (1, 1, 1)  # Default order
+                order = (1, 1, 1)  # Ordine di default
                 training_metadata = {}
             
-            # Create instance and populate
+            # Crea istanza e popola
             instance = cls(order=order)
             instance.fitted_model = fitted_model
             instance.training_metadata = training_metadata
@@ -272,10 +272,10 @@ class ARIMAForecaster:
     
     def get_model_info(self) -> Dict[str, Any]:
         """
-        Get comprehensive model information.
+        Ottiene informazioni complete sul modello.
         
         Returns:
-            Dictionary with model information
+            Dizionario con informazioni sul modello
         """
         if self.fitted_model is None:
             return {'status': 'not_fitted'}
@@ -296,13 +296,13 @@ class ARIMAForecaster:
     
     def _validate_series(self, series: pd.Series) -> None:
         """
-        Validate input time series.
+        Valida la serie temporale di input.
         
         Args:
-            series: Series to validate
+            series: Serie da validare
             
         Raises:
-            ModelTrainingError: If validation fails
+            ModelTrainingError: Se la validazione fallisce
         """
         if not isinstance(series, pd.Series):
             raise ModelTrainingError("L'input deve essere una pandas Series")
@@ -331,23 +331,23 @@ class ARIMAForecaster:
         forecast_steps: int = 12
     ) -> Path:
         """
-        Generate comprehensive Quarto report for the model analysis.
+        Genera report Quarto completo per l'analisi del modello.
         
         Args:
-            plots_data: Dictionary with plot file paths {'plot_name': 'path/to/plot.png'}
-            report_title: Custom title for the report
-            output_filename: Custom filename for the report
-            format_type: Output format ('html', 'pdf', 'docx')
-            include_diagnostics: Whether to include model diagnostics
-            include_forecast: Whether to include forecast analysis
-            forecast_steps: Number of steps to forecast for the report
+            plots_data: Dizionario con percorsi dei file di plot {'nome_plot': 'percorso/plot.png'}
+            report_title: Titolo personalizzato per il report
+            output_filename: Nome file personalizzato per il report
+            format_type: Formato di output ('html', 'pdf', 'docx')
+            include_diagnostics: Se includere i diagnostici del modello
+            include_forecast: Se includere l'analisi delle previsioni
+            forecast_steps: Numero di passi da prevedere per il report
             
         Returns:
-            Path to generated report
+            Percorso del report generato
             
         Raises:
-            ModelTrainingError: If model is not fitted
-            ForecastError: If report generation fails
+            ModelTrainingError: Se il modello non è addestrato
+            ForecastError: Se la generazione del report fallisce
         """
         try:
             from ..reporting import QuartoReportGenerator
@@ -356,11 +356,11 @@ class ARIMAForecaster:
             if self.fitted_model is None:
                 raise ModelTrainingError("Il modello deve essere addestrato prima di generare il report")
             
-            # Set default title
+            # Imposta titolo di default
             if report_title is None:
                 report_title = f"Analisi Modello ARIMA{self.order}"
             
-            # Collect model results
+            # Raccoglie i risultati del modello
             model_results = {
                 'model_type': 'ARIMA',
                 'order': self.order,
@@ -372,14 +372,14 @@ class ARIMAForecaster:
                 }
             }
             
-            # Add metrics if training data is available
+            # Aggiungi metriche se i dati di addestramento sono disponibili
             if self.training_data is not None and len(self.training_data) > 0:
                 evaluator = ModelEvaluator()
                 
-                # Get in-sample predictions for evaluation
+                # Ottiene predizioni in-sample per la valutazione
                 predictions = self.predict()
                 
-                # Calculate metrics
+                # Calcola metriche
                 if len(predictions) == len(self.training_data):
                     metrics = evaluator.calculate_forecast_metrics(
                         actual=self.training_data,
@@ -387,7 +387,7 @@ class ARIMAForecaster:
                     )
                     model_results['metrics'] = metrics
                 
-                # Add diagnostics if requested
+                # Aggiungi diagnostici se richiesto
                 if include_diagnostics:
                     try:
                         diagnostics = evaluator.evaluate_residuals(
@@ -397,7 +397,7 @@ class ARIMAForecaster:
                     except Exception as e:
                         self.logger.warning(f"Non è stato possibile calcolare i diagnostici: {e}")
             
-            # Add forecast if requested
+            # Aggiungi previsione se richiesto
             if include_forecast:
                 try:
                     forecast_result = self.forecast(
@@ -423,14 +423,14 @@ class ARIMAForecaster:
                 except Exception as e:
                     self.logger.warning(f"Non è stato possibile generare il forecast per il report: {e}")
             
-            # Add technical information
+            # Aggiungi informazioni tecniche
             model_results.update({
                 'python_version': f"{np.__version__}",
                 'environment': 'ARIMA Forecaster Library',
                 'generation_timestamp': pd.Timestamp.now().isoformat()
             })
             
-            # Generate report
+            # Genera report
             generator = QuartoReportGenerator()
             report_path = generator.generate_model_report(
                 model_results=model_results,

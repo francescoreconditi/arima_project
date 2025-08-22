@@ -1,5 +1,5 @@
 """
-Time series preprocessing utilities.
+Utility per il preprocessing di serie temporali.
 """
 
 import pandas as pd
@@ -13,7 +13,7 @@ from ..utils.exceptions import DataProcessingError
 
 class TimeSeriesPreprocessor:
     """
-    Comprehensive time series preprocessing utilities.
+    Utility complete per il preprocessing di serie temporali.
     """
     
     def __init__(self):
@@ -26,14 +26,14 @@ class TimeSeriesPreprocessor:
         method: str = 'interpolate'
     ) -> pd.Series:
         """
-        Handle missing values in time series.
+        Gestisce valori mancanti nelle serie temporali.
         
         Args:
-            series: Input time series
-            method: Method to handle missing values ('drop', 'interpolate', 'forward_fill', 'backward_fill')
+            series: Serie temporale di input
+            method: Metodo per gestire valori mancanti ('drop', 'interpolate', 'forward_fill', 'backward_fill')
             
         Returns:
-            Series with missing values handled
+            Serie con valori mancanti gestiti
         """
         self.logger.info(f"Gestione valori mancanti usando metodo: {method}")
         
@@ -48,7 +48,7 @@ class TimeSeriesPreprocessor:
         else:
             raise DataProcessingError(f"Metodo valori mancanti sconosciuto: {method}")
         
-        self.preprocessing_steps.append(f"Missing values handled: {method}")
+        self.preprocessing_steps.append(f"Valori mancanti gestiti: {method}")
         self.logger.info(f"Valori mancanti gestiti: {series.isnull().sum()} -> {result.isnull().sum()}")
         
         return result
@@ -60,15 +60,15 @@ class TimeSeriesPreprocessor:
         threshold: float = 3.0
     ) -> pd.Series:
         """
-        Remove outliers from time series.
+        Rimuove outlier dalle serie temporali.
         
         Args:
-            series: Input time series
-            method: Method for outlier detection ('iqr', 'zscore', 'modified_zscore')
-            threshold: Threshold for outlier detection
+            series: Serie temporale di input
+            method: Metodo per rilevamento outlier ('iqr', 'zscore', 'modified_zscore')
+            threshold: Soglia per rilevamento outlier
             
         Returns:
-            Series with outliers removed
+            Serie con outlier rimossi
         """
         self.logger.info(f"Rimozione outliers usando metodo: {method}")
         
@@ -96,7 +96,7 @@ class TimeSeriesPreprocessor:
         outliers_removed = (~mask).sum()
         result = series[mask]
         
-        self.preprocessing_steps.append(f"Outliers removed: {outliers_removed} using {method}")
+        self.preprocessing_steps.append(f"Outlier rimossi: {outliers_removed} usando {method}")
         self.logger.info(f"Outliers rimossi: {outliers_removed}")
         
         return result
@@ -107,19 +107,19 @@ class TimeSeriesPreprocessor:
         alpha: float = 0.05
     ) -> Dict[str, Any]:
         """
-        Check if time series is stationary using Augmented Dickey-Fuller test.
+        Controlla se la serie temporale è stazionaria usando il test Augmented Dickey-Fuller.
         
         Args:
-            series: Input time series
-            alpha: Significance level
+            series: Serie temporale di input
+            alpha: Livello di significatività
             
         Returns:
-            Dictionary with stationarity test results
+            Dizionario con risultati del test di stazionarietà
         """
         self.logger.info("Verifica stazionarietà usando test ADF")
         
         try:
-            # Remove any infinite or NaN values for the test
+            # Rimuove valori infiniti o NaN per il test
             clean_series = series.replace([np.inf, -np.inf], np.nan).dropna()
             
             if len(clean_series) < 10:
@@ -152,15 +152,15 @@ class TimeSeriesPreprocessor:
         max_diff: int = 2
     ) -> Tuple[pd.Series, int]:
         """
-        Transform series to make it stationary.
+        Trasforma la serie per renderla stazionaria.
         
         Args:
-            series: Input time series
-            method: Method for making stationary ('difference', 'log_difference')
-            max_diff: Maximum number of differences to apply
+            series: Serie temporale di input
+            method: Metodo per rendere stazionaria ('difference', 'log_difference')
+            max_diff: Numero massimo di differenze da applicare
             
         Returns:
-            Tuple of (stationary series, number of differences applied)
+            Tupla di (serie stazionaria, numero di differenze applicate)
         """
         self.logger.info(f"Rendendo serie stazionaria usando metodo: {method}")
         
@@ -190,7 +190,7 @@ class TimeSeriesPreprocessor:
             
             n_diff += 1
             
-        self.preprocessing_steps.append(f"Made stationary: {n_diff} differences applied")
+        self.preprocessing_steps.append(f"Resa stazionaria: {n_diff} differenze applicate")
         self.logger.info(f"Applicate {n_diff} differenze per ottenere stazionarietà")
         
         return current_series, n_diff
@@ -206,19 +206,19 @@ class TimeSeriesPreprocessor:
         stationarity_method: str = 'difference'
     ) -> Tuple[pd.Series, Dict[str, Any]]:
         """
-        Complete preprocessing pipeline.
+        Pipeline di preprocessing completa.
         
         Args:
-            series: Input time series
-            handle_missing: Whether to handle missing values
-            missing_method: Method for handling missing values
-            remove_outliers_flag: Whether to remove outliers
-            outlier_method: Method for outlier removal
-            make_stationary_flag: Whether to make series stationary
-            stationarity_method: Method for making stationary
+            series: Serie temporale di input
+            handle_missing: Se gestire valori mancanti
+            missing_method: Metodo per gestire valori mancanti
+            remove_outliers_flag: Se rimuovere outlier
+            outlier_method: Metodo per rimozione outlier
+            make_stationary_flag: Se rendere la serie stazionaria
+            stationarity_method: Metodo per rendere stazionaria
             
         Returns:
-            Tuple of (processed series, preprocessing metadata)
+            Tupla di (serie elaborata, metadati preprocessing)
         """
         self.logger.info("Avvio pipeline preprocessing")
         self.preprocessing_steps = []
@@ -229,17 +229,17 @@ class TimeSeriesPreprocessor:
             'original_missing': series.isnull().sum()
         }
         
-        # Handle missing values
+        # Gestisce valori mancanti
         if handle_missing and result.isnull().any():
             result = self.handle_missing_values(result, missing_method)
         
-        # Remove outliers
+        # Rimuove outlier
         if remove_outliers_flag:
             original_length = len(result)
             result = self.remove_outliers(result, outlier_method)
             metadata['outliers_removed'] = original_length - len(result)
         
-        # Make stationary
+        # Rende stazionaria
         if make_stationary_flag:
             result, n_diff = self.make_stationary(result, stationarity_method)
             metadata['differencing_order'] = n_diff

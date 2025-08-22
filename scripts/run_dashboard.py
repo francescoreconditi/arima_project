@@ -1,5 +1,5 @@
 """
-Script to run the ARIMA Forecaster Streamlit dashboard.
+Script per eseguire la dashboard Streamlit di ARIMA Forecaster.
 """
 
 import subprocess
@@ -8,12 +8,12 @@ from pathlib import Path
 
 
 def main():
-    """Run the Streamlit dashboard."""
+    """Esegui la dashboard Streamlit."""
     
-    # Path to the dashboard main file
+    # Percorso al file principale della dashboard
     dashboard_path = Path(__file__).parent.parent / "src" / "arima_forecaster" / "dashboard" / "main.py"
     
-    # Run streamlit
+    # Esegui streamlit
     try:
         subprocess.run([
             sys.executable, "-m", "streamlit", "run", str(dashboard_path),
@@ -21,7 +21,7 @@ def main():
             "--server.address=localhost"
         ], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Error running Streamlit dashboard: {e}")
+        print(f"Errore nell'esecuzione della dashboard Streamlit: {e}")
         sys.exit(1)
 
 

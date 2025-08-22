@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-IoT Sensor Forecasting Example
+Esempio di Forecasting Sensori IoT
 
 Questo esempio dimostra l'applicazione di ARIMA per il forecasting di dati sensori IoT
 industriali. Include pattern tipici come cicli operativi, derive del sensore,
@@ -253,9 +253,9 @@ def main():
         alpha=0.7,
         linewidth=0.8,
     )
-    ax1.set_ylabel("Temperature (°C)", color="red")
+    ax1.set_ylabel("Temperatura (°C)", color="red")
     ax1.tick_params(axis="y", labelcolor="red")
-    ax1.set_title("🌡️ Multi-Sensor IoT Data Overview")
+    ax1.set_title("🌡️ Panoramica Dati IoT Multi-Sensore")
 
     ax1_twin = ax1.twinx()
     ax1_twin.plot(
@@ -266,7 +266,7 @@ def main():
         alpha=0.6,
         linewidth=0.8,
     )
-    ax1_twin.set_ylabel("Pressure (hPa)", color="blue")
+    ax1_twin.set_ylabel("Pressione (hPa)", color="blue")
     ax1_twin.tick_params(axis="y", labelcolor="blue")
 
     ax1.grid(True, alpha=0.3)
@@ -293,8 +293,8 @@ def main():
         label="95% CI",
     )
 
-    ax2.set_title("📊 Temperature Forecast Results")
-    ax2.set_ylabel("Temperature (°C)")
+    ax2.set_title("📊 Risultati Previsione Temperatura")
+    ax2.set_ylabel("Temperatura (°C)")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
 
@@ -314,8 +314,8 @@ def main():
         label=f"Anomalies ({vib_anomalies.sum()})",
     )
 
-    ax3.set_title("📳 Vibration Analysis with Anomalies")
-    ax3.set_ylabel("Vibration RMS (mm/s)")
+    ax3.set_title("📳 Analisi Vibrazioni con Anomalie")
+    ax3.set_ylabel("Vibrazione RMS (mm/s)")
     ax3.legend()
     ax3.grid(True, alpha=0.3)
 
@@ -331,7 +331,7 @@ def main():
         "o-",
         color="blue",
         linewidth=2,
-        label="Mean Temperature",
+        label="Temperatura Media",
     )
     ax4.fill_between(
         hourly_pattern.index,
@@ -342,9 +342,9 @@ def main():
         label="±1σ",
     )
 
-    ax4.set_title("🕐 Daily Temperature Pattern")
-    ax4.set_xlabel("Hour of Day")
-    ax4.set_ylabel("Temperature (°C)")
+    ax4.set_title("🕐 Pattern Temperatura Giornaliero")
+    ax4.set_xlabel("Ora del Giorno")
+    ax4.set_ylabel("Temperatura (°C)")
     ax4.set_xlim(0, 23)
     ax4.legend()
     ax4.grid(True, alpha=0.3)
@@ -354,7 +354,7 @@ def main():
 
     # Ultime 48 ore per contesto
     recent_data = temp_series[-192:]  # 48h * 4 punti/ora
-    ax5.plot(recent_data.index, recent_data, label="Recent Data", color="blue", alpha=0.7)
+    ax5.plot(recent_data.index, recent_data, label="Dati Recenti", color="blue", alpha=0.7)
 
     # Future forecast
     future_dates = pd.date_range(
@@ -365,7 +365,7 @@ def main():
         future_dates,
         future_forecast["forecast"],
         "s-",
-        label="24h Forecast",
+        label="Previsione 24h",
         color="purple",
         linewidth=2,
         markersize=3,
@@ -381,8 +381,8 @@ def main():
         label="95% CI",
     )
 
-    ax5.set_title("🚀 Next 24 Hours Operational Forecast")
-    ax5.set_ylabel("Temperature (°C)")
+    ax5.set_title("🚀 Previsione Operazionale Prossime 24 Ore")
+    ax5.set_ylabel("Temperatura (°C)")
     ax5.legend()
     ax5.grid(True, alpha=0.3)
     plt.setp(ax5.xaxis.get_majorticklabels(), rotation=45)
@@ -405,11 +405,11 @@ def main():
         color="red",
         s=30,
         alpha=0.8,
-        label=f"High Residuals ({high_residuals.sum()})",
+        label=f"Residui Elevati ({high_residuals.sum()})",
     )
 
-    ax6.set_title("📉 Forecast Residuals Analysis")
-    ax6.set_ylabel("Residuals (°C)")
+    ax6.set_title("📉 Analisi Residui Previsione")
+    ax6.set_ylabel("Residui (°C)")
     ax6.legend()
     ax6.grid(True, alpha=0.3)
     plt.setp(ax6.xaxis.get_majorticklabels(), rotation=45)
@@ -497,8 +497,8 @@ def main():
 
         report_path = model.generate_report(
             plots_data=plot_files,
-            report_title="Iot Sensor Forecasting Analysis",
-            output_filename="iot_sensor_forecasting_report",
+            report_title="Analisi Forecasting Sensori IoT",
+            output_filename="report_forecasting_sensori_iot",
             format_type="html",
             include_diagnostics=True,
             include_forecast=True,

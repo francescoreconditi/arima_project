@@ -1,5 +1,5 @@
 """
-Comprehensive visualization utilities for time series forecasting.
+Utility di visualizzazione complete per previsioni serie temporali.
 """
 
 import pandas as pd
@@ -12,27 +12,27 @@ from ..utils.logger import get_logger
 
 class ForecastPlotter:
     """
-    Advanced plotting utilities for time series analysis and forecasting.
+    Utility di plotting avanzate per analisi serie temporali e previsioni.
     """
     
     def __init__(self, style: str = 'seaborn-v0_8', figsize: Tuple[int, int] = (12, 8)):
         """
-        Initialize plotter with style settings.
+        Inizializza plotter con impostazioni di stile.
         
         Args:
-            style: Matplotlib style to use
-            figsize: Default figure size
+            style: Stile matplotlib da usare
+            figsize: Dimensione figura predefinita
         """
         self.logger = get_logger(__name__)
         self.default_figsize = figsize
         
-        # Set style
+        # Imposta stile
         try:
             plt.style.use(style)
         except:
-            self.logger.warning(f"Style '{style}' not available, using default")
+            self.logger.warning(f"Stile '{style}' non disponibile, uso predefinito")
             
-        # Set color palette
+        # Imposta palette colori
         self.colors = {
             'actual': '#2E86C1',
             'forecast': '#E74C3C', 
@@ -69,22 +69,22 @@ class ForecastPlotter:
         figsize = figsize or self.default_figsize
         fig, ax = plt.subplots(figsize=figsize)
         
-        # Plot historical data
+        # Traccia dati storici
         ax.plot(actual.index, actual.values, 
-               color=self.colors['actual'], linewidth=2, label='Historical Data')
+               color=self.colors['actual'], linewidth=2, label='Dati Storici')
         
-        # Plot forecast
+        # Traccia previsione
         ax.plot(forecast.index, forecast.values,
                color=self.colors['forecast'], linewidth=2, 
-               linestyle='--', label='Forecast')
+               linestyle='--', label='Previsione')
         
-        # Plot confidence intervals if provided
+        # Traccia intervalli di confidenza se forniti
         if confidence_intervals is not None:
             ax.fill_between(forecast.index,
                           confidence_intervals.iloc[:, 0],
                           confidence_intervals.iloc[:, 1],
                           color=self.colors['confidence'], alpha=0.3,
-                          label='Confidence Interval')
+                          label='Intervallo di Confidenza')
         
         # Formatting
         ax.set_title(title, fontsize=14, fontweight='bold')
@@ -95,7 +95,7 @@ class ForecastPlotter:
         if show_legend:
             ax.legend(loc='best', fontsize=10)
         
-        # Add vertical line at forecast start
+        # Aggiunge linea verticale all'inizio previsione
         if len(actual) > 0 and len(forecast) > 0:
             forecast_start = forecast.index[0]
             ax.axvline(x=forecast_start, color='gray', linestyle=':', alpha=0.5)
@@ -193,7 +193,7 @@ class ForecastPlotter:
         
         if save_path:
             fig.savefig(save_path, dpi=300, bbox_inches='tight')
-            self.logger.info(f"Residual plot saved to {save_path}")
+            self.logger.info(f"Grafico residui salvato in {save_path}")
         
         return fig
     
@@ -374,7 +374,7 @@ class ForecastPlotter:
         lags: int = 20, 
         title: str = 'ACF'
     ) -> None:
-        """Plot autocorrelation function."""
+        """Traccia funzione di autocorrelazione."""
         try:
             from statsmodels.tsa.stattools import acf
             
@@ -417,7 +417,7 @@ class ForecastPlotter:
         lags: int = 20, 
         title: str = 'PACF'
     ) -> None:
-        """Plot partial autocorrelation function."""
+        """Traccia funzione di autocorrelazione parziale."""
         try:
             from statsmodels.tsa.stattools import pacf
             
@@ -464,19 +464,19 @@ class ForecastPlotter:
         save_path: Optional[str] = None
     ) -> plt.Figure:
         """
-        Create comprehensive forecasting dashboard.
+        Crea dashboard completa di previsione.
         
         Args:
-            actual: Historical time series data
-            forecast: Forecast values  
-            residuals: Optional model residuals
-            confidence_intervals: Optional confidence intervals
-            metrics: Optional performance metrics
-            title: Dashboard title
-            save_path: Path to save figure
+            actual: Dati storici serie temporali
+            forecast: Valori previsti  
+            residuals: Residui modello opzionali
+            confidence_intervals: Intervalli di confidenza opzionali
+            metrics: Metriche performance opzionali
+            title: Titolo dashboard
+            save_path: Percorso per salvare figura
             
         Returns:
-            Matplotlib figure object
+            Oggetto figura matplotlib
         """
         fig = plt.figure(figsize=(16, 12))
         
@@ -492,9 +492,9 @@ class ForecastPlotter:
                            confidence_intervals.iloc[:, 0],
                            confidence_intervals.iloc[:, 1],
                            color=self.colors['confidence'], alpha=0.3,
-                           label='Confidence Interval')
+                           label='Intervallo di Confidenza')
         
-        # Add vertical line at forecast start
+        # Aggiunge linea verticale all'inizio previsione
         if len(forecast) > 0:
             ax1.axvline(x=forecast.index[0], color='gray', linestyle=':', alpha=0.5)
         

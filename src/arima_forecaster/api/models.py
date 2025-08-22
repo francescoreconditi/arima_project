@@ -1,5 +1,5 @@
 """
-Pydantic models for API request/response validation.
+Modelli Pydantic per validazione richieste/risposte API.
 """
 
 from typing import List, Optional, Dict, Any, Union, Tuple
@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 class TimeSeriesData(BaseModel):
-    """Time series data for model training."""
+    """Dati serie temporali per addestramento modello."""
     
     timestamps: List[str] = Field(..., description="List of timestamp strings")
     values: List[float] = Field(..., description="List of time series values")
@@ -31,7 +31,7 @@ class TimeSeriesData(BaseModel):
 
 
 class MultivariateTimeSeriesData(BaseModel):
-    """Multivariate time series data for VAR models."""
+    """Dati serie temporali multivariate per modelli VAR."""
     
     timestamps: List[str] = Field(..., description="List of timestamp strings")
     data: Dict[str, List[float]] = Field(..., description="Dictionary of variable names to values")
@@ -48,7 +48,7 @@ class MultivariateTimeSeriesData(BaseModel):
 
 
 class ARIMAOrder(BaseModel):
-    """ARIMA model order specification."""
+    """Specifica ordine modello ARIMA."""
     
     p: int = Field(..., ge=0, le=5, description="AR order")
     d: int = Field(..., ge=0, le=2, description="Differencing order")
@@ -56,7 +56,7 @@ class ARIMAOrder(BaseModel):
 
 
 class SARIMAOrder(BaseModel):
-    """SARIMA model order specification."""
+    """Specifica ordine modello SARIMA."""
     
     p: int = Field(..., ge=0, le=5, description="AR order")
     d: int = Field(..., ge=0, le=2, description="Differencing order")
@@ -68,7 +68,7 @@ class SARIMAOrder(BaseModel):
 
 
 class ModelTrainingRequest(BaseModel):
-    """Request for training a model."""
+    """Richiesta per addestramento modello."""
     
     data: TimeSeriesData
     model_type: str = Field(..., description="Type of model (arima, sarima)")
@@ -96,7 +96,7 @@ class ModelTrainingRequest(BaseModel):
 
 
 class VARTrainingRequest(BaseModel):
-    """Request for training a VAR model."""
+    """Richiesta per addestramento modello VAR."""
     
     data: MultivariateTimeSeriesData
     maxlags: Optional[int] = Field(None, ge=1, le=20, description="Maximum lags to consider")
@@ -110,7 +110,7 @@ class VARTrainingRequest(BaseModel):
 
 
 class ForecastRequest(BaseModel):
-    """Request for generating forecasts."""
+    """Richiesta per generazione previsioni."""
     
     model_id: str = Field(..., description="ID of the trained model")
     steps: int = Field(..., ge=1, le=100, description="Number of forecast steps")
@@ -119,7 +119,7 @@ class ForecastRequest(BaseModel):
 
 
 class ModelInfo(BaseModel):
-    """Information about a trained model."""
+    """Informazioni su modello addestrato."""
     
     model_id: str
     model_type: str
@@ -131,7 +131,7 @@ class ModelInfo(BaseModel):
 
 
 class ForecastResult(BaseModel):
-    """Forecast result."""
+    """Risultato previsione."""
     
     model_id: str
     forecast_timestamps: List[str]
@@ -143,7 +143,7 @@ class ForecastResult(BaseModel):
 
 
 class VARForecastResult(BaseModel):
-    """VAR forecast result."""
+    """Risultato previsione VAR."""
     
     model_id: str
     forecast_timestamps: List[str]
@@ -155,7 +155,7 @@ class VARForecastResult(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Error response."""
+    """Risposta errore."""
     
     error: str
     message: str
@@ -163,14 +163,14 @@ class ErrorResponse(BaseModel):
 
 
 class ModelListResponse(BaseModel):
-    """Response for listing models."""
+    """Risposta per elenco modelli."""
     
     models: List[ModelInfo]
     total: int
 
 
 class AutoSelectionRequest(BaseModel):
-    """Request for automatic model selection."""
+    """Richiesta per selezione automatica modello."""
     
     data: TimeSeriesData
     model_type: str = Field(..., description="Type of model (arima, sarima)")
@@ -191,7 +191,7 @@ class AutoSelectionRequest(BaseModel):
 
 
 class AutoSelectionResult(BaseModel):
-    """Result of automatic model selection."""
+    """Risultato selezione automatica modello."""
     
     best_model_id: str
     best_parameters: Dict[str, Any]
@@ -201,7 +201,7 @@ class AutoSelectionResult(BaseModel):
 
 
 class ModelDiagnosticsRequest(BaseModel):
-    """Request for model diagnostics."""
+    """Richiesta per diagnostica modello."""
     
     model_id: str = Field(..., description="ID of the trained model")
     include_residuals: bool = Field(default=True, description="Include residual analysis")
@@ -209,7 +209,7 @@ class ModelDiagnosticsRequest(BaseModel):
 
 
 class ModelDiagnostics(BaseModel):
-    """Model diagnostic results."""
+    """Risultati diagnostica modello."""
     
     model_id: str
     residual_stats: Optional[Dict[str, float]] = None
@@ -221,7 +221,7 @@ class ModelDiagnostics(BaseModel):
 
 
 class ReportGenerationRequest(BaseModel):
-    """Request for generating model report."""
+    """Richiesta per generazione report modello."""
     
     model_id: str = Field(..., description="ID of the trained model")
     report_title: Optional[str] = Field(default=None, description="Custom title for the report")
@@ -239,7 +239,7 @@ class ReportGenerationRequest(BaseModel):
 
 
 class ReportGenerationResponse(BaseModel):
-    """Response for report generation."""
+    """Risposta per generazione report."""
     
     model_id: str
     report_path: str

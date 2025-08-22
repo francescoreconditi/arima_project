@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Financial Time Series Forecasting Example
+Esempio di Forecasting Serie Temporali Finanziarie
 
 Questo esempio dimostra l'utilizzo di ARIMA per serie temporali finanziarie giornaliere.
 Include volatilità clustering, trend e pattern tipici dei mercati finanziari come
@@ -145,7 +145,7 @@ def main():
     
     # Selezione automatica modello su log-prices
     logger.info("🔍 Selezione automatica modello ARIMA su log-prices...")
-    # Use simple ARIMA model for financial data
+    # Usa modello ARIMA semplice per dati finanziari
     print("Utilizzo modello ARIMA(2,1,2) per dati finanziari...")
     best_order = (2, 1, 2)
     seasonal_order = None
@@ -167,7 +167,7 @@ def main():
         alpha=0.05
     )
     
-    # Converti back a price level
+    # Converti di nuovo a livello prezzi
     forecast_prices = np.exp(log_forecast_result['forecast'])
     forecast_lower = np.exp(log_forecast_result['confidence_intervals']['lower'])
     forecast_upper = np.exp(log_forecast_result['confidence_intervals']['upper'])
@@ -190,7 +190,7 @@ def main():
     print(f"  📉 MAE: ${metrics['mae']:.2f}")
     print(f"  🎯 RMSE: ${metrics['rmse']:.2f}")
     
-    # Check for R² score with different possible key names
+    # Controlla punteggio R² con diversi nomi chiave possibili
     if 'r2_score' in metrics:
         print(f"  📊 R²: {metrics['r2_score']:.3f}")
     elif 'r_squared' in metrics:
@@ -226,8 +226,8 @@ def main():
                      forecast_result['confidence_intervals']['upper'],
                      color='red', alpha=0.2, label='95% CI')
     
-    plt.title('📊 Financial Time Series - Price Forecast')
-    plt.ylabel('Stock Price ($)')
+    plt.title('📊 Serie Temporali Finanziarie - Previsione Prezzi')
+    plt.ylabel('Prezzo Azione ($)')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.xticks(rotation=45)
@@ -244,7 +244,7 @@ def main():
                      color='red', alpha=0.2, label='95% CI')
     
     plt.title('🎯 Test Period Performance')
-    plt.ylabel('Stock Price ($)')
+    plt.ylabel('Prezzo Azione ($)')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.xticks(rotation=45)
@@ -259,8 +259,8 @@ def main():
     plt.plot(forecast_returns.index, forecast_returns, 
              's-', label='Forecast Returns', color='red', alpha=0.7, markersize=2)
     
-    plt.title('📈 Returns Comparison')
-    plt.ylabel('Daily Returns')
+    plt.title('📈 Confronto Returns')
+    plt.ylabel('Returns Giornalieri')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.xticks(rotation=45)
@@ -273,8 +273,8 @@ def main():
     plt.plot(actual_vol.index, actual_vol, label='Actual Volatility (20d)', color='green')
     plt.plot(forecast_vol.index, forecast_vol, label='Forecast Volatility (20d)', color='red')
     
-    plt.title('📊 Rolling Volatility (20 days)')
-    plt.ylabel('Volatility')
+    plt.title('📊 Volatilità Mobile (20 giorni)')
+    plt.ylabel('Volatilità')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.xticks(rotation=45)
@@ -300,7 +300,7 @@ def main():
                      color='purple', alpha=0.2, label='95% CI')
     
     plt.title('🚀 Future 30-Day Forecast')
-    plt.ylabel('Stock Price ($)')
+    plt.ylabel('Prezzo Azione ($)')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.xticks(rotation=45)
@@ -314,7 +314,7 @@ def main():
     plt.axhline(y=-residuals.std(), color='red', linestyle='--', alpha=0.5, label='-1σ')
     
     plt.title('📉 Forecast Residuals')
-    plt.ylabel('Residuals ($)')
+    plt.ylabel('Residui ($)')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.xticks(rotation=45)
@@ -327,7 +327,7 @@ def main():
     logger.info("📁 Plot salvato in outputs/plots/financial_forecast.png")
     
     # plt.show()  # Disabled for Windows compatibility
-    print("Plot saved as 'outputs/plots/financial_forecast.png'")
+    print("Plot salvato come 'outputs/plots/financial_forecast.png'")
     
     # Financial insights
     print(f"\n💼 Financial Insights:")
@@ -372,8 +372,8 @@ def main():
         
         report_path = model.generate_report(
             plots_data=plot_files,
-            report_title="Financial Time Series Analysis",
-            output_filename="financial_time_series_report",
+            report_title="Analisi Serie Temporali Finanziarie",
+            output_filename="report_serie_temporali_finanziarie",
             format_type="html",
             include_diagnostics=True,
             include_forecast=True,

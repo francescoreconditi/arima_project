@@ -1,12 +1,12 @@
 """
-Comprehensive showcase of advanced ARIMA forecasting features.
+Dimostrazione completa delle funzionalità avanzate di forecasting ARIMA.
 
-This script demonstrates:
-- SARIMA models with seasonal support
-- Multivariate VAR models
-- Auto-ML hyperparameter optimization
+Questo script dimostra:
+- Modelli SARIMA con supporto stagionale
+- Modelli VAR multivariati
+- Ottimizzazione iperparametri Auto-ML
 - Ensemble forecasting
-- Model comparison and evaluation
+- Confronto e valutazione modelli
 """
 
 import sys
@@ -14,12 +14,12 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend for Windows
+matplotlib.use('Agg')  # Backend non-interattivo per Windows
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
 
-# Add src to path
+# Aggiungi src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from arima_forecaster import (
@@ -33,34 +33,34 @@ from utils import get_plots_path, get_models_path, get_reports_path
 
 
 def generate_sample_data():
-    """Generate sample time series data for demonstration."""
-    print("📊 Generating sample datasets...")
+    """Genera dati di serie temporali di esempio per la dimostrazione."""
+    print("📊 Generazione dataset di esempio...")
     
-    # Univariate time series with trend, seasonality, and noise
+    # Serie temporale univariata con trend, stagionalità e rumore
     dates = pd.date_range('2018-01-01', '2023-12-31', freq='M')
     n = len(dates)
     
-    # Base trend
+    # Trend di base
     trend = np.linspace(100, 200, n)
     
-    # Seasonal component (yearly cycle)
+    # Componente stagionale (ciclo annuale)
     seasonal = 15 * np.sin(2 * np.pi * np.arange(n) / 12)
     
-    # Random walk component
+    # Componente random walk
     np.random.seed(42)
     random_walk = np.cumsum(np.random.normal(0, 2, n))
     
-    # Noise
+    # Rumore
     noise = np.random.normal(0, 3, n)
     
-    # Combine components
+    # Combina componenti
     univariate_series = pd.Series(
         trend + seasonal + random_walk + noise,
         index=dates,
         name='sales'
     )
     
-    # Multivariate data (e.g., sales, marketing spend, competitor index)
+    # Dati multivariati (es. vendite, spesa marketing, indice competitor)
     marketing_spend = 50 + 0.3 * trend + 5 * np.sin(2 * np.pi * np.arange(n) / 12) + np.random.normal(0, 5, n)
     competitor_index = 80 + 0.1 * trend - 3 * np.sin(2 * np.pi * np.arange(n) / 12) + np.random.normal(0, 4, n)
     
@@ -70,19 +70,19 @@ def generate_sample_data():
         'competitor_index': competitor_index
     }, index=dates)
     
-    print(f"✅ Generated univariate series: {len(univariate_series)} observations")
-    print(f"✅ Generated multivariate data: {multivariate_data.shape[0]} × {multivariate_data.shape[1]}")
+    print(f"✅ Serie univariata generata: {len(univariate_series)} osservazioni")
+    print(f"✅ Dati multivariati generati: {multivariate_data.shape[0]} × {multivariate_data.shape[1]}")
     
     return univariate_series, multivariate_data
 
 
 def demonstrate_sarima_models(data):
-    """Demonstrate SARIMA models with seasonal support."""
-    print("\n🌊 SARIMA Models with Seasonal Support")
+    """Dimostra modelli SARIMA con supporto stagionale."""
+    print("\n🌊 Modelli SARIMA con Supporto Stagionale")
     print("=" * 50)
     
-    # Manual SARIMA specification
-    print("\n1. Manual SARIMA Model (1,1,1)(1,1,1,12)")
+    # Specifica SARIMA manuale
+    print("\n1. Modello SARIMA Manuale (1,1,1)(1,1,1,12)")
     sarima_manual = SARIMAForecaster(
         order=(1, 1, 1),
         seasonal_order=(1, 1, 1, 12)
@@ -95,10 +95,10 @@ def demonstrate_sarima_models(data):
     
     # Generate forecast
     forecast, conf_int = sarima_manual.forecast(steps=12, return_conf_int=True)
-    print(f"   12-month forecast range: {forecast.min():.2f} to {forecast.max():.2f}")
+    print(f"   Range previsione 12 mesi: {forecast.min():.2f} a {forecast.max():.2f}")
     
-    # Automatic SARIMA selection
-    print("\n2. Automatic SARIMA Model Selection")
+    # Selezione SARIMA automatica
+    print("\n2. Selezione Automatica Modello SARIMA")
     sarima_selector = SARIMAModelSelector(
         p_range=(0, 2),
         d_range=(0, 2),
@@ -113,28 +113,28 @@ def demonstrate_sarima_models(data):
     sarima_selector.search(data, verbose=False)
     best_sarima = sarima_selector.get_best_model()
     
-    print(f"   Best SARIMA order: {sarima_selector.best_order}")
-    print(f"   Best seasonal order: {sarima_selector.best_seasonal_order}")
+    print(f"   Ordine SARIMA migliore: {sarima_selector.best_order}")
+    print(f"   Ordine stagionale migliore: {sarima_selector.best_seasonal_order}")
     
     best_info = best_sarima.get_model_info()
-    print(f"   Best AIC: {best_info['aic']:.2f}")
+    print(f"   AIC migliore: {best_info['aic']:.2f}")
     
-    # Seasonal decomposition
-    print("\n3. Seasonal Decomposition")
+    # Decomposizione stagionale
+    print("\n3. Decomposizione Stagionale")
     decomposition = best_sarima.get_seasonal_decomposition()
-    print(f"   Trend component range: {decomposition['trend'].min():.2f} to {decomposition['trend'].max():.2f}")
-    print(f"   Seasonal component range: {decomposition['seasonal'].min():.2f} to {decomposition['seasonal'].max():.2f}")
+    print(f"   Range componente trend: {decomposition['trend'].min():.2f} a {decomposition['trend'].max():.2f}")
+    print(f"   Range componente stagionale: {decomposition['seasonal'].min():.2f} a {decomposition['seasonal'].max():.2f}")
     
     return best_sarima
 
 
 def demonstrate_var_models(data):
-    """Demonstrate Vector Autoregression (VAR) models."""
-    print("\n📈 Vector Autoregression (VAR) Models")
+    """Dimostra modelli Vector Autoregression (VAR)."""
+    print("\n📈 Modelli Vector Autoregression (VAR)")
     print("=" * 50)
     
-    # First fit the VAR model to check stationarity
-    print("\n1. Stationarity Analysis")
+    # Prima adatta il modello VAR per controllare la stazionarietà
+    print("\n1. Analisi di Stazionarietà")
     var_model = VARForecaster(maxlags=4)
     var_model.fit(data)  # Fit first so we can check stationarity
     
@@ -144,37 +144,37 @@ def demonstrate_var_models(data):
         status = "✅" if result.get('is_stationary', False) else "❌"
         print(f"   {variable}: {status} (p-value: {result.get('p_value', 'N/A'):.4f})")
     
-    # Make data stationary if needed
-    stationary_data = data.diff().dropna()  # First difference
+    # Rendi i dati stazionari se necessario
+    stationary_data = data.diff().dropna()  # Prima differenza
     
-    # Fit VAR model with automatic lag selection on stationary data
-    print("\n2. VAR Model with Automatic Lag Selection")
+    # Adatta modello VAR con selezione automatica lag su dati stazionari
+    print("\n2. Modello VAR con Selezione Automatica Lag")
     var_model = VARForecaster(ic='aic')
     var_model.fit(stationary_data)
     
     model_info = var_model.get_model_info()
-    print(f"   Selected lag order: {model_info['lag_order']}")
+    print(f"   Ordine lag selezionato: {model_info['lag_order']}")
     print(f"   AIC: {model_info['aic']:.2f}")
     print(f"   BIC: {model_info['bic']:.2f}")
     
-    # Generate VAR forecast
-    print("\n3. VAR Forecasting")
+    # Genera previsione VAR
+    print("\n3. Previsione VAR")
     var_forecast = var_model.forecast(steps=6, alpha=0.05)
     
     forecast_df = var_forecast['forecast']
-    print(f"   6-period forecast generated for {len(forecast_df.columns)} variables")
+    print(f"   Previsione 6 periodi generata per {len(forecast_df.columns)} variabili")
     
     for var in forecast_df.columns:
         forecast_range = f"{forecast_df[var].min():.2f} to {forecast_df[var].max():.2f}"
-        print(f"   {var} forecast range: {forecast_range}")
+        print(f"   Range previsione {var}: {forecast_range}")
     
-    # Impulse Response Functions
-    print("\n4. Impulse Response Analysis")
+    # Funzioni di Risposta all'Impulso
+    print("\n4. Analisi di Risposta all'Impulso")
     try:
         irf = var_model.impulse_response(periods=10)
-        print(f"   IRF calculated for {irf.shape[1]} variable combinations")
+        print(f"   IRF calcolata per {irf.shape[1]} combinazioni di variabili")
         
-        # Example: Sales response to marketing spend shock
+        # Esempio: Risposta vendite a shock spesa marketing
         if 'sales' in data.columns and 'marketing_spend' in data.columns:
             sales_response = var_model.impulse_response(
                 periods=10,
@@ -182,13 +182,13 @@ def demonstrate_var_models(data):
                 response='sales'
             )
             max_response = sales_response.max()
-            print(f"   Max sales response to marketing shock: {max_response:.4f}")
+            print(f"   Massima risposta vendite a shock marketing: {max_response:.4f}")
         
     except Exception as e:
-        print(f"   IRF analysis failed: {e}")
+        print(f"   Analisi IRF fallita: {e}")
     
-    # Granger Causality Test
-    print("\n5. Granger Causality Tests")
+    # Test di Causalità di Granger
+    print("\n5. Test di Causalità di Granger")
     try:
         if 'sales' in data.columns and len(data.columns) > 1:
             other_vars = [col for col in data.columns if col != 'sales']
@@ -199,42 +199,42 @@ def demonstrate_var_models(data):
                 print(f"   {test}: {significance} (p-value: {result['p_value']:.4f})")
                 
     except Exception as e:
-        print(f"   Granger causality tests failed: {e}")
+        print(f"   Test causalità Granger falliti: {e}")
     
     return var_model
 
 
 def demonstrate_automl_optimization(data):
-    """Demonstrate Auto-ML hyperparameter optimization."""
-    print("\n🤖 Auto-ML Hyperparameter Optimization")
+    """Dimostra ottimizzazione iperparametri Auto-ML."""
+    print("\n🤖 Ottimizzazione Iperparametri Auto-ML")
     print("=" * 50)
     
-    # Single-objective optimization with different algorithms
-    print("\n1. Single-Objective Optimization Comparison")
+    # Ottimizzazione single-objective con algoritmi diversi
+    print("\n1. Confronto Ottimizzazione Single-Objective")
     
-    algorithms = ['optuna']  # Focus on Optuna as it's most likely to be available
+    algorithms = ['optuna']  # Focus su Optuna perché è più probabile che sia disponibile
     results = {}
     
     for algorithm in algorithms:
         try:
-            print(f"\n   Testing {algorithm.upper()}:")
+            print(f"\n   Test {algorithm.upper()}:")
             
             if algorithm == 'optuna':
                 optimizer = ARIMAOptimizer(objective_metric='aic')
                 result = optimizer.optimize_optuna(data, n_trials=20)
             
             results[algorithm] = result
-            print(f"   ✅ Best parameters: {result['best_params']}")
-            print(f"   ✅ Best score: {result['best_score']:.2f}")
-            print(f"   ✅ Trials completed: {result.get('n_trials', 'N/A')}")
+            print(f"   ✅ Parametri migliori: {result['best_params']}")
+            print(f"   ✅ Punteggio migliore: {result['best_score']:.2f}")
+            print(f"   ✅ Trial completati: {result.get('n_trials', 'N/A')}")
             
         except ImportError as e:
-            print(f"   ❌ {algorithm} not available: {e}")
+            print(f"   ❌ {algorithm} non disponibile: {e}")
         except Exception as e:
-            print(f"   ❌ {algorithm} failed: {e}")
+            print(f"   ❌ {algorithm} fallito: {e}")
     
-    # Multi-objective optimization
-    print("\n2. Multi-Objective Optimization")
+    # Ottimizzazione multi-objective
+    print("\n2. Ottimizzazione Multi-Objective")
     try:
         tuner = HyperparameterTuner(
             objective_metrics=['aic', 'bic'],
@@ -245,22 +245,22 @@ def demonstrate_automl_optimization(data):
             'arima', data, n_trials=15
         )
         
-        print(f"   ✅ Pareto-optimal solutions found: {multi_result['n_pareto_solutions']}")
+        print(f"   ✅ Soluzioni Pareto-ottimali trovate: {multi_result['n_pareto_solutions']}")
         
         if multi_result['best_solution']:
             best_params = multi_result['best_solution']['params']
-            print(f"   ✅ Best compromise solution: {best_params}")
+            print(f"   ✅ Soluzione di compromesso migliore: {best_params}")
             
-            # Show scores for multiple objectives
+            # Mostra punteggi per obiettivi multipli
             scores = multi_result['best_solution']['scores']
             for metric, score in scores.items():
                 print(f"      {metric.upper()}: {score:.2f}")
         
     except Exception as e:
-        print(f"   ❌ Multi-objective optimization failed: {e}")
+        print(f"   ❌ Ottimizzazione multi-objective fallita: {e}")
     
-    # Ensemble optimization
-    print("\n3. Ensemble Model Creation")
+    # Ottimizzazione ensemble
+    print("\n3. Creazione Modello Ensemble")
     try:
         ensemble_result = tuner.ensemble_optimization(
             'arima', data, n_models=3, diversity_threshold=0.2
@@ -269,20 +269,20 @@ def demonstrate_automl_optimization(data):
         n_models = ensemble_result['n_models']
         diversity = ensemble_result['diversity_metrics']
         
-        print(f"   ✅ Ensemble created with {n_models} models")
-        print(f"   ✅ Average diversity: {diversity['avg_diversity']:.3f}")
-        print(f"   ✅ Ensemble score: {ensemble_result['ensemble_score']:.2f}")
+        print(f"   ✅ Ensemble creato con {n_models} modelli")
+        print(f"   ✅ Diversità media: {diversity['avg_diversity']:.3f}")
+        print(f"   ✅ Punteggio ensemble: {ensemble_result['ensemble_score']:.2f}")
         
-        # Generate ensemble forecast
+        # Genera previsione ensemble
         ensemble_forecast = tuner.forecast_ensemble(steps=6, method='weighted')
-        print(f"   ✅ Ensemble forecast generated (6 steps)")
-        print(f"      Forecast range: {ensemble_forecast['forecast'].min():.2f} to {ensemble_forecast['forecast'].max():.2f}")
+        print(f"   ✅ Previsione ensemble generata (6 passi)")
+        print(f"      Range previsione: {ensemble_forecast['forecast'].min():.2f} a {ensemble_forecast['forecast'].max():.2f}")
         
     except Exception as e:
-        print(f"   ❌ Ensemble optimization failed: {e}")
+        print(f"   ❌ Ottimizzazione ensemble fallita: {e}")
     
-    # Adaptive optimization
-    print("\n4. Adaptive Optimization")
+    # Ottimizzazione adattiva
+    print("\n4. Ottimizzazione Adattiva")
     try:
         adaptive_result = tuner.adaptive_optimization(
             'arima', data, max_iterations=5, improvement_threshold=0.01
@@ -292,36 +292,36 @@ def demonstrate_automl_optimization(data):
         final_score = adaptive_result['final_score']
         converged = adaptive_result['converged']
         
-        print(f"   ✅ Completed {iterations} iterations")
-        print(f"   ✅ Final score: {final_score:.2f}")
-        print(f"   ✅ Converged: {'Yes' if converged else 'No'}")
+        print(f"   ✅ Completate {iterations} iterazioni")
+        print(f"   ✅ Punteggio finale: {final_score:.2f}")
+        print(f"   ✅ Convergenza: {'Sì' if converged else 'No'}")
         
         if adaptive_result['best_iteration']:
             best_iter = adaptive_result['best_iteration']
-            print(f"   ✅ Best iteration: {best_iter['iteration']} (score: {best_iter['score']:.2f})")
+            print(f"   ✅ Iterazione migliore: {best_iter['iteration']} (punteggio: {best_iter['score']:.2f})")
         
     except Exception as e:
-        print(f"   ❌ Adaptive optimization failed: {e}")
+        print(f"   ❌ Ottimizzazione adattiva fallita: {e}")
     
     return results
 
 
 def comprehensive_model_comparison(data):
-    """Compare all model types comprehensively."""
-    print("\n🏆 Comprehensive Model Comparison")
+    """Confronta tutti i tipi di modello in modo completo."""
+    print("\n🏆 Confronto Completo Modelli")
     print("=" * 50)
     
     models = {}
     
-    # Prepare train/test split
+    # Prepara split train/test
     split_point = int(0.8 * len(data))
     train_data = data[:split_point]
     test_data = data[split_point:]
     
-    print(f"\nTraining on {len(train_data)} observations, testing on {len(test_data)} observations")
+    print(f"\nTraining su {len(train_data)} osservazioni, test su {len(test_data)} osservazioni")
     
-    # 1. Basic ARIMA
-    print("\n1. Basic ARIMA Model")
+    # 1. ARIMA Base
+    print("\n1. Modello ARIMA Base")
     try:
         arima = ARIMAForecaster(order=(2, 1, 2))
         arima.fit(train_data)
@@ -338,10 +338,10 @@ def comprehensive_model_comparison(data):
         print(f"   ✅ MSE: {arima_mse:.2f}, AIC: {models['ARIMA']['aic']:.2f}")
         
     except Exception as e:
-        print(f"   ❌ ARIMA failed: {e}")
+        print(f"   ❌ ARIMA fallito: {e}")
     
-    # 2. SARIMA Model
-    print("\n2. SARIMA Model")
+    # 2. Modello SARIMA
+    print("\n2. Modello SARIMA")
     try:
         sarima = SARIMAForecaster(
             order=(1, 1, 1),
@@ -361,10 +361,10 @@ def comprehensive_model_comparison(data):
         print(f"   ✅ MSE: {sarima_mse:.2f}, AIC: {models['SARIMA']['aic']:.2f}")
         
     except Exception as e:
-        print(f"   ❌ SARIMA failed: {e}")
+        print(f"   ❌ SARIMA fallito: {e}")
     
-    # 3. Auto-optimized ARIMA
-    print("\n3. Auto-Optimized ARIMA")
+    # 3. ARIMA Auto-ottimizzato
+    print("\n3. ARIMA Auto-Ottimizzato")
     try:
         optimizer = ARIMAOptimizer(objective_metric='aic')
         opt_result = optimizer.optimize_optuna(train_data, n_trials=15)
@@ -380,13 +380,13 @@ def comprehensive_model_comparison(data):
             'aic': opt_result['best_score']
         }
         print(f"   ✅ MSE: {opt_mse:.2f}, AIC: {models['Auto-ARIMA']['aic']:.2f}")
-        print(f"      Best parameters: {opt_result['best_params']}")
+        print(f"      Parametri migliori: {opt_result['best_params']}")
         
     except Exception as e:
-        print(f"   ❌ Auto-ARIMA failed: {e}")
+        print(f"   ❌ Auto-ARIMA fallito: {e}")
     
-    # Model ranking
-    print("\n🏅 Model Ranking (by MSE):")
+    # Classifica modelli
+    print("\n🏅 Classifica Modelli (per MSE):")
     if models:
         ranked_models = sorted(models.items(), key=lambda x: x[1]['mse'])
         
@@ -398,8 +398,8 @@ def comprehensive_model_comparison(data):
 
 
 def create_visualization_dashboard(data, models):
-    """Create comprehensive visualization dashboard."""
-    print("\n📊 Creating Visualization Dashboard")
+    """Crea dashboard di visualizzazione completa."""
+    print("\n📊 Creazione Dashboard di Visualizzazione")
     print("=" * 50)
     
     try:
@@ -407,28 +407,28 @@ def create_visualization_dashboard(data, models):
         import matplotlib.dates as mdates
         
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle('ARIMA Forecasting Advanced Features Dashboard', fontsize=16, fontweight='bold')
+        fig.suptitle('Dashboard Funzionalità Avanzate ARIMA Forecasting', fontsize=16, fontweight='bold')
         
-        # Plot 1: Original data with trend
+        # Grafico 1: Dati originali con trend
         ax1 = axes[0, 0]
-        ax1.plot(data.index, data.values, 'b-', alpha=0.7, label='Original Data')
-        ax1.set_title('Time Series Data')
-        ax1.set_ylabel('Value')
+        ax1.plot(data.index, data.values, 'b-', alpha=0.7, label='Dati Originali')
+        ax1.set_title('Dati Serie Temporale')
+        ax1.set_ylabel('Valore')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
         
-        # Plot 2: Model comparison (if models available)
+        # Grafico 2: Confronto modelli (se modelli disponibili)
         ax2 = axes[0, 1]
         if models:
-            # Show last 24 months of data + forecasts
+            # Mostra ultimi 24 mesi di dati + previsioni
             recent_data = data[-24:]
-            ax2.plot(recent_data.index, recent_data.values, 'k-', label='Actual', linewidth=2)
+            ax2.plot(recent_data.index, recent_data.values, 'k-', label='Effettivo', linewidth=2)
             
             colors = ['red', 'green', 'orange', 'purple']
             for i, (name, info) in enumerate(models.items()):
                 if 'forecast' in info:
                     forecast = info['forecast']
-                    # Create forecast index
+                    # Crea indice previsione
                     last_date = data.index[-1]
                     freq = pd.infer_freq(data.index)
                     forecast_index = pd.date_range(
@@ -439,69 +439,69 @@ def create_visualization_dashboard(data, models):
                     
                     color = colors[i % len(colors)]
                     ax2.plot(forecast_index[:len(forecast)], forecast.values[:len(forecast_index)], 
-                            '--', color=color, label=f'{name} Forecast', alpha=0.8)
+                            '--', color=color, label=f'{name} Previsione', alpha=0.8)
         
-        ax2.set_title('Model Forecasts Comparison')
-        ax2.set_ylabel('Value')
+        ax2.set_title('Confronto Previsioni Modelli')
+        ax2.set_ylabel('Valore')
         ax2.legend()
         ax2.grid(True, alpha=0.3)
         
-        # Plot 3: Seasonal decomposition (if available)
+        # Grafico 3: Decomposizione stagionale (se disponibile)
         ax3 = axes[1, 0]
         try:
             from statsmodels.tsa.seasonal import seasonal_decompose
             decomposition = seasonal_decompose(data, model='additive', period=12)
-            ax3.plot(decomposition.seasonal[-48:], 'g-', label='Seasonal Component')
-            ax3.set_title('Seasonal Component (Last 4 Years)')
-            ax3.set_ylabel('Seasonal Effect')
+            ax3.plot(decomposition.seasonal[-48:], 'g-', label='Componente Stagionale')
+            ax3.set_title('Componente Stagionale (Ultimi 4 Anni)')
+            ax3.set_ylabel('Effetto Stagionale')
             ax3.legend()
             ax3.grid(True, alpha=0.3)
         except Exception:
-            ax3.text(0.5, 0.5, 'Seasonal decomposition\nnot available', 
+            ax3.text(0.5, 0.5, 'Decomposizione stagionale\nnon disponibile', 
                     ha='center', va='center', transform=ax3.transAxes)
-            ax3.set_title('Seasonal Analysis')
+            ax3.set_title('Analisi Stagionale')
         
-        # Plot 4: Model performance metrics
+        # Grafico 4: Metriche performance modelli
         ax4 = axes[1, 1]
         if models:
             model_names = list(models.keys())
             mse_values = [models[name]['mse'] for name in model_names]
             aic_values = [models[name]['aic'] for name in model_names]
             
-            # Normalize values for comparison
+            # Normalizza valori per confronto
             mse_norm = np.array(mse_values) / max(mse_values)
             aic_norm = np.array(aic_values) / max(aic_values)
             
             x = np.arange(len(model_names))
             width = 0.35
             
-            ax4.bar(x - width/2, mse_norm, width, label='MSE (normalized)', alpha=0.7)
-            ax4.bar(x + width/2, aic_norm, width, label='AIC (normalized)', alpha=0.7)
+            ax4.bar(x - width/2, mse_norm, width, label='MSE (normalizzato)', alpha=0.7)
+            ax4.bar(x + width/2, aic_norm, width, label='AIC (normalizzato)', alpha=0.7)
             
-            ax4.set_xlabel('Models')
-            ax4.set_ylabel('Normalized Score')
-            ax4.set_title('Model Performance Comparison')
+            ax4.set_xlabel('Modelli')
+            ax4.set_ylabel('Punteggio Normalizzato')
+            ax4.set_title('Confronto Performance Modelli')
             ax4.set_xticks(x)
             ax4.set_xticklabels(model_names, rotation=45)
             ax4.legend()
             ax4.grid(True, alpha=0.3)
         else:
-            ax4.text(0.5, 0.5, 'No model results\navailable', 
+            ax4.text(0.5, 0.5, 'Nessun risultato\nmodello disponibile', 
                     ha='center', va='center', transform=ax4.transAxes)
-            ax4.set_title('Model Performance')
+            ax4.set_title('Performance Modelli')
         
         plt.tight_layout()
         
-        # Save the plot
+        # Salva il grafico
         output_path = Path(__file__).parent.parent / "outputs" / "plots"
         output_path.mkdir(parents=True, exist_ok=True)
         
         plt.savefig(output_path / "advanced_forecasting_dashboard.png", 
                    dpi=300, bbox_inches='tight')
-        print(f"✅ Dashboard saved to: {output_path / 'advanced_forecasting_dashboard.png'}")
+        print(f"✅ Dashboard salvata in: {output_path / 'advanced_forecasting_dashboard.png'}")
         print("Grafico salvato come 'outputs/plots/advanced_forecast_showcase.png'")
         
-        # plt.show()  # Disabled for Windows compatibility
+        # plt.show()  # Disabilitato per compatibilità Windows
         
     except ImportError:
         print("❌ Matplotlib non disponibile per la visualizzazione")
@@ -510,7 +510,7 @@ def create_visualization_dashboard(data, models):
 
 
 def main():
-    """Main demonstration function."""
+    """Funzione principale di dimostrazione."""
     print("🚀 Dimostrazione Funzionalità Avanzate di ARIMA Forecaster")
     print("=" * 60)
     print("Questo script dimostra le funzionalità avanzate aggiunte alla libreria ARIMA:")
@@ -521,29 +521,29 @@ def main():
     print("• Confronto modelli completo")
     print("=" * 60)
     
-    # Generate sample data
+    # Genera dati di esempio
     univariate_data, multivariate_data = generate_sample_data()
     
-    # Demonstrate SARIMA models
+    # Dimostra modelli SARIMA
     best_sarima = demonstrate_sarima_models(univariate_data)
     
-    # Demonstrate VAR models
+    # Dimostra modelli VAR
     var_model = demonstrate_var_models(multivariate_data)
     
-    # Demonstrate Auto-ML optimization
+    # Dimostra ottimizzazione Auto-ML
     automl_results = demonstrate_automl_optimization(univariate_data)
     
-    # Comprehensive model comparison
+    # Confronto completo modelli
     model_comparison = comprehensive_model_comparison(univariate_data)
     
-    # Create visualization dashboard
+    # Crea dashboard visualizzazione
     create_visualization_dashboard(univariate_data, model_comparison)
     
-    print("\n✅ Advanced Features Showcase Complete!")
-    print("\nNext steps:")
-    print("• Run the API server: python scripts/run_api.py")
-    print("• Launch the dashboard: python scripts/run_dashboard.py")
-    print("• Check the generated plots in outputs/plots/")
+    print("\n✅ Dimostrazione Funzionalità Avanzate Completata!")
+    print("\nProssimi passi:")
+    print("• Avvia il server API: python scripts/run_api.py")
+    print("• Lancia la dashboard: python scripts/run_dashboard.py")
+    print("• Controlla i grafici generati in outputs/plots/")
     
     return {
         'univariate_data': univariate_data,

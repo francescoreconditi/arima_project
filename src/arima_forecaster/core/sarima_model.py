@@ -1,5 +1,5 @@
 """
-SARIMA model implementation with seasonal support.
+Implementazione del modello SARIMA con supporto stagionale.
 """
 
 import pandas as pd
@@ -15,7 +15,7 @@ from ..utils.exceptions import ModelTrainingError, ForecastError
 
 class SARIMAForecaster:
     """
-    SARIMA forecaster with seasonal support.
+    Previsore SARIMA con supporto stagionale.
     """
     
     def __init__(
@@ -25,12 +25,12 @@ class SARIMAForecaster:
         trend: Optional[str] = None
     ):
         """
-        Initialize SARIMA forecaster.
+        Inizializza il previsore SARIMA.
         
         Args:
-            order: Non-seasonal ARIMA order (p, d, q)
-            seasonal_order: Seasonal ARIMA order (P, D, Q, s)
-            trend: Trend parameter ('n', 'c', 't', 'ct')
+            order: Ordine ARIMA non stagionale (p, d, q)
+            seasonal_order: Ordine ARIMA stagionale (P, D, Q, s)
+            trend: Parametro di trend ('n', 'c', 't', 'ct')
         """
         self.order = order
         self.seasonal_order = seasonal_order
@@ -48,18 +48,18 @@ class SARIMAForecaster:
         **fit_kwargs
     ) -> 'SARIMAForecaster':
         """
-        Fit SARIMA model to time series data.
+        Addestra il modello SARIMA sui dati delle serie temporali.
         
         Args:
-            series: Time series data to fit
-            validate_input: Whether to validate input data
-            **fit_kwargs: Additional arguments for model fitting
+            series: Dati delle serie temporali da addestrare
+            validate_input: Se validare i dati di input
+            **fit_kwargs: Argomenti aggiuntivi per l'addestramento del modello
             
         Returns:
-            Self for method chaining
+            Self per concatenamento dei metodi
             
         Raises:
-            ModelTrainingError: If model training fails
+            ModelTrainingError: Se l'addestramento del modello fallisce
         """
         try:
             self.logger.info(
@@ -71,7 +71,7 @@ class SARIMAForecaster:
                 self._validate_series(series)
                 self._validate_seasonal_parameters(series)
             
-            # Store training data and metadata
+            # Memorizza i dati di addestramento e i metadati
             self.training_data = series.copy()
             self.training_metadata = {
                 'training_start': series.index.min(),
@@ -82,7 +82,7 @@ class SARIMAForecaster:
                 'trend': self.trend
             }
             
-            # Create and fit model
+            # Crea e addestra il modello
             self.model = SARIMAX(
                 series, 
                 order=self.order,
@@ -91,15 +91,15 @@ class SARIMAForecaster:
             )
             self.fitted_model = self.model.fit(**fit_kwargs)
             
-            # Log model summary
-            self.logger.info("SARIMA model fitted successfully")
+            # Registra il riepilogo del modello
+            self.logger.info("Modello SARIMA addestrato con successo")
             self.logger.info(f"AIC: {self.fitted_model.aic:.2f}")
             self.logger.info(f"BIC: {self.fitted_model.bic:.2f}")
             
             return self
             
         except Exception as e:
-            self.logger.error(f"SARIMA model fitting failed: {e}")
+            self.logger.error(f"Addestramento modello SARIMA fallito: {e}")
             raise ModelTrainingError(f"Impossibile addestrare il modello SARIMA: {e}")
     
     def forecast(
@@ -110,27 +110,27 @@ class SARIMAForecaster:
         return_conf_int: bool = False
     ) -> Union[pd.Series, Tuple[pd.Series, pd.DataFrame]]:
         """
-        Generate forecasts from fitted SARIMA model.
+        Genera previsioni dal modello SARIMA addestrato.
         
         Args:
-            steps: Number of steps to forecast
-            confidence_intervals: Whether to calculate confidence intervals
-            alpha: Alpha level for confidence intervals (1-alpha = confidence level)
-            return_conf_int: Whether to return confidence intervals
+            steps: Numero di passaggi da prevedere
+            confidence_intervals: Se calcolare gli intervalli di confidenza
+            alpha: Livello alpha per gli intervalli di confidenza (1-alpha = livello di confidenza)
+            return_conf_int: Se restituire gli intervalli di confidenza
             
         Returns:
-            Forecast series, optionally with confidence intervals
+            Serie di previsioni, opzionalmente con intervalli di confidenza
             
         Raises:
-            ForecastError: If forecasting fails
+            ForecastError: Se la previsione fallisce
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("SARIMA model must be fitted before forecasting")
+                raise ForecastError("Il modello SARIMA deve essere addestrato prima della previsione")
             
-            self.logger.info(f"Generating {steps}-step SARIMA forecast")
+            self.logger.info(f"Generazione previsione SARIMA a {steps} passaggi")
             
-            # Generate forecast
+            # Genera previsione
             forecast_result = self.fitted_model.get_forecast(steps=steps, alpha=alpha)
             forecast_values = forecast_result.predicted_mean
             
@@ -139,13 +139,13 @@ class SARIMAForecaster:
             else:
                 conf_int = None
             
-            # Create forecast index
+            # Crea indice previsione
             last_date = self.training_data.index[-1]
             if isinstance(last_date, pd.Timestamp):
                 freq = pd.infer_freq(self.training_data.index)
                 if freq:
                     try:
-                        # Convert string frequency to DateOffset and add to timestamp
+                        # Converte frequenza stringa in DateOffset e aggiunge al timestamp
                         freq_offset = pd.tseries.frequencies.to_offset(freq)
                         forecast_index = pd.date_range(
                             start=last_date + freq_offset,
@@ -153,14 +153,14 @@ class SARIMAForecaster:
                             freq=freq
                         )
                     except Exception:
-                        # Fallback: use daily frequency
+                        # Fallback: usa frequenza giornaliera
                         forecast_index = pd.date_range(
                             start=last_date + pd.Timedelta(days=1),
                             periods=steps,
                             freq='D'
                         )
                 else:
-                    # Fallback: use daily frequency if no frequency can be inferred
+                    # Fallback: usa frequenza giornaliera se non può essere inferita
                     forecast_index = pd.date_range(
                         start=last_date + pd.Timedelta(days=1),
                         periods=steps,
@@ -172,7 +172,7 @@ class SARIMAForecaster:
             forecast_series = pd.Series(forecast_values, index=forecast_index, name='forecast')
             
             self.logger.info(
-                f"SARIMA forecast generated: {forecast_series.iloc[0]:.2f} to {forecast_series.iloc[-1]:.2f}"
+                f"Previsione SARIMA generata: {forecast_series.iloc[0]:.2f} a {forecast_series.iloc[-1]:.2f}"
             )
             
             if return_conf_int and conf_int is not None:
@@ -182,7 +182,7 @@ class SARIMAForecaster:
                 return forecast_series
                 
         except Exception as e:
-            self.logger.error(f"SARIMA forecasting failed: {e}")
+            self.logger.error(f"Previsione SARIMA fallita: {e}")
             raise ForecastError(f"Impossibile generare il forecast SARIMA: {e}")
     
     def predict(
@@ -192,34 +192,34 @@ class SARIMAForecaster:
         dynamic: bool = False
     ) -> pd.Series:
         """
-        Generate in-sample and out-of-sample predictions.
+        Genera predizioni in-sample e out-of-sample.
         
         Args:
-            start: Start of prediction period
-            end: End of prediction period  
-            dynamic: Whether to use dynamic prediction
+            start: Inizio del periodo di predizione
+            end: Fine del periodo di predizione  
+            dynamic: Se usare predizione dinamica
             
         Returns:
-            Series of predictions
+            Serie di predizioni
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("SARIMA model must be fitted before prediction")
+                raise ForecastError("Il modello SARIMA deve essere addestrato prima della predizione")
             
             predictions = self.fitted_model.predict(start=start, end=end, dynamic=dynamic)
             
             return predictions
             
         except Exception as e:
-            self.logger.error(f"SARIMA prediction failed: {e}")
+            self.logger.error(f"Predizione SARIMA fallita: {e}")
             raise ForecastError(f"Impossibile generare le predizioni SARIMA: {e}")
     
     def save(self, filepath: Union[str, Path]) -> None:
         """
-        Save fitted SARIMA model to disk.
+        Salva il modello SARIMA addestrato su disco.
         
         Args:
-            filepath: Path to save model
+            filepath: Percorso per salvare il modello
         """
         try:
             if self.fitted_model is None:
@@ -228,10 +228,10 @@ class SARIMAForecaster:
             filepath = Path(filepath)
             filepath.parent.mkdir(parents=True, exist_ok=True)
             
-            # Save using statsmodels built-in method
+            # Salva usando il metodo integrato di statsmodels
             self.fitted_model.save(str(filepath))
             
-            # Also save metadata
+            # Salva anche i metadati
             metadata_path = filepath.with_suffix('.metadata.pkl')
             with open(metadata_path, 'wb') as f:
                 pickle.dump({
@@ -244,27 +244,27 @@ class SARIMAForecaster:
             self.logger.info(f"SARIMA model saved to {filepath}")
             
         except Exception as e:
-            self.logger.error(f"Failed to save SARIMA model: {e}")
+            self.logger.error(f"Impossibile salvare il modello SARIMA: {e}")
             raise ModelTrainingError(f"Impossibile salvare il modello SARIMA: {e}")
     
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> 'SARIMAForecaster':
         """
-        Load fitted SARIMA model from disk.
+        Carica modello SARIMA addestrato da disco.
         
         Args:
-            filepath: Path to saved model
+            filepath: Percorso del modello salvato
             
         Returns:
-            Loaded SARIMAForecaster instance
+            Istanza SARIMAForecaster caricata
         """
         try:
             filepath = Path(filepath)
             
-            # Load the fitted model
+            # Carica il modello addestrato
             fitted_model = SARIMAXResults.load(str(filepath))
             
-            # Load metadata if available
+            # Carica metadati se disponibili
             metadata_path = filepath.with_suffix('.metadata.pkl')
             if metadata_path.exists():
                 with open(metadata_path, 'rb') as f:
@@ -274,12 +274,12 @@ class SARIMAForecaster:
                 trend = metadata.get('trend', None)
                 training_metadata = metadata.get('training_metadata', {})
             else:
-                order = (1, 1, 1)  # Default order
-                seasonal_order = (1, 1, 1, 12)  # Default seasonal order
+                order = (1, 1, 1)  # Ordine predefinito
+                seasonal_order = (1, 1, 1, 12)  # Ordine stagionale predefinito
                 trend = None
                 training_metadata = {}
             
-            # Create instance and populate
+            # Crea istanza e popola
             instance = cls(order=order, seasonal_order=seasonal_order, trend=trend)
             instance.fitted_model = fitted_model
             instance.training_metadata = training_metadata
@@ -295,10 +295,10 @@ class SARIMAForecaster:
     
     def get_model_info(self) -> Dict[str, Any]:
         """
-        Get comprehensive SARIMA model information.
+        Ottieni informazioni complete del modello SARIMA.
         
         Returns:
-            Dictionary with model information
+            Dizionario con informazioni del modello
         """
         if self.fitted_model is None:
             return {'status': 'not_fitted'}
@@ -322,13 +322,13 @@ class SARIMAForecaster:
     
     def get_seasonal_decomposition(self) -> Dict[str, pd.Series]:
         """
-        Get seasonal decomposition of the fitted model.
+        Ottieni decomposizione stagionale del modello addestrato.
         
         Returns:
-            Dictionary with decomposition components
+            Dizionario con componenti di decomposizione
         """
         if self.fitted_model is None:
-            raise ForecastError("SARIMA model must be fitted before decomposition")
+            raise ForecastError("Il modello SARIMA deve essere addestrato prima della decomposizione")
         
         try:
             from statsmodels.tsa.seasonal import seasonal_decompose
@@ -336,7 +336,7 @@ class SARIMAForecaster:
             decomposition = seasonal_decompose(
                 self.training_data, 
                 model='additive',
-                period=self.seasonal_order[3]  # seasonal period
+                period=self.seasonal_order[3]  # periodo stagionale
             )
             
             return {
@@ -347,68 +347,68 @@ class SARIMAForecaster:
             }
             
         except Exception as e:
-            self.logger.error(f"Seasonal decomposition failed: {e}")
+            self.logger.error(f"Decomposizione stagionale fallita: {e}")
             raise ForecastError(f"Impossibile eseguire la decomposizione stagionale: {e}")
     
     def _validate_series(self, series: pd.Series) -> None:
         """
-        Validate input time series.
+        Valida serie temporale di input.
         
         Args:
-            series: Series to validate
+            series: Serie da validare
             
         Raises:
-            ModelTrainingError: If validation fails
+            ModelTrainingError: Se la validazione fallisce
         """
         if not isinstance(series, pd.Series):
-            raise ModelTrainingError("Input must be a pandas Series")
+            raise ModelTrainingError("L'input deve essere una pandas Series")
         
         if len(series) == 0:
-            raise ModelTrainingError("Series cannot be empty")
+            raise ModelTrainingError("La serie non può essere vuota")
         
         if series.isnull().all():
-            raise ModelTrainingError("Series cannot be all NaN")
+            raise ModelTrainingError("La serie non può essere tutta NaN")
         
         if len(series) < 10:
-            self.logger.warning("Series has fewer than 10 observations, model may be unreliable")
+            self.logger.warning("La serie ha meno di 10 osservazioni, il modello potrebbe essere inaffidabile")
         
         if series.isnull().any():
             missing_pct = series.isnull().sum() / len(series) * 100
-            self.logger.warning(f"Series contains {missing_pct:.1f}% missing values")
+            self.logger.warning(f"La serie contiene {missing_pct:.1f}% valori mancanti")
     
     def _validate_seasonal_parameters(self, series: pd.Series) -> None:
         """
-        Validate seasonal parameters against the data.
+        Valida parametri stagionali contro i dati.
         
         Args:
-            series: Series to validate against
+            series: Serie su cui validare
             
         Raises:
-            ModelTrainingError: If validation fails
+            ModelTrainingError: Se la validazione fallisce
         """
         seasonal_period = self.seasonal_order[3]
         
         if seasonal_period <= 1:
-            raise ModelTrainingError("Seasonal period must be greater than 1")
+            raise ModelTrainingError("Il periodo stagionale deve essere maggiore di 1")
         
         if len(series) < 2 * seasonal_period:
             self.logger.warning(
-                f"Series length ({len(series)}) is less than 2 seasonal periods "
-                f"({2 * seasonal_period}). Model may be unreliable."
+                f"Lunghezza serie ({len(series)}) è inferiore a 2 periodi stagionali "
+                f"({2 * seasonal_period}). Il modello potrebbe essere inaffidabile."
             )
         
-        # Check if seasonal period makes sense for the data frequency
+        # Controlla se il periodo stagionale ha senso per la frequenza dei dati
         if hasattr(series.index, 'freq') and series.index.freq is not None:
             freq = series.index.freq
             if 'D' in str(freq) and seasonal_period not in [7, 30, 365]:
                 self.logger.warning(
-                    f"Daily data with seasonal period {seasonal_period} may not be appropriate. "
-                    "Consider 7 (weekly), 30 (monthly), or 365 (yearly)."
+                    f"Dati giornalieri con periodo stagionale {seasonal_period} potrebbero non essere appropriati. "
+                    "Considera 7 (settimanale), 30 (mensile), o 365 (annuale)."
                 )
             elif 'M' in str(freq) and seasonal_period != 12:
                 self.logger.warning(
-                    f"Monthly data with seasonal period {seasonal_period} may not be appropriate. "
-                    "Consider 12 (yearly)."
+                    f"Dati mensili con periodo stagionale {seasonal_period} potrebbero non essere appropriati. "
+                    "Considera 12 (annuale)."
                 )
     
     def generate_report(

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Retail Sales Forecasting Example
+Esempio di Forecasting Vendite Retail
 
 Questo esempio dimostra come utilizzare ARIMA per prevedere le vendite al dettaglio
 con pattern stagionali e trend. Include dati mensili con stagionalità annuale tipica
@@ -265,7 +265,7 @@ def main():
             plots_data={
                 'forecast_plot': str(plot_path)
             },
-            report_title="Retail Sales Forecasting Analysis",
+            report_title="Analisi Forecasting Vendite Retail",
             output_filename="retail_sales_report",
             format_type="html",
             include_diagnostics=True,

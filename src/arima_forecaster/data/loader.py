@@ -1,5 +1,5 @@
 """
-Data loading utilities for time series data.
+Utility per il caricamento dati di serie temporali.
 """
 
 import pandas as pd
@@ -11,7 +11,7 @@ from ..utils.exceptions import DataProcessingError
 
 class DataLoader:
     """
-    Load and validate time series data from various sources.
+    Carica e valida dati di serie temporali da varie fonti.
     """
     
     def __init__(self):
@@ -26,25 +26,25 @@ class DataLoader:
         **kwargs
     ) -> pd.DataFrame:
         """
-        Load time series data from CSV file.
+        Carica dati di serie temporali da file CSV.
         
         Args:
-            file_path: Path to CSV file
-            date_column: Name of date column (if None, assumes index)
-            value_column: Name of value column
-            parse_dates: Whether to parse dates automatically
-            **kwargs: Additional parameters for pd.read_csv
+            file_path: Percorso del file CSV
+            date_column: Nome colonna data (se None, assume indice)
+            value_column: Nome colonna valore
+            parse_dates: Se parsare le date automaticamente
+            **kwargs: Parametri aggiuntivi per pd.read_csv
             
         Returns:
-            DataFrame with datetime index
+            DataFrame con indice datetime
             
         Raises:
-            DataProcessingError: If file cannot be loaded or processed
+            DataProcessingError: Se il file non può essere caricato o elaborato
         """
         try:
-            self.logger.info(f"Loading data from {file_path}")
+            self.logger.info(f"Caricamento dati da {file_path}")
             
-            # Default parameters
+            # Parametri predefiniti
             default_params = {
                 'parse_dates': parse_dates,
                 'index_col': 0 if date_column is None else date_column
@@ -53,38 +53,38 @@ class DataLoader:
             
             df = pd.read_csv(file_path, **default_params)
             
-            # Validate data
+            # Valida dati
             if df.empty:
                 raise DataProcessingError("DataFrame caricato è vuoto")
             
-            # Ensure datetime index
+            # Assicura indice datetime
             if not isinstance(df.index, pd.DatetimeIndex):
                 try:
                     df.index = pd.to_datetime(df.index)
                 except Exception as e:
                     raise DataProcessingError(f"Impossibile convertire indice a datetime: {e}")
             
-            # Sort by date
+            # Ordina per data
             df = df.sort_index()
             
-            self.logger.info(f"Successfully loaded {len(df)} records from {df.index.min()} to {df.index.max()}")
+            self.logger.info(f"Caricati con successo {len(df)} record da {df.index.min()} a {df.index.max()}")
             
             return df
             
         except Exception as e:
-            self.logger.error(f"Error loading data from {file_path}: {e}")
+            self.logger.error(f"Errore caricamento dati da {file_path}: {e}")
             raise DataProcessingError(f"Fallito caricamento dati: {e}")
     
     def validate_time_series(self, df: pd.DataFrame, value_column: str) -> Dict[str, Any]:
         """
-        Validate time series data and return quality metrics.
+        Valida dati serie temporali e restituisce metriche di qualità.
         
         Args:
-            df: DataFrame with time series data
-            value_column: Name of the target column
+            df: DataFrame con dati serie temporali
+            value_column: Nome della colonna target
             
         Returns:
-            Dictionary with validation results and statistics
+            Dizionario con risultati validazione e statistiche
         """
         validation_results = {
             'is_valid': True,
@@ -93,28 +93,28 @@ class DataLoader:
         }
         
         try:
-            # Check if column exists
+            # Controlla se la colonna esiste
             if value_column not in df.columns:
                 validation_results['is_valid'] = False
-                validation_results['issues'].append(f"Column '{value_column}' not found")
+                validation_results['issues'].append(f"Colonna '{value_column}' non trovata")
                 return validation_results
             
             series = df[value_column]
             
-            # Check for missing values
+            # Controlla valori mancanti
             missing_count = series.isnull().sum()
             if missing_count > 0:
-                validation_results['issues'].append(f"{missing_count} missing values found")
+                validation_results['issues'].append(f"{missing_count} valori mancanti trovati")
             
-            # Check for constant values
+            # Controlla valori costanti
             if series.nunique() == 1:
-                validation_results['issues'].append("Series has constant values")
+                validation_results['issues'].append("La serie ha valori costanti")
             
-            # Check for sufficient data
+            # Controlla dati sufficienti
             if len(series) < 10:
-                validation_results['issues'].append("Insufficient data points (< 10)")
+                validation_results['issues'].append("Punti dati insufficienti (< 10)")
             
-            # Calculate statistics
+            # Calcola statistiche
             validation_results['statistics'] = {
                 'count': len(series),
                 'missing_values': missing_count,
@@ -130,6 +130,6 @@ class DataLoader:
                 
         except Exception as e:
             validation_results['is_valid'] = False
-            validation_results['issues'].append(f"Validation error: {e}")
+            validation_results['issues'].append(f"Errore validazione: {e}")
         
         return validation_results

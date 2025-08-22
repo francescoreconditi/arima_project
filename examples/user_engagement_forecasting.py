@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-User Engagement Forecasting Example
+Esempio di Forecasting Engagement Utenti
 
 Questo esempio dimostra l'applicazione di ARIMA per il forecasting delle metriche
 di engagement utenti. Include DAU/MAU, session duration, retention rates, 
@@ -773,7 +773,7 @@ def main():
         
         report_path = model.generate_report(
             plots_data=plot_files,
-            report_title="User Engagement Forecasting Analysis",
+            report_title="Analisi Forecasting Engagement Utenti",
             output_filename="user_engagement_forecasting_report",
             format_type="html",
             include_diagnostics=True,

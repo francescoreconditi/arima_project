@@ -137,11 +137,11 @@ def create_visualizations(arima_model: ARIMAForecaster, sarima_model: SARIMAFore
             actual=data,
             forecast=forecast_data,
             confidence_intervals=conf_int,
-            title="Forecast ARIMA",
+            title="Previsione ARIMA",
             save_path=str(arima_plot_path)
         )
         plot_files["arima_forecast"] = str(arima_plot_path)
-        print(f"✓ Plot forecast ARIMA salvato in {arima_plot_path}")
+        print(f"✓ Grafico previsione ARIMA salvato in {arima_plot_path}")
         
         # Plot forecast SARIMA
         sarima_forecast = sarima_model.forecast(steps=12, confidence_intervals=True)
@@ -153,11 +153,11 @@ def create_visualizations(arima_model: ARIMAForecaster, sarima_model: SARIMAFore
             actual=data,
             forecast=forecast_data,
             confidence_intervals=conf_int,
-            title="Forecast SARIMA",
+            title="Previsione SARIMA",
             save_path=str(sarima_plot_path)
         )
         plot_files["sarima_forecast"] = str(sarima_plot_path)
-        print(f"✓ Plot forecast SARIMA salvato in {sarima_plot_path}")
+        print(f"✓ Grafico previsione SARIMA salvato in {sarima_plot_path}")
         
         # Plot diagnostici ARIMA
         arima_residuals_path = plots_dir / "arima_residuals.png"
@@ -312,7 +312,7 @@ def export_reports_multiple_formats():
         
         # Export HTML
         html_path = model.generate_report(
-            report_title="Export Test HTML",
+            report_title="Test Export HTML",
             output_filename="export_test_html",
             format_type="html"
         )
@@ -321,7 +321,7 @@ def export_reports_multiple_formats():
         # Export PDF (richiede LaTeX)
         try:
             pdf_path = model.generate_report(
-                report_title="Export Test PDF",
+                report_title="Test Export PDF",
                 output_filename="export_test_pdf",
                 format_type="pdf"
             )
@@ -332,7 +332,7 @@ def export_reports_multiple_formats():
         # Export DOCX (richiede pandoc)
         try:
             docx_path = model.generate_report(
-                report_title="Export Test DOCX",
+                report_title="Test Export DOCX",
                 output_filename="export_test_docx",
                 format_type="docx"
             )

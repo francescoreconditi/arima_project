@@ -1,5 +1,5 @@
 """
-Logging utilities for the ARIMA forecaster package.
+Utility di logging per il package ARIMA forecaster.
 """
 
 import logging
@@ -14,37 +14,37 @@ def setup_logger(
     log_file: Optional[str] = None
 ) -> logging.Logger:
     """
-    Set up a logger with both console and file handlers.
+    Configura un logger con handler console e file.
     
     Args:
-        name: Logger name
-        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        log_file: Optional path to log file
+        name: Nome del logger
+        level: Livello di logging (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_file: Percorso opzionale al file di log
         
     Returns:
-        Configured logger instance
+        Istanza logger configurata
     """
     logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, level.upper()))
     
-    # Avoid adding handlers multiple times
+    # Evita di aggiungere handler più volte
     if logger.handlers:
         return logger
     
-    # Create formatter
+    # Crea formatter
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # Console handler
+    # Handler console
     console_handler = logging.StreamHandler()
     console_handler.setLevel(getattr(logging, level.upper()))
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # File handler if specified
+    # Handler file se specificato
     if log_file:
-        # Create logs directory if it doesn't exist
+        # Crea directory logs se non esiste
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -57,5 +57,5 @@ def setup_logger(
 
 
 def get_logger(name: str = "arima_forecaster") -> logging.Logger:
-    """Get an existing logger or create a new one with default settings."""
+    """Ottieni un logger esistente o creane uno nuovo con impostazioni predefinite."""
     return logging.getLogger(name) if logging.getLogger(name).handlers else setup_logger(name)

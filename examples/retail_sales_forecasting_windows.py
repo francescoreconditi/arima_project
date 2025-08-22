@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Retail Sales Forecasting Example - Windows Compatible Version
+Esempio di Forecasting Vendite Retail - Versione Compatibile Windows
 
 Questo esempio dimostra come utilizzare ARIMA per prevedere le vendite al dettaglio
 con pattern stagionali e trend. Include dati mensili con stagionalità annuale tipica

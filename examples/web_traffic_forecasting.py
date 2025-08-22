@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Web Traffic Forecasting Example
+Esempio di Forecasting Traffico Web
 
 Questo esempio dimostra l'applicazione di ARIMA per il forecasting del traffico web
 con pattern complessi: stagionalità multiple (giornaliera, settimanale, mensile),
@@ -683,7 +683,7 @@ def main():
         
         report_path = model.generate_report(
             plots_data=plot_files,
-            report_title="Web Traffic Forecasting Analysis",
+            report_title="Analisi Forecasting Traffico Web",
             output_filename="web_traffic_forecasting_report",
             format_type="html",
             include_diagnostics=True,

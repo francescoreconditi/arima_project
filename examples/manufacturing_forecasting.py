@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Manufacturing Production Forecasting Example
+Esempio di Forecasting Produzione Manifatturiera
 
 Questo esempio dimostra l'applicazione di ARIMA per il forecasting della produzione
 industriale con downtime programmati e non programmati, cicli di produzione,
@@ -253,7 +253,7 @@ def main():
     
     # Selezione automatica modello per manufacturing
     logger.info("🔍 Selezione automatica modello ARIMA per produzione...")
-    # Use simple ARIMA model for manufacturing data
+    # Usa modello ARIMA semplice per dati produzione
     print("Utilizzo modello ARIMA(2,1,2) per dati produzione...")
     best_order = (2, 1, 2)
     seasonal_order = None
@@ -322,7 +322,7 @@ def main():
     forecast_production = forecast_adjusted.sum()
     actual_production = test_data.sum()
     production_accuracy = 1 - abs(forecast_production - actual_production) / actual_production
-    print(f"  🏭 Production Volume Accuracy: {production_accuracy:.1%}")
+    print(f"  🏭 Accuratezza Volume Produzione: {production_accuracy:.1%}")
     
     # Forecast operazionale futuro (prossimi 7 giorni)
     future_steps = 24 * 7  # 7 giorni
@@ -537,7 +537,7 @@ def main():
     logger.info("📁 Plot salvato in outputs/plots/manufacturing_forecast.png")
     
     # plt.show()  # Disabled for Windows compatibility
-    print("Plot saved as 'outputs/plots/manufacturing_forecast.png'")
+    print("Plot salvato come 'outputs/plots/manufacturing_forecast.png'")
     
     # Manufacturing Operational Insights
     print(f"\n🏭 Manufacturing Operational Insights:")
@@ -609,8 +609,8 @@ def main():
         
         report_path = model.generate_report(
             plots_data=plot_files,
-            report_title="Manufacturing Forecasting Analysis",
-            output_filename="manufacturing_forecasting_report",
+            report_title="Analisi Forecasting Produzione Manifatturiera",
+            output_filename="report_forecasting_produzione",
             format_type="html",
             include_diagnostics=True,
             include_forecast=True,

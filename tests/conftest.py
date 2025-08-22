@@ -1,5 +1,5 @@
 """
-Pytest configuration and shared fixtures.
+Configurazione Pytest e fixture condivise.
 """
 
 import pytest
@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 import sys
 
-# Add src to Python path for testing
+# Aggiungi src al path Python per i test
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
@@ -17,20 +17,20 @@ from arima_forecaster import ARIMAForecaster, TimeSeriesPreprocessor
 
 @pytest.fixture
 def sample_time_series():
-    """Create a sample time series for testing."""
+    """Crea una serie temporale di esempio per i test."""
     np.random.seed(42)
     
-    # Create date range
+    # Crea intervallo di date
     dates = pd.date_range(start='2020-01-01', periods=100, freq='D')
     
-    # Generate AR(1) process
+    # Genera processo AR(1)
     values = np.zeros(100)
     values[0] = np.random.normal(0, 1)
     
     for i in range(1, 100):
         values[i] = 0.7 * values[i-1] + np.random.normal(0, 1)
     
-    # Add trend
+    # Aggiungi trend
     trend = np.linspace(10, 20, 100)
     values += trend
     
@@ -39,10 +39,10 @@ def sample_time_series():
 
 @pytest.fixture
 def sample_time_series_with_missing():
-    """Create a sample time series with missing values."""
+    """Crea una serie temporale di esempio con valori mancanti."""
     series = sample_time_series()
     
-    # Introduce missing values
+    # Introduce valori mancanti
     missing_indices = np.random.choice(len(series), size=5, replace=False)
     series.iloc[missing_indices] = np.nan
     
@@ -51,11 +51,11 @@ def sample_time_series_with_missing():
 
 @pytest.fixture
 def sample_stationary_series():
-    """Create a stationary time series."""
+    """Crea una serie temporale stazionaria."""
     np.random.seed(42)
     dates = pd.date_range(start='2020-01-01', periods=100, freq='D')
     
-    # Generate white noise
+    # Genera rumore bianco
     values = np.random.normal(0, 1, 100)
     
     return pd.Series(values, index=dates, name='stationary_series')
@@ -63,11 +63,11 @@ def sample_stationary_series():
 
 @pytest.fixture
 def sample_non_stationary_series():
-    """Create a non-stationary time series (random walk)."""
+    """Crea una serie temporale non stazionaria (passeggiata casuale)."""
     np.random.seed(42)
     dates = pd.date_range(start='2020-01-01', periods=100, freq='D')
     
-    # Generate random walk
+    # Genera passeggiata casuale
     innovations = np.random.normal(0, 1, 100)
     values = np.cumsum(innovations)
     
@@ -76,13 +76,13 @@ def sample_non_stationary_series():
 
 @pytest.fixture 
 def sample_seasonal_series():
-    """Create a time series with seasonal pattern."""
+    """Crea una serie temporale con pattern stagionale."""
     np.random.seed(42)
     dates = pd.date_range(start='2020-01-01', periods=120, freq='M')
     
-    # Generate seasonal pattern
+    # Genera pattern stagionale
     t = np.arange(120)
-    seasonal = 10 * np.sin(2 * np.pi * t / 12)  # Annual seasonality
+    seasonal = 10 * np.sin(2 * np.pi * t / 12)  # Stagionalità annuale
     trend = 0.1 * t
     noise = np.random.normal(0, 2, 120)
     
@@ -93,20 +93,20 @@ def sample_seasonal_series():
 
 @pytest.fixture
 def preprocessor():
-    """Create a TimeSeriesPreprocessor instance."""
+    """Crea un'istanza di TimeSeriesPreprocessor."""
     return TimeSeriesPreprocessor()
 
 
 @pytest.fixture
 def arima_model():
-    """Create an ARIMA model instance."""
+    """Crea un'istanza del modello ARIMA."""
     return ARIMAForecaster(order=(1, 1, 1))
 
 
 @pytest.fixture
 def fitted_model(arima_model, sample_time_series):
-    """Create a fitted ARIMA model."""
-    # Use differenced data for fitting
+    """Crea un modello ARIMA addestrato."""
+    # Usa dati differenziati per l'addestramento
     diff_series = sample_time_series.diff().dropna()
     arima_model.fit(diff_series)
     return arima_model
@@ -114,11 +114,11 @@ def fitted_model(arima_model, sample_time_series):
 
 @pytest.fixture
 def test_data_dir():
-    """Get test data directory."""
+    """Ottieni directory dei dati di test."""
     return Path(__file__).parent / "test_data"
 
 
 @pytest.fixture
 def temp_dir(tmp_path):
-    """Create temporary directory for test outputs."""
+    """Crea directory temporanea per output dei test."""
     return tmp_path

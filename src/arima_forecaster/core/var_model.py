@@ -1,5 +1,5 @@
 """
-Vector Autoregression (VAR) model for multivariate time series forecasting.
+Modello Vector Autoregression (VAR) per la previsione di serie temporali multivariate.
 """
 
 import pandas as pd
@@ -17,16 +17,16 @@ from ..utils.exceptions import ModelTrainingError, ForecastError
 
 class VARForecaster:
     """
-    Vector Autoregression forecaster for multivariate time series.
+    Previsore Vector Autoregression per serie temporali multivariate.
     """
     
     def __init__(self, maxlags: Optional[int] = None, ic: str = 'aic'):
         """
-        Initialize VAR forecaster.
+        Inizializza il previsore VAR.
         
         Args:
-            maxlags: Maximum number of lags to consider
-            ic: Information criterion for lag selection ('aic', 'bic', 'hqic', 'fpe')
+            maxlags: Numero massimo di lag da considerare
+            ic: Criterio di informazione per la selezione lag ('aic', 'bic', 'hqic', 'fpe')
         """
         self.maxlags = maxlags
         self.ic = ic
@@ -38,7 +38,7 @@ class VARForecaster:
         self.logger = get_logger(__name__)
         
         if self.ic not in ['aic', 'bic', 'hqic', 'fpe']:
-            raise ValueError("ic must be one of 'aic', 'bic', 'hqic', 'fpe'")
+            raise ValueError("ic deve essere uno tra 'aic', 'bic', 'hqic', 'fpe'")
     
     def fit(
         self, 
@@ -48,27 +48,27 @@ class VARForecaster:
         **fit_kwargs
     ) -> 'VARForecaster':
         """
-        Fit VAR model to multivariate time series data.
+        Addestra il modello VAR sui dati di serie temporali multivariate.
         
         Args:
-            data: DataFrame with multiple time series columns
-            validate_input: Whether to validate input data
-            trend: Trend parameter ('c', 'ct', 'ctt', 'n')
-            **fit_kwargs: Additional arguments for model fitting
+            data: DataFrame con colonne di serie temporali multiple
+            validate_input: Se validare i dati di input
+            trend: Parametro di trend ('c', 'ct', 'ctt', 'n')
+            **fit_kwargs: Argomenti aggiuntivi per l'addestramento del modello
             
         Returns:
-            Self for method chaining
+            Self per concatenamento dei metodi
             
         Raises:
-            ModelTrainingError: If model training fails
+            ModelTrainingError: Se l'addestramento del modello fallisce
         """
         try:
-            self.logger.info(f"Fitting VAR model to {data.shape[0]} observations with {data.shape[1]} variables")
+            self.logger.info(f"Addestramento modello VAR su {data.shape[0]} osservazioni con {data.shape[1]} variabili")
             
             if validate_input:
                 self._validate_data(data)
             
-            # Store training data and metadata
+            # Memorizza dati di addestramento e metadati
             self.training_data = data.copy()
             self.training_metadata = {
                 'training_start': data.index.min(),
@@ -81,28 +81,28 @@ class VARForecaster:
                 'trend': trend
             }
             
-            # Create VAR model
+            # Crea modello VAR
             self.model = VAR(data)
             
-            # Select optimal lag if not specified
+            # Seleziona lag ottimale se non specificato
             if self.maxlags is None:
-                # Use automatic lag selection
-                max_lag_test = min(12, len(data) // 4)  # Conservative default
+                # Usa selezione automatica del lag
+                max_lag_test = min(12, len(data) // 4)  # Default conservativo
                 lag_selection = self.model.select_order(maxlags=max_lag_test)
                 self.selected_lag = getattr(lag_selection, self.ic)
-                self.logger.info(f"Auto-selected lag order: {self.selected_lag} using {self.ic.upper()}")
+                self.logger.info(f"Ordine lag auto-selezionato: {self.selected_lag} usando {self.ic.upper()}")
             else:
                 self.selected_lag = self.maxlags
                 self.logger.info(f"Utilizzo ordine lag specificato: {self.selected_lag}")
             
-            # Fit the model
+            # Addestra il modello
             self.fitted_model = self.model.fit(
                 maxlags=self.selected_lag,
                 trend=trend,
                 **fit_kwargs
             )
             
-            # Log model summary
+            # Registra riepilogo del modello
             self.logger.info("Modello VAR addestrato con successo")
             self.logger.info(f"Lag order: {self.fitted_model.k_ar}")
             self.logger.info(f"AIC: {self.fitted_model.aic:.2f}")
@@ -111,7 +111,7 @@ class VARForecaster:
             return self
             
         except Exception as e:
-            self.logger.error(f"VAR model fitting failed: {e}")
+            self.logger.error(f"Addestramento modello VAR fallito: {e}")
             raise ModelTrainingError(f"Impossibile addestrare il modello VAR: {e}")
     
     def forecast(
@@ -120,37 +120,37 @@ class VARForecaster:
         alpha: float = 0.05
     ) -> Dict[str, pd.DataFrame]:
         """
-        Generate forecasts from fitted VAR model.
+        Genera previsioni dal modello VAR addestrato.
         
         Args:
-            steps: Number of steps to forecast
-            alpha: Alpha level for confidence intervals
+            steps: Numero di passaggi da prevedere
+            alpha: Livello alpha per gli intervalli di confidenza
             
         Returns:
-            Dictionary containing forecasts and confidence intervals
+            Dizionario contenente previsioni e intervalli di confidenza
             
         Raises:
-            ForecastError: If forecasting fails
+            ForecastError: Se la previsione fallisce
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("VAR model must be fitted before forecasting")
+                raise ForecastError("Il modello VAR deve essere addestrato prima della previsione")
             
-            self.logger.info(f"Generating {steps}-step VAR forecast")
+            self.logger.info(f"Generazione previsione VAR a {steps} passaggi")
             
-            # Generate forecast
+            # Genera previsione
             forecast_result = self.fitted_model.forecast(
                 y=self.training_data.values[-self.fitted_model.k_ar:],
                 steps=steps
             )
             
-            # Create forecast index
+            # Crea indice previsione
             last_date = self.training_data.index[-1]
             if isinstance(last_date, pd.Timestamp):
                 freq = pd.infer_freq(self.training_data.index)
                 if freq:
                     try:
-                        # Convert string frequency to DateOffset and add to timestamp
+                        # Converte frequenza stringa in DateOffset e aggiunge al timestamp
                         freq_offset = pd.tseries.frequencies.to_offset(freq)
                         forecast_index = pd.date_range(
                             start=last_date + freq_offset,
@@ -158,14 +158,14 @@ class VARForecaster:
                             freq=freq
                         )
                     except Exception:
-                        # Fallback: use daily frequency
+                        # Fallback: usa frequenza giornaliera
                         forecast_index = pd.date_range(
                             start=last_date + pd.Timedelta(days=1),
                             periods=steps,
                             freq='D'
                         )
                 else:
-                    # Fallback: use daily frequency if no frequency can be inferred
+                    # Fallback: usa frequenza giornaliera se non può essere inferita
                     forecast_index = pd.date_range(
                         start=last_date + pd.Timedelta(days=1),
                         periods=steps,
@@ -174,14 +174,14 @@ class VARForecaster:
             else:
                 forecast_index = range(len(self.training_data), len(self.training_data) + steps)
             
-            # Create forecast DataFrame
+            # Crea DataFrame delle previsioni
             forecast_df = pd.DataFrame(
                 forecast_result,
                 index=forecast_index,
                 columns=self.training_data.columns
             )
             
-            # Get forecast confidence intervals
+            # Ottieni intervalli di confidenza delle previsioni
             try:
                 conf_int = self.fitted_model.forecast_interval(
                     y=self.training_data.values[-self.fitted_model.k_ar:],
@@ -189,9 +189,9 @@ class VARForecaster:
                     alpha=alpha
                 )
                 
-                # Handle different confidence interval formats
+                # Gestisce diversi formati di intervalli di confidenza
                 if isinstance(conf_int, tuple) and len(conf_int) == 2:
-                    # Case: conf_int is a tuple of (lower, upper)
+                    # Caso: conf_int è una tupla di (inferiore, superiore)
                     lower_bounds = pd.DataFrame(
                         conf_int[0],
                         index=forecast_index,
@@ -203,7 +203,7 @@ class VARForecaster:
                         columns=self.training_data.columns
                     )
                 elif hasattr(conf_int, 'shape') and len(conf_int.shape) == 3:
-                    # Case: conf_int is a 3D array
+                    # Caso: conf_int è un array 3D
                     lower_bounds = pd.DataFrame(
                         conf_int[:, :, 0],
                         index=forecast_index,
@@ -215,21 +215,21 @@ class VARForecaster:
                         columns=self.training_data.columns
                     )
                 else:
-                    # Fallback: create simple confidence intervals
+                    # Fallback: crea intervalli di confidenza semplici
                     forecast_std = forecast_df.std()
-                    multiplier = 1.96  # Approximate 95% CI
+                    multiplier = 1.96  # CI approssimativo al 95%
                     lower_bounds = forecast_df - multiplier * forecast_std
                     upper_bounds = forecast_df + multiplier * forecast_std
                     
             except Exception as e:
                 self.logger.warning(f"Impossibile generare intervalli di confidenza: {e}")
-                # Fallback: create simple confidence intervals based on forecast variance
+                # Fallback: crea intervalli di confidenza semplici basati sulla varianza delle previsioni
                 forecast_std = forecast_df.std()
-                multiplier = 1.96  # Approximate 95% CI
+                multiplier = 1.96  # CI approssimativo al 95%
                 lower_bounds = forecast_df - multiplier * forecast_std
                 upper_bounds = forecast_df + multiplier * forecast_std
             
-            self.logger.info("VAR forecast generated successfully")
+            self.logger.info("Previsione VAR generata con successo")
             
             return {
                 'forecast': forecast_df,
@@ -239,7 +239,7 @@ class VARForecaster:
             }
                 
         except Exception as e:
-            self.logger.error(f"VAR forecasting failed: {e}")
+            self.logger.error(f"Previsione VAR fallita: {e}")
             raise ForecastError(f"Impossibile generare il forecast VAR: {e}")
     
     def impulse_response(
@@ -250,20 +250,20 @@ class VARForecaster:
         orthogonalized: bool = True
     ) -> pd.DataFrame:
         """
-        Calculate impulse response functions.
+        Calcola le funzioni di risposta agli impulsi.
         
         Args:
-            periods: Number of periods for impulse response
-            impulse: Variable to apply impulse to (None for all)
-            response: Variable to measure response from (None for all)
-            orthogonalized: Whether to use orthogonalized impulses
+            periods: Numero di periodi per la risposta agli impulsi
+            impulse: Variabile a cui applicare l'impulso (None per tutte)
+            response: Variabile da cui misurare la risposta (None per tutte)
+            orthogonalized: Se usare impulsi ortogonalizzati
             
         Returns:
-            DataFrame with impulse response functions
+            DataFrame con le funzioni di risposta agli impulsi
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("VAR model must be fitted before impulse response analysis")
+                raise ForecastError("Il modello VAR deve essere addestrato prima dell'analisi della risposta agli impulsi")
             
             irf = self.fitted_model.irf(periods=periods)
             
@@ -272,14 +272,14 @@ class VARForecaster:
             else:
                 irf_data = irf.irfs
             
-            # Create MultiIndex for columns (impulse -> response)
+            # Crea MultiIndex per colonne (impulso -> risposta)
             variables = self.training_data.columns
             columns = pd.MultiIndex.from_product(
                 [variables, variables],
                 names=['impulse', 'response']
             )
             
-            # Reshape data for DataFrame
+            # Rimodella i dati per DataFrame
             n_vars = len(variables)
             reshaped_data = irf_data.reshape(periods, n_vars * n_vars)
             
@@ -289,7 +289,7 @@ class VARForecaster:
                 index=range(periods)
             )
             
-            # Filter by specific impulse/response if requested
+            # Filtra per impulso/risposta specifici se richiesto
             if impulse is not None and response is not None:
                 return irf_df[(impulse, response)]
             elif impulse is not None:
@@ -300,7 +300,7 @@ class VARForecaster:
                 return irf_df
                 
         except Exception as e:
-            self.logger.error(f"Impulse response analysis failed: {e}")
+            self.logger.error(f"Analisi risposta agli impulsi fallita: {e}")
             raise ForecastError(f"Impossibile calcolare la risposta agli impulsi: {e}")
     
     def forecast_error_variance_decomposition(
@@ -309,29 +309,29 @@ class VARForecaster:
         normalize: bool = True
     ) -> pd.DataFrame:
         """
-        Calculate forecast error variance decomposition.
+        Calcola la decomposizione della varianza dell'errore di previsione.
         
         Args:
-            periods: Number of periods for FEVD
-            normalize: Whether to normalize to percentages
+            periods: Numero di periodi per FEVD
+            normalize: Se normalizzare a percentuali
             
         Returns:
-            DataFrame with variance decomposition
+            DataFrame con decomposizione della varianza
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("VAR model must be fitted before FEVD analysis")
+                raise ForecastError("Il modello VAR deve essere addestrato prima dell'analisi FEVD")
             
             fevd = self.fitted_model.fevd(periods=periods)
             
-            # Create MultiIndex for columns (variable -> shock source)
+            # Crea MultiIndex per colonne (variabile -> fonte shock)
             variables = self.training_data.columns
             columns = pd.MultiIndex.from_product(
                 [variables, variables],
                 names=['variable', 'shock_source']
             )
             
-            # Reshape data
+            # Rimodella dati
             n_vars = len(variables)
             reshaped_data = fevd.decomp.reshape(periods, n_vars * n_vars)
             
@@ -342,14 +342,14 @@ class VARForecaster:
             )
             
             if normalize:
-                # Convert to percentages
+                # Converte a percentuali
                 for var in variables:
                     fevd_df[var] = fevd_df[var].div(fevd_df[var].sum(axis=1), axis=0) * 100
             
             return fevd_df
                 
         except Exception as e:
-            self.logger.error(f"FEVD analysis failed: {e}")
+            self.logger.error(f"Analisi FEVD fallita: {e}")
             raise ForecastError(f"Impossibile calcolare il FEVD: {e}")
     
     def granger_causality(
@@ -359,19 +359,19 @@ class VARForecaster:
         maxlag: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Perform Granger causality test.
+        Esegue il test di causalità di Granger.
         
         Args:
-            caused_variable: Variable being caused
-            causing_variables: Variables potentially causing (None for all others)
-            maxlag: Maximum lag to test (None uses model lag)
+            caused_variable: Variabile causata
+            causing_variables: Variabili potenzialmente causanti (None per tutte le altre)
+            maxlag: Lag massimo da testare (None usa il lag del modello)
             
         Returns:
-            Dictionary with test results
+            Dizionario con risultati del test
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("VAR model must be fitted before Granger causality test")
+                raise ForecastError("Il modello VAR deve essere addestrato prima del test di causalità di Granger")
             
             if causing_variables is None:
                 causing_variables = [col for col in self.training_data.columns if col != caused_variable]
@@ -397,25 +397,25 @@ class VARForecaster:
             return results
                 
         except Exception as e:
-            self.logger.error(f"Granger causality test failed: {e}")
+            self.logger.error(f"Test di causalità di Granger fallito: {e}")
             raise ForecastError(f"Impossibile eseguire il test di causalità di Granger: {e}")
     
     def cointegration_test(self, test_type: str = 'johansen') -> Dict[str, Any]:
         """
-        Test for cointegration among variables.
+        Testa la cointegrazione tra variabili.
         
         Args:
-            test_type: Type of cointegration test ('johansen')
+            test_type: Tipo di test di cointegrazione ('johansen')
             
         Returns:
-            Dictionary with test results
+            Dizionario con risultati del test
         """
         try:
             if self.fitted_model is None:
-                raise ForecastError("VAR model must be fitted before cointegration test")
+                raise ForecastError("Il modello VAR deve essere addestrato prima del test di cointegrazione")
             
             if test_type == 'johansen':
-                # Johansen cointegration test
+                # Test di cointegrazione di Johansen
                 result = coint_johansen(self.training_data.values, det_order=0, k_ar_diff=1)
                 
                 return {
@@ -432,30 +432,30 @@ class VARForecaster:
                     'eigenvectors': result.evec
                 }
             else:
-                raise ValueError(f"Unsupported test type: {test_type}")
+                raise ValueError(f"Tipo di test non supportato: {test_type}")
                 
         except Exception as e:
-            self.logger.error(f"Cointegration test failed: {e}")
-            raise ForecastError(f"Failed to perform cointegration test: {e}")
+            self.logger.error(f"Test di cointegrazione fallito: {e}")
+            raise ForecastError(f"Impossibile eseguire il test di cointegrazione: {e}")
     
     def save(self, filepath: Union[str, Path]) -> None:
         """
-        Save fitted VAR model to disk.
+        Salva il modello VAR addestrato su disco.
         
         Args:
-            filepath: Path to save model
+            filepath: Percorso per salvare il modello
         """
         try:
             if self.fitted_model is None:
-                raise ModelTrainingError("No fitted VAR model to save")
+                raise ModelTrainingError("Nessun modello VAR addestrato da salvare")
             
             filepath = Path(filepath)
             filepath.parent.mkdir(parents=True, exist_ok=True)
             
-            # Save using statsmodels built-in method
+            # Salva usando il metodo integrato di statsmodels
             self.fitted_model.save(str(filepath))
             
-            # Also save metadata
+            # Salva anche i metadati
             metadata_path = filepath.with_suffix('.metadata.pkl')
             with open(metadata_path, 'wb') as f:
                 pickle.dump({
@@ -468,27 +468,27 @@ class VARForecaster:
             self.logger.info(f"VAR model saved to {filepath}")
             
         except Exception as e:
-            self.logger.error(f"Failed to save VAR model: {e}")
-            raise ModelTrainingError(f"Failed to save VAR model: {e}")
+            self.logger.error(f"Impossibile salvare il modello VAR: {e}")
+            raise ModelTrainingError(f"Impossibile salvare il modello VAR: {e}")
     
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> 'VARForecaster':
         """
-        Load fitted VAR model from disk.
+        Carica modello VAR addestrato da disco.
         
         Args:
-            filepath: Path to saved model
+            filepath: Percorso del modello salvato
             
         Returns:
-            Loaded VARForecaster instance
+            Istanza VARForecaster caricata
         """
         try:
             filepath = Path(filepath)
             
-            # Load the fitted model
+            # Carica il modello addestrato
             fitted_model = VARResults.load(str(filepath))
             
-            # Load metadata if available
+            # Carica metadati se disponibili
             metadata_path = filepath.with_suffix('.metadata.pkl')
             if metadata_path.exists():
                 with open(metadata_path, 'rb') as f:
@@ -503,7 +503,7 @@ class VARForecaster:
                 selected_lag = None
                 training_metadata = {}
             
-            # Create instance and populate
+            # Crea istanza e popola
             instance = cls(maxlags=maxlags, ic=ic)
             instance.fitted_model = fitted_model
             instance.selected_lag = selected_lag
@@ -515,15 +515,15 @@ class VARForecaster:
             
         except Exception as e:
             logger = get_logger(__name__)
-            logger.error(f"Failed to load VAR model: {e}")
-            raise ModelTrainingError(f"Failed to load VAR model: {e}")
+            logger.error(f"Impossibile caricare il modello VAR: {e}")
+            raise ModelTrainingError(f"Impossibile caricare il modello VAR: {e}")
     
     def get_model_info(self) -> Dict[str, Any]:
         """
-        Get comprehensive VAR model information.
+        Ottieni informazioni complete del modello VAR.
         
         Returns:
-            Dictionary with model information
+            Dizionario con informazioni del modello
         """
         if self.fitted_model is None:
             return {'status': 'not_fitted'}
@@ -546,42 +546,42 @@ class VARForecaster:
     
     def _validate_data(self, data: pd.DataFrame) -> None:
         """
-        Validate input multivariate data.
+        Valida dati multivariati di input.
         
         Args:
-            data: DataFrame to validate
+            data: DataFrame da validare
             
         Raises:
-            ModelTrainingError: If validation fails
+            ModelTrainingError: Se la validazione fallisce
         """
         if not isinstance(data, pd.DataFrame):
-            raise ModelTrainingError("Input must be a pandas DataFrame")
+            raise ModelTrainingError("L'input deve essere un pandas DataFrame")
         
         if data.empty:
-            raise ModelTrainingError("DataFrame cannot be empty")
+            raise ModelTrainingError("Il DataFrame non può essere vuoto")
         
         if data.shape[1] < 2:
-            raise ModelTrainingError("VAR requires at least 2 variables")
+            raise ModelTrainingError("VAR richiede almeno 2 variabili")
         
         if data.isnull().all().any():
-            raise ModelTrainingError("Some variables are entirely NaN")
+            raise ModelTrainingError("Alcune variabili sono interamente NaN")
         
         if len(data) < 20:
-            self.logger.warning("Data has fewer than 20 observations, model may be unreliable")
+            self.logger.warning("I dati hanno meno di 20 osservazioni, il modello potrebbe essere inaffidabile")
         
         if data.isnull().any().any():
             missing_info = data.isnull().sum()
-            self.logger.warning(f"Data contains missing values:\n{missing_info[missing_info > 0]}")
+            self.logger.warning(f"I dati contengono valori mancanti:\n{missing_info[missing_info > 0]}")
     
     def check_stationarity(self) -> Dict[str, Dict[str, Any]]:
         """
-        Check stationarity of all variables using ADF test.
+        Controlla la stazionarietà di tutte le variabili usando il test ADF.
         
         Returns:
-            Dictionary with stationarity test results for each variable
+            Dizionario con risultati del test di stazionarietà per ogni variabile
         """
         if self.training_data is None:
-            raise ModelTrainingError("No training data available for stationarity check")
+            raise ModelTrainingError("Nessun dato di addestramento disponibile per il controllo di stazionarietà")
         
         results = {}
         
@@ -595,14 +595,14 @@ class VARForecaster:
                     'p_value': adf_result[1],
                     'critical_values': adf_result[4],
                     'is_stationary': adf_result[1] < 0.05,
-                    'recommendation': 'stationary' if adf_result[1] < 0.05 else 'non-stationary (consider differencing)'
+                    'recommendation': 'stazionaria' if adf_result[1] < 0.05 else 'non-stazionaria (considera differenziazione)'
                 }
                 
             except Exception as e:
                 results[col] = {
                     'error': str(e),
                     'is_stationary': None,
-                    'recommendation': 'test_failed'
+                    'recommendation': 'test_fallito'
                 }
         
         return results
