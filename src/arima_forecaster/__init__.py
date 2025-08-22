@@ -12,9 +12,11 @@ __author__ = "Il Tuo Nome"
 # Core models
 from .core.arima_model import ARIMAForecaster
 from .core.sarima_model import SARIMAForecaster
+from .core.sarimax_model import SARIMAXForecaster
 from .core.var_model import VARForecaster
 from .core.model_selection import ARIMAModelSelector
 from .core.sarima_selection import SARIMAModelSelector
+from .core.sarimax_selection import SARIMAXModelSelector
 
 # Data handling
 from .data.preprocessor import TimeSeriesPreprocessor
@@ -38,10 +40,12 @@ except ImportError:
 __all__ = [
     # Core models
     "ARIMAForecaster",
-    "SARIMAForecaster", 
+    "SARIMAForecaster",
+    "SARIMAXForecaster",
     "VARForecaster",
     "ARIMAModelSelector",
     "SARIMAModelSelector",
+    "SARIMAXModelSelector",
     
     # Data handling
     "TimeSeriesPreprocessor", 

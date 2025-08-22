@@ -32,6 +32,9 @@ Se qualcosa va storto:
 3. **Avvisare** l'utente del problema
 4. Attendere istruzioni per ripristino da backup
 
+### 🔴 Commenti nei Sorgenti
+Quando possibile SEMPRE scrivere commenti nei sorgenti in Italiano.
+
 ## Panoramica del Progetto
 
 Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva e reporting dinamico con Quarto.

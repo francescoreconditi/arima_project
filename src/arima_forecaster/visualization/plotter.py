@@ -557,3 +557,464 @@ class ForecastPlotter:
             self.logger.info(f"Dashboard saved to {save_path}")
         
         return fig
+    
+    def plot_exog_analysis(
+        self,
+        exog_data: pd.DataFrame,
+        exog_importance: Optional[pd.DataFrame] = None,
+        target_series: Optional[pd.Series] = None,
+        title: str = "Analisi Variabili Esogene",
+        figsize: Optional[Tuple[int, int]] = None,
+        save_path: Optional[str] = None
+    ) -> plt.Figure:
+        """
+        Crea visualizzazione completa per l'analisi delle variabili esogene SARIMAX.
+        
+        Args:
+            exog_data: DataFrame con variabili esogene
+            exog_importance: DataFrame con importanza variabili (coefficienti, p-values)
+            target_series: Serie temporale target opzionale
+            title: Titolo del grafico
+            figsize: Dimensione figura
+            save_path: Percorso per salvare figura
+            
+        Returns:
+            Oggetto figura matplotlib
+        """
+        figsize = figsize or (16, 10)
+        fig = plt.figure(figsize=figsize)
+        
+        n_vars = len(exog_data.columns)
+        
+        if n_vars <= 4:
+            # Layout per poche variabili
+            rows, cols = 2, 3
+        else:
+            # Layout per molte variabili
+            rows, cols = 3, 3
+        
+        # 1. Serie temporali delle variabili esogene
+        ax1 = plt.subplot(rows, cols, 1)
+        colors_cycle = plt.cm.tab10(np.linspace(0, 1, n_vars))
+        
+        for i, col in enumerate(exog_data.columns[:5]):  # Max 5 variabili nel plot
+            ax1.plot(exog_data.index, exog_data[col], 
+                    color=colors_cycle[i], alpha=0.8, label=col)
+        
+        ax1.set_title('Variabili Esogene nel Tempo', fontweight='bold')
+        ax1.set_xlabel('Tempo')
+        ax1.set_ylabel('Valore')
+        if n_vars <= 5:
+            ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax1.grid(True, alpha=0.3)
+        
+        # 2. Importanza delle variabili (se disponibile)
+        ax2 = plt.subplot(rows, cols, 2)
+        if exog_importance is not None and not exog_importance.empty:
+            # Ordina per coefficiente assoluto
+            importance_sorted = exog_importance.reindex(
+                exog_importance['coefficient'].abs().sort_values(ascending=False).index
+            )
+            
+            colors = ['green' if sig else 'red' for sig in importance_sorted['significant']]
+            bars = ax2.bar(range(len(importance_sorted)), 
+                          importance_sorted['coefficient'], color=colors, alpha=0.7)
+            
+            ax2.set_title('Coefficienti Variabili Esogene', fontweight='bold')
+            ax2.set_xlabel('Variabili')
+            ax2.set_ylabel('Coefficiente')
+            ax2.set_xticks(range(len(importance_sorted)))
+            ax2.set_xticklabels(importance_sorted['variable'], rotation=45, ha='right')
+            ax2.grid(True, alpha=0.3)
+            ax2.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+            
+            # Legenda
+            from matplotlib.patches import Patch
+            legend_elements = [
+                Patch(facecolor='green', alpha=0.7, label='Significativo (p<0.05)'),
+                Patch(facecolor='red', alpha=0.7, label='Non significativo')
+            ]
+            ax2.legend(handles=legend_elements)
+        else:
+            ax2.text(0.5, 0.5, 'Importanza variabili\nnon disponibile', 
+                    ha='center', va='center', transform=ax2.transAxes)
+            ax2.set_title('Importanza Variabili', fontweight='bold')
+        
+        # 3. Correlazioni tra variabili esogene
+        ax3 = plt.subplot(rows, cols, 3)
+        numeric_cols = exog_data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 1:
+            corr_matrix = exog_data[numeric_cols].corr()
+            im = ax3.imshow(corr_matrix, cmap='RdBu_r', aspect='auto', vmin=-1, vmax=1)
+            
+            # Aggiungi valori di correlazione
+            for i in range(len(corr_matrix)):
+                for j in range(len(corr_matrix.columns)):
+                    text = ax3.text(j, i, f'{corr_matrix.iloc[i, j]:.2f}',
+                                   ha='center', va='center', fontsize=8)
+            
+            ax3.set_xticks(range(len(corr_matrix.columns)))
+            ax3.set_yticks(range(len(corr_matrix)))
+            ax3.set_xticklabels(corr_matrix.columns, rotation=45, ha='right')
+            ax3.set_yticklabels(corr_matrix.index)
+            ax3.set_title('Correlazioni tra Variabili', fontweight='bold')
+            
+            # Colorbar
+            cbar = plt.colorbar(im, ax=ax3, fraction=0.046, pad=0.04)
+            cbar.set_label('Correlazione')
+        else:
+            ax3.text(0.5, 0.5, 'Correlazioni\nnon calcolabili\n(< 2 variabili numeriche)', 
+                    ha='center', va='center', transform=ax3.transAxes)
+            ax3.set_title('Correlazioni tra Variabili', fontweight='bold')
+        
+        # 4. Distribuzione delle variabili (solo prime 4)
+        if rows >= 3:
+            for i, col in enumerate(numeric_cols[:4]):
+                ax = plt.subplot(rows, cols, 4 + i)
+                ax.hist(exog_data[col].dropna(), bins=20, alpha=0.7, 
+                       color=colors_cycle[i % len(colors_cycle)], edgecolor='black')
+                ax.set_title(f'Distribuzione {col}', fontsize=10)
+                ax.set_ylabel('Frequenza')
+                ax.grid(True, alpha=0.3)
+        
+        # 5. Correlazione con serie target (se disponibile)
+        if target_series is not None and rows >= 3:
+            ax_target = plt.subplot(rows, cols, cols * (rows - 1))
+            
+            target_corr = []
+            var_names = []
+            for col in numeric_cols[:6]:  # Max 6 variabili
+                if len(target_series) == len(exog_data):
+                    corr_val = target_series.corr(exog_data[col])
+                    if not np.isnan(corr_val):
+                        target_corr.append(corr_val)
+                        var_names.append(col)
+            
+            if target_corr:
+                colors_corr = ['green' if abs(c) > 0.5 else 'orange' if abs(c) > 0.3 else 'red' 
+                              for c in target_corr]
+                bars = ax_target.bar(range(len(target_corr)), target_corr, 
+                                   color=colors_corr, alpha=0.7)
+                
+                ax_target.set_title('Correlazione con Serie Target', fontweight='bold')
+                ax_target.set_xlabel('Variabili Esogene')
+                ax_target.set_ylabel('Correlazione')
+                ax_target.set_xticks(range(len(var_names)))
+                ax_target.set_xticklabels(var_names, rotation=45, ha='right')
+                ax_target.grid(True, alpha=0.3)
+                ax_target.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+                ax_target.set_ylim(-1, 1)
+                
+                # Aggiungi valori sui bar
+                for bar, val in zip(bars, target_corr):
+                    height = bar.get_height()
+                    ax_target.text(bar.get_x() + bar.get_width()/2., 
+                                 height + 0.02 if height >= 0 else height - 0.02,
+                                 f'{val:.2f}', ha='center', 
+                                 va='bottom' if height >= 0 else 'top', fontsize=9)
+            else:
+                ax_target.text(0.5, 0.5, 'Correlazioni con target\nnon calcolabili', 
+                             ha='center', va='center', transform=ax_target.transAxes)
+                ax_target.set_title('Correlazione con Serie Target', fontweight='bold')
+        
+        plt.suptitle(title, fontsize=16, fontweight='bold')
+        plt.tight_layout()
+        
+        if save_path:
+            fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            self.logger.info(f"Exog analysis plot saved to {save_path}")
+        
+        return fig
+    
+    def plot_sarimax_decomposition(
+        self,
+        decomposition: Dict[str, pd.Series],
+        exog_contributions: Optional[Dict[str, pd.Series]] = None,
+        title: str = "Decomposizione SARIMAX",
+        figsize: Optional[Tuple[int, int]] = None,
+        save_path: Optional[str] = None
+    ) -> plt.Figure:
+        """
+        Visualizza decomposizione SARIMAX con contributi delle variabili esogene.
+        
+        Args:
+            decomposition: Dizionario con componenti di decomposizione
+            exog_contributions: Contributi individuali delle variabili esogene
+            title: Titolo del grafico
+            figsize: Dimensione figura
+            save_path: Percorso per salvare figura
+            
+        Returns:
+            Oggetto figura matplotlib
+        """
+        figsize = figsize or (14, 10)
+        n_plots = len(decomposition) + (1 if exog_contributions else 0)
+        fig, axes = plt.subplots(n_plots, 1, figsize=figsize, sharex=True)
+        
+        if n_plots == 1:
+            axes = [axes]
+        
+        plot_idx = 0
+        
+        # Plot componenti standard di decomposizione
+        for component, values in decomposition.items():
+            ax = axes[plot_idx]
+            ax.plot(values.index, values.values, linewidth=1.5)
+            ax.set_title(f'{component.capitalize()} Component', fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            
+            if component == 'residual':
+                ax.axhline(y=0, color='red', linestyle='--', alpha=0.5)
+            
+            plot_idx += 1
+        
+        # Plot contributi variabili esogene se disponibili
+        if exog_contributions:
+            ax = axes[plot_idx]
+            colors = plt.cm.Set3(np.linspace(0, 1, len(exog_contributions)))
+            
+            for i, (var_name, contribution) in enumerate(exog_contributions.items()):
+                ax.plot(contribution.index, contribution.values, 
+                       color=colors[i], linewidth=1.5, label=var_name, alpha=0.8)
+            
+            ax.set_title('Contributi Variabili Esogene', fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+        
+        # Formattazione comune
+        axes[-1].set_xlabel('Tempo', fontsize=11)
+        plt.suptitle(title, fontsize=16, fontweight='bold')
+        plt.tight_layout()
+        
+        if save_path:
+            fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            self.logger.info(f"SARIMAX decomposition plot saved to {save_path}")
+        
+        return fig
+    
+    def create_sarimax_dashboard(
+        self,
+        actual: pd.Series,
+        forecast: pd.Series,
+        exog_data: pd.DataFrame,
+        exog_importance: Optional[pd.DataFrame] = None,
+        residuals: Optional[pd.Series] = None,
+        confidence_intervals: Optional[pd.DataFrame] = None,
+        metrics: Optional[Dict[str, float]] = None,
+        title: str = "SARIMAX Dashboard",
+        save_path: Optional[str] = None
+    ) -> plt.Figure:
+        """
+        Crea dashboard completa specifica per modelli SARIMAX.
+        
+        Args:
+            actual: Dati storici serie temporali
+            forecast: Valori previsti  
+            exog_data: DataFrame variabili esogene
+            exog_importance: Importanza variabili esogene
+            residuals: Residui modello
+            confidence_intervals: Intervalli di confidenza
+            metrics: Metriche performance
+            title: Titolo dashboard
+            save_path: Percorso per salvare figura
+            
+        Returns:
+            Oggetto figura matplotlib
+        """
+        fig = plt.figure(figsize=(18, 12))
+        
+        # 1. Main forecast plot (top left, spans 2 columns)
+        ax1 = plt.subplot(3, 4, (1, 2))
+        ax1.plot(actual.index, actual.values, color=self.colors['actual'], 
+                linewidth=2, label='Storico')
+        ax1.plot(forecast.index, forecast.values, color=self.colors['forecast'], 
+                linewidth=2, linestyle='--', label='Previsione')
+        
+        if confidence_intervals is not None:
+            ax1.fill_between(forecast.index,
+                           confidence_intervals.iloc[:, 0],
+                           confidence_intervals.iloc[:, 1],
+                           color=self.colors['confidence'], alpha=0.3,
+                           label='Intervallo di Confidenza')
+        
+        if len(forecast) > 0:
+            ax1.axvline(x=forecast.index[0], color='gray', linestyle=':', alpha=0.5)
+        
+        ax1.set_title('Previsione SARIMAX', fontsize=14, fontweight='bold')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # 2. Exog variables importance (top right)
+        ax2 = plt.subplot(3, 4, (3, 4))
+        if exog_importance is not None and not exog_importance.empty:
+            importance_sorted = exog_importance.reindex(
+                exog_importance['coefficient'].abs().sort_values(ascending=False).index
+            )
+            
+            colors = ['green' if sig else 'red' for sig in importance_sorted['significant']]
+            bars = ax2.bar(range(len(importance_sorted)), 
+                          importance_sorted['coefficient'], color=colors, alpha=0.7)
+            
+            ax2.set_title('Coefficienti Variabili Esogene', fontweight='bold')
+            ax2.set_xticks(range(len(importance_sorted)))
+            ax2.set_xticklabels(importance_sorted['variable'], rotation=45, ha='right')
+            ax2.axhline(y=0, color='black', linestyle='-', alpha=0.5)
+            ax2.grid(True, alpha=0.3)
+            
+            # Aggiungi valori sui bar
+            for bar, val in zip(bars, importance_sorted['coefficient']):
+                height = bar.get_height()
+                ax2.text(bar.get_x() + bar.get_width()/2., 
+                        height + 0.01 if height >= 0 else height - 0.01,
+                        f'{val:.3f}', ha='center', 
+                        va='bottom' if height >= 0 else 'top', fontsize=8)
+        else:
+            ax2.text(0.5, 0.5, 'Importanza variabili\nnon disponibile', 
+                    ha='center', va='center', transform=ax2.transAxes)
+            ax2.set_title('Coefficienti Variabili Esogene', fontweight='bold')
+        
+        # 3. Exog variables time series (middle left)
+        ax3 = plt.subplot(3, 4, 5)
+        colors_cycle = plt.cm.tab10(np.linspace(0, 1, len(exog_data.columns)))
+        
+        for i, col in enumerate(exog_data.columns[:4]):  # Max 4 per leggibilità
+            ax3.plot(exog_data.index, exog_data[col], 
+                    color=colors_cycle[i], alpha=0.8, label=col, linewidth=1)
+        
+        ax3.set_title('Variabili Esogene', fontsize=12, fontweight='bold')
+        if len(exog_data.columns) <= 4:
+            ax3.legend(fontsize=8)
+        ax3.grid(True, alpha=0.3)
+        
+        # 4. Residuals (middle center)
+        ax4 = plt.subplot(3, 4, 6)
+        if residuals is not None:
+            ax4.plot(residuals.index, residuals.values, color=self.colors['residuals'])
+            ax4.axhline(y=0, color='black', linestyle='--', alpha=0.5)
+            ax4.set_title('Residui nel Tempo', fontsize=12, fontweight='bold')
+            ax4.grid(True, alpha=0.3)
+        else:
+            ax4.text(0.5, 0.5, 'Residui\nnon disponibili', 
+                    ha='center', va='center', transform=ax4.transAxes)
+            ax4.set_title('Residui nel Tempo', fontsize=12, fontweight='bold')
+        
+        # 5. Metrics table (middle right)
+        ax5 = plt.subplot(3, 4, 7)
+        ax5.axis('off')
+        if metrics:
+            metrics_text = []
+            key_metrics = ['mae', 'rmse', 'mape', 'r_squared']  # Metriche chiave
+            
+            for key in key_metrics:
+                if key in metrics:
+                    value = metrics[key]
+                    if isinstance(value, float):
+                        metrics_text.append(f"{key.upper()}: {value:.4f}")
+            
+            ax5.text(0.1, 0.9, 'Metriche Performance:', fontsize=12, fontweight='bold',
+                    transform=ax5.transAxes, verticalalignment='top')
+            ax5.text(0.1, 0.7, '\n'.join(metrics_text), fontsize=10,
+                    transform=ax5.transAxes, verticalalignment='top',
+                    family='monospace')
+            
+            # Aggiungi informazioni modello
+            model_info = []
+            if 'n_exog' in metrics:
+                model_info.append(f"Variabili esogene: {metrics['n_exog']}")
+            if 'n_observations' in metrics:
+                model_info.append(f"Osservazioni: {metrics['n_observations']}")
+            
+            if model_info:
+                ax5.text(0.1, 0.4, 'Info Modello:', fontsize=11, fontweight='bold',
+                        transform=ax5.transAxes, verticalalignment='top')
+                ax5.text(0.1, 0.3, '\n'.join(model_info), fontsize=9,
+                        transform=ax5.transAxes, verticalalignment='top')
+        else:
+            ax5.text(0.5, 0.5, 'Metriche\nnon disponibili', ha='center', va='center',
+                    transform=ax5.transAxes)
+        
+        # 6. Correlations matrix (middle-right)
+        ax6 = plt.subplot(3, 4, 8)
+        numeric_cols = exog_data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 1:
+            # Mostra solo le prime 4 variabili per spazio
+            corr_matrix = exog_data[numeric_cols[:4]].corr()
+            im = ax6.imshow(corr_matrix, cmap='RdBu_r', aspect='auto', vmin=-1, vmax=1)
+            
+            # Valori di correlazione
+            for i in range(len(corr_matrix)):
+                for j in range(len(corr_matrix.columns)):
+                    ax6.text(j, i, f'{corr_matrix.iloc[i, j]:.2f}',
+                           ha='center', va='center', fontsize=8)
+            
+            ax6.set_xticks(range(len(corr_matrix.columns)))
+            ax6.set_yticks(range(len(corr_matrix)))
+            ax6.set_xticklabels(corr_matrix.columns, rotation=45, ha='right', fontsize=8)
+            ax6.set_yticklabels(corr_matrix.index, fontsize=8)
+            ax6.set_title('Correlazioni Variabili', fontsize=12, fontweight='bold')
+        else:
+            ax6.text(0.5, 0.5, 'Correlazioni\nnon disponibili', 
+                    ha='center', va='center', transform=ax6.transAxes)
+            ax6.set_title('Correlazioni Variabili', fontsize=12, fontweight='bold')
+        
+        # 7. Residuals histogram (bottom left)
+        ax7 = plt.subplot(3, 4, 9)
+        if residuals is not None:
+            ax7.hist(residuals.dropna(), bins=20, color=self.colors['residuals'], 
+                    alpha=0.7, edgecolor='black')
+            ax7.set_title('Distribuzione Residui', fontsize=12, fontweight='bold')
+            ax7.grid(True, alpha=0.3)
+        else:
+            ax7.text(0.5, 0.5, 'Distribuzione\nresidue\nnon disponibile', 
+                    ha='center', va='center', transform=ax7.transAxes)
+            ax7.set_title('Distribuzione Residui', fontsize=12, fontweight='bold')
+        
+        # 8. ACF of residuals (bottom center)
+        ax8 = plt.subplot(3, 4, 10)
+        if residuals is not None:
+            self._plot_acf(residuals, ax=ax8, lags=12, title='ACF Residui')
+        else:
+            ax8.text(0.5, 0.5, 'ACF\nresidue\nnon disponibile', 
+                    ha='center', va='center', transform=ax8.transAxes)
+            ax8.set_title('ACF Residui', fontsize=12, fontweight='bold')
+        
+        # 9. Significatività variabili (bottom right, spans 2)
+        ax9 = plt.subplot(3, 4, (11, 12))
+        if exog_importance is not None and not exog_importance.empty:
+            # Grafico p-values
+            pvalues = exog_importance['pvalue'].values
+            var_names = exog_importance['variable'].values
+            
+            colors_pval = ['green' if p < 0.05 else 'orange' if p < 0.1 else 'red' for p in pvalues]
+            bars = ax9.bar(range(len(pvalues)), pvalues, color=colors_pval, alpha=0.7)
+            
+            ax9.set_title('Significatività Variabili Esogene (p-values)', fontweight='bold')
+            ax9.set_xlabel('Variabili')
+            ax9.set_ylabel('p-value')
+            ax9.set_xticks(range(len(var_names)))
+            ax9.set_xticklabels(var_names, rotation=45, ha='right')
+            ax9.axhline(y=0.05, color='red', linestyle='--', alpha=0.7, label='α=0.05')
+            ax9.axhline(y=0.1, color='orange', linestyle='--', alpha=0.7, label='α=0.10')
+            ax9.set_yscale('log')
+            ax9.grid(True, alpha=0.3)
+            ax9.legend(fontsize=8)
+            
+            # Aggiungi valori
+            for bar, val in zip(bars, pvalues):
+                height = bar.get_height()
+                ax9.text(bar.get_x() + bar.get_width()/2., height * 1.1,
+                        f'{val:.3f}', ha='center', va='bottom', fontsize=8)
+        else:
+            ax9.text(0.5, 0.5, 'Significatività\nnon disponibile', 
+                    ha='center', va='center', transform=ax9.transAxes)
+            ax9.set_title('Significatività Variabili Esogene', fontweight='bold')
+        
+        plt.suptitle(title, fontsize=18, fontweight='bold')
+        plt.tight_layout()
+        
+        if save_path:
+            fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            self.logger.info(f"SARIMAX dashboard saved to {save_path}")
+        
+        return fig

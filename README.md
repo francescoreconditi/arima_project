@@ -9,6 +9,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 ### 🌟 **Nuove Funzionalità Avanzate**
 
 - **🌊 Modelli SARIMA**: Gestione completa della stagionalità con parametri (P,D,Q,s)
+- **🌐 Modelli SARIMAX**: Modelli con variabili esogene per incorporare fattori esterni
 - **📈 Modelli VAR**: Forecasting multivariato con analisi di causalità e impulse response
 - **🤖 Auto-ML**: Ottimizzazione automatica con Optuna, Hyperopt e Scikit-Optimize  
 - **🌐 API REST**: Servizi di forecasting production-ready con FastAPI
@@ -202,7 +203,64 @@ print("Componenti:", decomposizione.keys())
 forecast_sarima = sarima_model.forecast(steps=24)  # 2 anni
 ```
 
-#### 3. Forecasting Multivariato con VAR
+#### 3. Forecasting con Variabili Esogene (SARIMAX)
+
+```python
+from arima_forecaster import SARIMAXForecaster, SARIMAXModelSelector, TimeSeriesPreprocessor
+import pandas as pd
+
+# Dati con variabili esogene
+serie_vendite = pd.read_csv('vendite.csv', index_col='data', parse_dates=True)['vendite']
+variabili_esogene = pd.DataFrame({
+    'temperature': temperature_data,
+    'marketing_spend': marketing_data,
+    'economic_indicator': economic_data
+})
+
+# Preprocessing integrato per serie target e variabili esogene
+preprocessor = TimeSeriesPreprocessor()
+serie_processed, exog_processed, metadata = preprocessor.preprocess_pipeline_with_exog(
+    series=serie_vendite,
+    exog=variabili_esogene,
+    scale_exog=True,  # Standardizza variabili esogene
+    validate_exog=True
+)
+
+# Selezione automatica SARIMAX
+selector = SARIMAXModelSelector(
+    seasonal_periods=[12],
+    exog_names=list(variabili_esogene.columns),
+    max_models=30
+)
+selector.search(serie_processed, exog=exog_processed)
+
+# Miglior modello con variabili esogene
+sarimax_model = selector.get_best_model()
+print(f"Modello: SARIMAX{sarimax_model.order}x{sarimax_model.seasonal_order}")
+
+# Analisi importanza variabili esogene
+importance = sarimax_model.get_exog_importance()
+print("\nImportanza variabili esogene:")
+for _, row in importance.iterrows():
+    sig = "✅" if row['significant'] else "❌"
+    print(f"  {row['variable']}: coeff={row['coefficient']:.4f}, p-value={row['pvalue']:.4f} {sig}")
+
+# Forecast con variabili esogene future (richieste!)
+exog_future = pd.DataFrame({
+    'temperature': [22.5, 23.1, 21.8, 20.5],  # Dati futuri
+    'marketing_spend': [1200, 1300, 1100, 1400],
+    'economic_indicator': [105.2, 106.1, 105.8, 107.0]
+})
+
+forecast_sarimax = sarimax_model.forecast(
+    steps=4, 
+    exog_future=exog_future,
+    confidence_intervals=True
+)
+print(f"\nPrevisioni SARIMAX: {forecast_sarimax}")
+```
+
+#### 4. Forecasting Multivariato con VAR
 
 ```python
 from arima_forecaster import VARForecaster
@@ -231,7 +289,7 @@ print("Test causalità:", causalita)
 irf = var_model.impulse_response(periods=10)
 ```
 
-#### 4. Auto-ML e Ottimizzazione Avanzata
+#### 5. Auto-ML e Ottimizzazione Avanzata
 
 ```python
 from arima_forecaster.automl import ARIMAOptimizer, HyperparameterTuner
@@ -258,7 +316,7 @@ ensemble_result = tuner.ensemble_optimization('arima', serie_pulita, n_models=5)
 ensemble_forecast = tuner.forecast_ensemble(steps=12, method='weighted')
 ```
 
-#### 5. API REST - Client Python
+#### 6. API REST - Client Python
 
 ```python
 import requests
@@ -297,7 +355,7 @@ forecast_result = forecast_response.json()
 print("Forecast API:", forecast_result['forecast_values'][:3])
 ```
 
-#### 6. Dashboard Interattiva (Script di Lancio)
+#### 7. Dashboard Interattiva (Script di Lancio)
 
 ```python
 # Lancia dashboard Streamlit
@@ -315,18 +373,21 @@ dashboard = ARIMADashboard()
 dashboard.run()
 ```
 
-#### 7. Report Dinamici con Quarto
+#### 8. Report Dinamici con Quarto
 
 ```python
-from arima_forecaster import ARIMAForecaster, SARIMAForecaster
+from arima_forecaster import ARIMAForecaster, SARIMAForecaster, SARIMAXForecaster
 from arima_forecaster.reporting import QuartoReportGenerator
 from arima_forecaster.visualization import ForecastPlotter
 
 # Addestra modelli
 arima_model = ARIMAForecaster(order=(2,1,2))
 sarima_model = SARIMAForecaster(order=(1,1,1), seasonal_order=(1,1,1,12))
+sarimax_model = SARIMAXForecaster(order=(1,1,1), seasonal_order=(1,1,1,12), exog_names=['temperature', 'marketing'])
+
 arima_model.fit(serie_pulita)
 sarima_model.fit(serie_pulita)
+sarimax_model.fit(serie_pulita, exog=variabili_esogene)
 
 # Crea visualizzazioni
 plotter = ForecastPlotter()
@@ -403,6 +464,12 @@ docx_report = arima_model.generate_report(
 - **Decomposizione Automatica**: Separazione trend, stagionalità, residui
 - **Selezione Parametri**: Grid search per (p,d,q)(P,D,Q)_s ottimali
 - **Validazione Stagionale**: Test specifici per pattern stagionali
+
+#### 🌐 SARIMAX - Con Variabili Esogene
+- **Variabili Esterne**: Integrazione fattori economici, meteorologici, marketing
+- **Preprocessing Automatico**: Gestione e validazione variabili esogene
+- **Analisi Importanza**: Coefficienti e significatività statistica variabili
+- **Visualizzazioni Dedicate**: Dashboard specializzate per analisi esogene
 
 #### 📈 VAR - Multivariato
 - **Analisi Causalità**: Test di Granger per relazioni causa-effetto
