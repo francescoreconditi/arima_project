@@ -2,6 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ PROCEDURE DI SICUREZZA OBBLIGATORIE ⚠️
+
+### 🔴 Backup Automatico Pre-Modifica
+**PRIMA di qualsiasi modifica a qualsiasi file:**
+1. **SEMPRE** copiare il file originale in `C:\Backup\Code\{nome_progetto}\`
+2. Mantenere la struttura delle directory originale
+3. **SOLO DOPO** il backup completato, procedere con le modifiche
+4. Esempio: `cp src/file.py C:\Backup\Code\arima_project\src\file.py.backup`
+
+### 🔴 Gestione File Grandi (>50KB o errore "token limit")
+**Quando appare "superato il numero di token" o file >50KB:**
+1. **MAI** modifiche massive su file grandi
+2. **SEMPRE** leggere tutto il file a sezioni PRIMA (con Read offset/limit)  
+3. **SOLO** modifiche incrementali piccole e verificate (<50 righe)
+4. **Test immediato** dopo ogni singola modifica
+5. **MAI** sostituire blocchi >50 righe senza mappare completamente il file
+
+### 🔴 Regola d'Oro Inviolabile
+```
+Un errore = danni ai clienti = soldi persi
+SEMPRE: Backup PRIMA → Modifiche piccole → Test subito
+```
+
+### 🔴 Procedura di Emergenza
+Se qualcosa va storto:
+1. **STOP** immediatamente
+2. **NON** tentare riparazioni
+3. **Avvisare** l'utente del problema
+4. Attendere istruzioni per ripristino da backup
+
 ## Panoramica del Progetto
 
 Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva e reporting dinamico con Quarto.

@@ -1,0 +1,322 @@
+/* TOC Navigation Improvements */
+#TOC {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+#TOC li {
+  margin: 3px 0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+#TOC li:hover {
+  background-color: #e9ecef;
+}
+
+/* Style active TOC items */
+#TOC li.active {
+  background-color: #e3f2fd !important;
+  border-left: 4px solid #2196f3 !important;
+  padding-left: 8px;
+}
+
+/* Override child elements to prevent cascading - MAXIMUM specificity */
+#TOC li.active ul li.toc-child-override,
+#TOC li.active ul li.toc-child-override:hover,
+#TOC li.active .collapse li.toc-child-override,
+#TOC li.active .collapse li.toc-child-override:hover {
+  background-color: transparent !important;
+  border-left: none !important;
+  border: none !important;
+  padding-left: 12px !important;
+  margin-left: 0 !important;
+}
+
+#TOC li.active ul li.toc-child-override a,
+#TOC li.active ul li.toc-child-override a:hover,
+#TOC li.active .collapse li.toc-child-override a,
+#TOC li.active .collapse li.toc-child-override a:hover {
+  color: #495057 !important;
+  font-weight: normal !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+#TOC li.active > a {
+  color: #1976d2 !important;
+  font-weight: 600 !important;
+}
+
+#TOC a {
+  display: block;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: #495057;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+#TOC a:hover {
+  background-color: rgba(33, 150, 243, 0.1);
+  color: #1976d2;
+}
+
+/* Table Professional Styling */
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 20px 0;
+  font-size: 0.95em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.table thead th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
+  padding: 15px 12px;
+  border: none;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.table tbody tr:hover {
+  background-color: #e3f2fd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.table tbody td {
+  padding: 12px 12px;
+  border: none;
+  vertical-align: middle;
+}
+
+.table tbody td:first-child {
+  font-weight: 500;
+  color: #495057;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Metrics badges */
+.metric-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+  margin-right: 5px;
+}
+
+.metric-good { background-color: #d4edda; color: #155724; }
+.metric-warning { background-color: #fff3cd; color: #856404; }
+.metric-danger { background-color: #f8d7da; color: #721c24; }
+
+/* Card styling for sections */
+.content-block {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-left: 4px solid #667eea;
+}
+
+/* Header improvements */
+h2, h3 {
+  color: #2c3e50;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 8px;
+  margin-top: 30px;
+}
+
+h2 {
+  font-size: 1.8em;
+  color: #34495e;
+}
+
+h3 {
+  font-size: 1.4em;
+  color: #7f8c8d;
+  border-bottom: 1px solid #bdc3c7;
+}
+
+/* Image zoom styles */
+.zoomable-image {
+  cursor: crosshair;
+  transition: transform 0.2s;
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.zoomable-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Magnifying glass lens - migliorata per ridurre confusione visiva */
+.magnifier-lens {
+  position: absolute !important;
+  border: 1px solid #2196F3;
+  border-radius: 50%;
+  cursor: none;
+  width: 80px;
+  height: 80px;
+  display: none;
+  pointer-events: none;
+  box-shadow: 0 0 5px rgba(33, 150, 243, 0.3);
+  background: rgba(33, 150, 243, 0.05);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 999998 !important;
+}
+
+/* Magnified result container - usando background-image per affidabilità */
+.magnifier-result {
+  position: fixed !important;
+  border: 2px solid #2196F3;
+  border-radius: 8px;
+  display: none;
+  width: 300px;
+  height: 300px;
+  z-index: 999999 !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  background-color: #f0f0f0;
+  background-repeat: no-repeat;
+  background-size: 900px 900px; /* 3x zoom di base */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  /* Fallback pattern visibile quando l'immagine non è caricata */
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.5) 10px, rgba(255,255,255,.5) 20px);
+}
+
+/* Modal for zoomed image */
+.image-modal {
+  display: none;
+  position: fixed !important;
+  z-index: 1000000 !important;
+  padding-top: 60px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.9);
+  cursor: zoom-out;
+}
+
+.modal-content {
+  margin: auto;
+  display: block;
+  max-width: 90%;
+  max-height: 90%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  animation: zoom 0.3s;
+}
+
+@keyframes zoom {
+  from {transform: scale(0.5)}
+  to {transform: scale(1)}
+}
+
+.close-modal {
+  position: absolute !important;
+  top: 15px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 40px;
+  font-weight: bold;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+  color: #bbb;
+  text-decoration: none;
+}
+
+/* Caption for zoomed image */
+.image-caption {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 700px;
+  text-align: center;
+  color: #ccc;
+  padding: 10px 0;
+}
+
+/* Image controls on hover */
+.image-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* Download icon */
+.download-icon {
+  position: absolute !important;
+  top: 10px;
+  right: 10px;
+  font-size: 22px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  cursor: pointer;
+  background: rgba(255,255,255,0.9);
+  padding: 6px;
+  border-radius: 50%;
+  z-index: 1002;
+  border: 1px solid #ddd;
+  color: #333;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.download-icon:hover {
+  background: rgba(33, 150, 243, 0.9);
+  color: white;
+  transform: scale(1.1);
+}
+
+.image-container:hover .download-icon {
+  opacity: 1;
+}
+
+/* Limita dimensioni immagini esterne */
+.figure img {
+  max-width: 800px !important;
+  width: 100%;
+  height: auto !important;
+  display: block;
+  margin: 0 auto;
+}
