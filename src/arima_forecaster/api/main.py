@@ -76,7 +76,7 @@ def create_app(model_storage_path: Optional[str] = None) -> FastAPI:
         background_tasks: BackgroundTasks
     ):
         """
-        Train an ARIMA or SARIMA model.
+        Train an ARIMA, SARIMA, or SARIMAX model.
         """
         try:
             # Convert request data to pandas Series
@@ -164,12 +164,18 @@ def create_app(model_storage_path: Optional[str] = None) -> FastAPI:
             timestamps = pd.to_datetime(request.data.timestamps)
             series = pd.Series(request.data.values, index=timestamps)
             
+            # Prepare exogenous data if provided
+            exog_df = None
+            if request.exogenous_data:
+                exog_df = pd.DataFrame(request.exogenous_data.variables, index=timestamps)
+            
             # Perform auto selection
             result = await forecast_service.auto_select_model(
                 series=series,
                 model_type=request.model_type,
                 max_models=request.max_models,
-                information_criterion=request.information_criterion
+                information_criterion=request.information_criterion,
+                exogenous_data=exog_df
             )
             
             selection_time = time.time() - start_time
@@ -211,12 +217,18 @@ def create_app(model_storage_path: Optional[str] = None) -> FastAPI:
                 )
                 return result
             else:
-                # ARIMA/SARIMA forecast
+                # ARIMA/SARIMA/SARIMAX forecast
+                exog_future_df = None
+                if request.exogenous_future:
+                    # Create DataFrame for future exogenous variables
+                    exog_future_df = pd.DataFrame(request.exogenous_future.variables)
+                
                 result = await forecast_service.generate_forecast(
                     model_id=model_id,
                     steps=request.steps,
                     confidence_level=request.confidence_level,
-                    return_intervals=request.return_intervals
+                    return_intervals=request.return_intervals,
+                    exogenous_future=exog_future_df
                 )
                 return result
                 

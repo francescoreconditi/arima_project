@@ -17,8 +17,8 @@ warnings.filterwarnings("ignore")
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster, VARForecaster
-from arima_forecaster.core import ARIMAModelSelector, SARIMAModelSelector
+from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster, VARForecaster, SARIMAXForecaster
+from arima_forecaster.core import ARIMAModelSelector, SARIMAModelSelector, SARIMAXModelSelector
 from arima_forecaster.data import DataLoader, TimeSeriesPreprocessor
 from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.utils.logger import get_logger
@@ -62,7 +62,7 @@ class ARIMADashboard:
     def run(self):
         """Run the main dashboard."""
         st.title("📈 Dashboard ARIMA Forecaster")
-        st.markdown("Interactive dashboard for time series forecasting with ARIMA models")
+        st.markdown("Interactive dashboard for time series forecasting with ARIMA, SARIMA, SARIMAX, and VAR models")
         
         # Sidebar navigation
         st.sidebar.title("Navigation")
@@ -122,6 +122,15 @@ class ARIMADashboard:
                 timestamp_col = st.selectbox("Select timestamp column", df.columns)
                 value_col = st.selectbox("Select value column", df.columns)
                 
+                # Additional columns for SARIMAX
+                other_columns = [col for col in df.columns if col not in [timestamp_col, value_col]]
+                if other_columns:
+                    st.info(f"Found {len(other_columns)} additional columns that can be used as exogenous variables for SARIMAX models.")
+                    show_additional = st.checkbox("Preview additional columns", value=True)
+                    if show_additional:
+                        st.write("Additional columns:", other_columns)
+                        st.dataframe(df[other_columns].head())
+                
                 if st.button("Process Data"):
                     try:
                         # Create time series
@@ -134,6 +143,7 @@ class ARIMADashboard:
                         
                         # Store in session state
                         st.session_state.data = series
+                        st.session_state.original_data = df  # Store original dataframe for exogenous variables
                         st.session_state.data_loaded = True
                         
                         st.success("Dati elaborati con successo!")
@@ -147,6 +157,11 @@ class ARIMADashboard:
         
         # Sample data option
         st.subheader("Oppure Usa Dati di Esempio")
+        sample_type = st.selectbox(
+            "Select sample data type",
+            ["Simple Time Series", "Time Series with Exogenous Variables"]
+        )
+        
         if st.button("Generate Sample Data"):
             # Generate sample time series data
             dates = pd.date_range('2020-01-01', periods=365, freq='D')
@@ -156,13 +171,39 @@ class ARIMADashboard:
             noise = np.random.normal(0, 5, 365)
             values = trend + seasonal + noise
             
-            series = pd.Series(values, index=dates, name='sample_data')
+            if sample_type == "Simple Time Series":
+                series = pd.Series(values, index=dates, name='sample_data')
+                
+                st.session_state.data = series
+                st.session_state.data_loaded = True
+                
+                st.success("Dati di esempio generati!")
+                st.info("Vai su 'Data Exploration' per esplorare i dati di esempio.")
             
-            st.session_state.data = series
-            st.session_state.data_loaded = True
-            
-            st.success("Dati di esempio generati!")
-            st.info("Vai su 'Data Exploration' per esplorare i dati di esempio.")
+            else:  # Time Series with Exogenous Variables
+                # Generate exogenous variables
+                temperature = 20 + 10 * np.sin(2 * np.pi * np.arange(365) / 365.25) + np.random.normal(0, 2, 365)
+                marketing_spend = 1000 + 50 * np.arange(365) + np.random.normal(0, 200, 365)
+                day_of_week = [(i % 7) for i in range(365)]
+                
+                # Create DataFrame with all variables
+                df_sample = pd.DataFrame({
+                    'timestamp': dates,
+                    'value': values,
+                    'temperature': temperature,
+                    'marketing_spend': marketing_spend,
+                    'day_of_week': day_of_week
+                })
+                
+                series = pd.Series(values, index=dates, name='sample_data')
+                
+                st.session_state.data = series
+                st.session_state.original_data = df_sample
+                st.session_state.data_loaded = True
+                
+                st.success("Dati di esempio con variabili esogene generati!")
+                st.info("Ora puoi usare modelli SARIMAX con le variabili esogene: temperature, marketing_spend, day_of_week")
+                st.info("Vai su 'Data Exploration' per esplorare i dati di esempio.")
     
     def data_exploration_page(self):
         """Data exploration and visualization page."""
@@ -312,21 +353,38 @@ class ARIMADashboard:
         with col1:
             model_type = st.selectbox(
                 "Select model type",
-                ['ARIMA', 'SARIMA', 'Auto-ARIMA', 'Auto-SARIMA']
+                ['ARIMA', 'SARIMA', 'SARIMAX', 'Auto-ARIMA', 'Auto-SARIMA', 'Auto-SARIMAX']
             )
             
-            if model_type in ['ARIMA', 'SARIMA']:
+            if model_type in ['ARIMA', 'SARIMA', 'SARIMAX']:
                 st.subheader("Parametri Manuali")
                 p = st.number_input("AR order (p)", min_value=0, max_value=5, value=1)
                 d = st.number_input("Differencing (d)", min_value=0, max_value=2, value=1)
                 q = st.number_input("MA order (q)", min_value=0, max_value=5, value=1)
                 
-                if model_type == 'SARIMA':
+                if model_type in ['SARIMA', 'SARIMAX']:
                     st.write("**Seasonal Parameters**")
                     P = st.number_input("Seasonal AR (P)", min_value=0, max_value=2, value=1)
                     D = st.number_input("Seasonal Diff (D)", min_value=0, max_value=1, value=1)
                     Q = st.number_input("Seasonal MA (Q)", min_value=0, max_value=2, value=1)
                     s = st.number_input("Seasonal period (s)", min_value=2, max_value=365, value=12)
+                
+                if model_type == 'SARIMAX':
+                    st.write("**Exogenous Variables**")
+                    st.info("SARIMAX requires exogenous variables. Upload data with additional columns for exogenous variables.")
+                    
+                    # Check if we have additional columns that could be exogenous
+                    if hasattr(st.session_state, 'original_data') and len(st.session_state.original_data.columns) > 2:
+                        available_columns = [col for col in st.session_state.original_data.columns 
+                                           if col not in ['timestamp', 'value']]
+                        exog_variables = st.multiselect(
+                            "Select exogenous variables",
+                            available_columns,
+                            default=available_columns[:3] if len(available_columns) >= 3 else available_columns
+                        )
+                    else:
+                        st.warning("No additional columns found for exogenous variables. Please upload data with extra columns.")
+                        exog_variables = []
         
         with col2:
             if model_type.startswith('Auto'):
@@ -335,7 +393,7 @@ class ARIMADashboard:
                 max_d = st.number_input("Max Differencing", min_value=0, max_value=2, value=2)
                 max_q = st.number_input("Max MA order", min_value=0, max_value=5, value=3)
                 
-                if model_type == 'Auto-SARIMA':
+                if model_type in ['Auto-SARIMA', 'Auto-SARIMAX']:
                     max_P = st.number_input("Max Seasonal AR", min_value=0, max_value=2, value=1)
                     max_D = st.number_input("Max Seasonal Diff", min_value=0, max_value=1, value=1)
                     max_Q = st.number_input("Max Seasonal MA", min_value=0, max_value=2, value=1)
@@ -344,6 +402,23 @@ class ARIMADashboard:
                         [4, 7, 12, 24, 52, 365],
                         default=[12]
                     )
+                
+                if model_type == 'Auto-SARIMAX':
+                    st.write("**Exogenous Variables**")
+                    st.info("Auto-SARIMAX requires exogenous variables for automatic selection.")
+                    
+                    # Check if we have additional columns that could be exogenous
+                    if hasattr(st.session_state, 'original_data') and len(st.session_state.original_data.columns) > 2:
+                        available_columns = [col for col in st.session_state.original_data.columns 
+                                           if col not in ['timestamp', 'value']]
+                        auto_exog_variables = st.multiselect(
+                            "Select exogenous variables for auto-selection",
+                            available_columns,
+                            default=available_columns[:3] if len(available_columns) >= 3 else available_columns
+                        )
+                    else:
+                        st.warning("No additional columns found for exogenous variables. Please upload data with extra columns.")
+                        auto_exog_variables = []
                 
                 ic = st.selectbox("Information Criterion", ['aic', 'bic', 'hqic'])
                 max_models = st.number_input("Max models to test", min_value=10, max_value=200, value=50)
@@ -363,6 +438,24 @@ class ARIMADashboard:
                             seasonal_order=(P, D, Q, s)
                         )
                         model.fit(data)
+                    
+                    elif model_type == 'SARIMAX':
+                        if not exog_variables:
+                            st.error("Please select at least one exogenous variable for SARIMAX.")
+                            return
+                        
+                        # Prepare exogenous data
+                        exog_data = st.session_state.original_data[exog_variables]
+                        
+                        model = SARIMAXForecaster(
+                            order=(p, d, q),
+                            seasonal_order=(P, D, Q, s)
+                        )
+                        model.fit(data, exog=exog_data)
+                        
+                        # Store exogenous variables for forecasting
+                        st.session_state.exog_variables = exog_variables
+                        st.session_state.exog_data = exog_data
                         
                     elif model_type == 'Auto-ARIMA':
                         selector = ARIMAModelSelector(
@@ -402,6 +495,40 @@ class ARIMADashboard:
                         st.write(f"Selected seasonal order: {selector.best_seasonal_order}")
                         results_df = selector.get_results_summary(10)
                         st.dataframe(results_df)
+                    
+                    elif model_type == 'Auto-SARIMAX':
+                        if not auto_exog_variables:
+                            st.error("Please select at least one exogenous variable for Auto-SARIMAX.")
+                            return
+                        
+                        # Prepare exogenous data
+                        exog_data = st.session_state.original_data[auto_exog_variables]
+                        
+                        selector = SARIMAXModelSelector(
+                            p_range=(0, max_p),
+                            d_range=(0, max_d),
+                            q_range=(0, max_q),
+                            P_range=(0, max_P),
+                            D_range=(0, max_D),
+                            Q_range=(0, max_Q),
+                            seasonal_periods=seasonal_periods,
+                            information_criterion=ic,
+                            max_models=max_models
+                        )
+                        selector.search(data, exog=exog_data, verbose=False)
+                        model = selector.get_best_model()
+                        
+                        # Show selection results
+                        st.subheader("Selezione Miglior Modello")
+                        st.write(f"Selected order: {selector.best_order}")
+                        st.write(f"Selected seasonal order: {selector.best_seasonal_order}")
+                        st.write(f"Exogenous variables: {auto_exog_variables}")
+                        results_df = selector.get_results_summary(10)
+                        st.dataframe(results_df)
+                        
+                        # Store exogenous variables for forecasting
+                        st.session_state.exog_variables = auto_exog_variables
+                        st.session_state.exog_data = exog_data
                     
                     # Store model in session state
                     st.session_state.model = model
@@ -487,23 +614,117 @@ class ARIMADashboard:
         
         show_intervals = st.checkbox("Show confidence intervals", value=True)
         
+        # SARIMAX specific: Handle exogenous variables for forecasting
+        exog_future = None
+        if hasattr(st.session_state, 'exog_variables') and st.session_state.exog_variables:
+            st.subheader("Exogenous Variables for Forecast")
+            st.info("SARIMAX models require future values of exogenous variables for forecasting.")
+            
+            # Options for providing future exogenous values
+            exog_method = st.radio(
+                "How to provide future exogenous values?",
+                ["Manual Input", "Extend Last Values", "Linear Trend", "Upload CSV"]
+            )
+            
+            if exog_method == "Manual Input":
+                st.write("Enter future values for each exogenous variable:")
+                exog_future_dict = {}
+                for var in st.session_state.exog_variables:
+                    exog_future_dict[var] = st.number_input(
+                        f"Future value for {var} (constant for all forecast steps)",
+                        value=float(st.session_state.exog_data[var].iloc[-1])
+                    )
+                
+                # Create DataFrame with repeated values
+                exog_future = pd.DataFrame(
+                    {var: [value] * forecast_steps for var, value in exog_future_dict.items()}
+                )
+            
+            elif exog_method == "Extend Last Values":
+                # Use last known values
+                last_values = st.session_state.exog_data.iloc[-1]
+                exog_future = pd.DataFrame(
+                    {var: [last_values[var]] * forecast_steps for var in st.session_state.exog_variables}
+                )
+                st.write("Using last known values:", last_values.to_dict())
+            
+            elif exog_method == "Linear Trend":
+                st.write("Extending with linear trend based on last 5 observations:")
+                exog_future_dict = {}
+                for var in st.session_state.exog_variables:
+                    # Calculate simple linear trend
+                    recent_values = st.session_state.exog_data[var].iloc[-5:].values
+                    trend = np.mean(np.diff(recent_values))
+                    start_value = st.session_state.exog_data[var].iloc[-1]
+                    
+                    future_values = [start_value + trend * (i + 1) for i in range(forecast_steps)]
+                    exog_future_dict[var] = future_values
+                    st.write(f"{var}: trend = {trend:.4f}, starting from {start_value:.4f}")
+                
+                exog_future = pd.DataFrame(exog_future_dict)
+            
+            elif exog_method == "Upload CSV":
+                uploaded_exog = st.file_uploader(
+                    "Upload CSV with future exogenous values",
+                    type=['csv'],
+                    help=f"CSV should have {forecast_steps} rows and columns: {', '.join(st.session_state.exog_variables)}"
+                )
+                
+                if uploaded_exog is not None:
+                    try:
+                        exog_future = pd.read_csv(uploaded_exog)
+                        st.write("Uploaded exogenous data preview:", exog_future.head())
+                        
+                        # Validate columns
+                        if not all(col in exog_future.columns for col in st.session_state.exog_variables):
+                            st.error(f"CSV must contain columns: {st.session_state.exog_variables}")
+                            exog_future = None
+                        elif len(exog_future) != forecast_steps:
+                            st.error(f"CSV must have exactly {forecast_steps} rows for the forecast horizon.")
+                            exog_future = None
+                    except Exception as e:
+                        st.error(f"Error reading CSV: {e}")
+                        exog_future = None
+        
         # Generate forecast
         if st.button("Generate Forecast", type="primary"):
             try:
                 with st.spinner("Generating forecast..."):
                     
-                    if show_intervals:
-                        forecast, conf_int = model.forecast(
-                            steps=forecast_steps,
-                            alpha=1-confidence_level,
-                            return_conf_int=True
-                        )
+                    # Check if SARIMAX requires exogenous variables
+                    if hasattr(st.session_state, 'exog_variables') and st.session_state.exog_variables:
+                        if exog_future is None:
+                            st.error("Please provide future exogenous variables for SARIMAX forecast.")
+                            return
+                        
+                        if show_intervals:
+                            forecast, conf_int = model.forecast(
+                                steps=forecast_steps,
+                                exog_future=exog_future,
+                                alpha=1-confidence_level,
+                                return_conf_int=True
+                            )
+                        else:
+                            forecast = model.forecast(
+                                steps=forecast_steps,
+                                exog_future=exog_future,
+                                confidence_intervals=False
+                            )
+                            conf_int = None
                     else:
-                        forecast = model.forecast(
-                            steps=forecast_steps,
-                            confidence_intervals=False
-                        )
-                        conf_int = None
+                        # Regular ARIMA/SARIMA forecast
+                        if show_intervals:
+                            forecast, conf_int = model.forecast(
+                                steps=forecast_steps,
+                                alpha=1-confidence_level,
+                                return_conf_int=True
+                            )
+                        else:
+                            forecast = model.forecast(
+                                steps=forecast_steps,
+                                confidence_intervals=False
+                            )
+                            conf_int = None
                     
                     st.session_state.forecast_result = {
                         'forecast': forecast,

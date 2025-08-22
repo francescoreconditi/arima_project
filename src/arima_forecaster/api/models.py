@@ -67,19 +67,46 @@ class SARIMAOrder(BaseModel):
     s: int = Field(..., ge=2, le=365, description="Seasonal period")
 
 
+class ExogenousData(BaseModel):
+    """Dati variabili esogene per SARIMAX."""
+    
+    variables: Dict[str, List[float]] = Field(..., description="Dictionary of exogenous variable names to values")
+    
+    @validator('variables')
+    def validate_variables(cls, v):
+        if len(v) == 0:
+            raise ValueError("Exogenous variables cannot be empty")
+        
+        # Check all variables have same length
+        lengths = [len(values) for values in v.values()]
+        if len(set(lengths)) > 1:
+            raise ValueError("All exogenous variables must have the same length")
+        
+        return v
+
+
 class ModelTrainingRequest(BaseModel):
     """Richiesta per addestramento modello."""
     
     data: TimeSeriesData
-    model_type: str = Field(..., description="Type of model (arima, sarima)")
+    model_type: str = Field(..., description="Type of model (arima, sarima, sarimax)")
     order: Optional[ARIMAOrder] = None
     seasonal_order: Optional[SARIMAOrder] = None
+    exogenous_data: Optional[ExogenousData] = None
     auto_select: bool = Field(default=False, description="Whether to automatically select model parameters")
     
     @validator('model_type')
     def validate_model_type(cls, v):
-        if v not in ['arima', 'sarima']:
-            raise ValueError("model_type must be 'arima' or 'sarima'")
+        if v not in ['arima', 'sarima', 'sarimax']:
+            raise ValueError("model_type must be 'arima', 'sarima', or 'sarimax'")
+        return v
+    
+    @validator('exogenous_data')
+    def validate_exogenous(cls, v, values):
+        if values.get('model_type') == 'sarimax' and v is None:
+            raise ValueError("exogenous_data is required for SARIMAX models")
+        if values.get('model_type') != 'sarimax' and v is not None:
+            raise ValueError("exogenous_data is only allowed for SARIMAX models")
         return v
     
     @validator('order')
@@ -90,8 +117,8 @@ class ModelTrainingRequest(BaseModel):
     
     @validator('seasonal_order') 
     def validate_seasonal_order(cls, v, values):
-        if values.get('model_type') == 'sarima' and not values.get('auto_select') and v is None:
-            raise ValueError("SARIMA seasonal_order is required when not using auto_select")
+        if values.get('model_type') in ['sarima', 'sarimax'] and not values.get('auto_select') and v is None:
+            raise ValueError("SARIMA/SARIMAX seasonal_order is required when not using auto_select")
         return v
 
 
@@ -116,6 +143,7 @@ class ForecastRequest(BaseModel):
     steps: int = Field(..., ge=1, le=100, description="Number of forecast steps")
     confidence_level: float = Field(default=0.95, ge=0.5, le=0.99, description="Confidence level")
     return_intervals: bool = Field(default=True, description="Whether to return confidence intervals")
+    exogenous_future: Optional[ExogenousData] = Field(None, description="Future exogenous variables for SARIMAX models")
 
 
 class ModelInfo(BaseModel):
@@ -173,14 +201,23 @@ class AutoSelectionRequest(BaseModel):
     """Richiesta per selezione automatica modello."""
     
     data: TimeSeriesData
-    model_type: str = Field(..., description="Type of model (arima, sarima)")
+    model_type: str = Field(..., description="Type of model (arima, sarima, sarimax)")
+    exogenous_data: Optional[ExogenousData] = None
     max_models: Optional[int] = Field(default=50, ge=1, le=200, description="Maximum models to test")
     information_criterion: str = Field(default='aic', description="Information criterion")
     
     @validator('model_type')
     def validate_model_type(cls, v):
-        if v not in ['arima', 'sarima']:
-            raise ValueError("model_type must be 'arima' or 'sarima'")
+        if v not in ['arima', 'sarima', 'sarimax']:
+            raise ValueError("model_type must be 'arima', 'sarima', or 'sarimax'")
+        return v
+    
+    @validator('exogenous_data')
+    def validate_exogenous(cls, v, values):
+        if values.get('model_type') == 'sarimax' and v is None:
+            raise ValueError("exogenous_data is required for SARIMAX model selection")
+        if values.get('model_type') != 'sarimax' and v is not None:
+            raise ValueError("exogenous_data is only allowed for SARIMAX model selection")
         return v
     
     @validator('information_criterion')

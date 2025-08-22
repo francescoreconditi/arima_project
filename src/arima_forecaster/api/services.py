@@ -10,8 +10,8 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 
 from .models import *
-from ..core import ARIMAForecaster, SARIMAForecaster, VARForecaster
-from ..core import ARIMAModelSelector, SARIMAModelSelector
+from ..core import ARIMAForecaster, SARIMAForecaster, VARForecaster, SARIMAXForecaster
+from ..core import ARIMAModelSelector, SARIMAModelSelector, SARIMAXModelSelector
 from ..evaluation.metrics import ModelEvaluator
 from ..utils.logger import get_logger
 from ..utils.exceptions import ModelTrainingError, ForecastError
@@ -97,6 +97,11 @@ class ModelManager:
             
             model = None
             
+            # Prepare exogenous data if provided
+            exog_df = None
+            if request.exogenous_data:
+                exog_df = pd.DataFrame(request.exogenous_data.variables, index=series.index)
+            
             if request.auto_select:
                 # Automatic parameter selection
                 if request.model_type == "arima":
@@ -111,6 +116,15 @@ class ModelManager:
                     params = {
                         "order": selector.best_order,
                         "seasonal_order": selector.best_seasonal_order
+                    }
+                elif request.model_type == "sarimax":
+                    selector = SARIMAXModelSelector()
+                    selector.search(series, exog=exog_df)
+                    model = selector.get_best_model()
+                    params = {
+                        "order": selector.best_order,
+                        "seasonal_order": selector.best_seasonal_order,
+                        "exog_variables": list(exog_df.columns) if exog_df is not None else []
                     }
             else:
                 # Manual parameter specification
@@ -130,6 +144,21 @@ class ModelManager:
                     model = SARIMAForecaster(order=order, seasonal_order=seasonal_order)
                     model.fit(series)
                     params = {"order": order, "seasonal_order": seasonal_order}
+                elif request.model_type == "sarimax":
+                    order = (request.order.p, request.order.d, request.order.q)
+                    seasonal_order = (
+                        request.seasonal_order.P,
+                        request.seasonal_order.D,
+                        request.seasonal_order.Q,
+                        request.seasonal_order.s
+                    )
+                    model = SARIMAXForecaster(order=order, seasonal_order=seasonal_order)
+                    model.fit(series, exog=exog_df)
+                    params = {
+                        "order": order, 
+                        "seasonal_order": seasonal_order,
+                        "exog_variables": list(exog_df.columns) if exog_df is not None else []
+                    }
             
             if model is None:
                 raise ModelTrainingError("Failed to create model")
@@ -333,16 +362,18 @@ class ForecastService:
         model_id: str,
         steps: int,
         confidence_level: float = 0.95,
-        return_intervals: bool = True
+        return_intervals: bool = True,
+        exogenous_future: Optional[pd.DataFrame] = None
     ) -> ForecastResult:
         """
-        Generate forecast from ARIMA/SARIMA model.
+        Generate forecast from ARIMA/SARIMA/SARIMAX model.
         
         Args:
             model_id: Model identifier
             steps: Number of forecast steps
             confidence_level: Confidence level for intervals
             return_intervals: Whether to return confidence intervals
+            exogenous_future: Future exogenous variables for SARIMAX models
             
         Returns:
             Forecast result
@@ -351,17 +382,41 @@ class ForecastService:
             # Load model
             model = self.model_manager.load_model(model_id)
             
+            # Check if model is SARIMAX and requires exogenous variables
+            model_info = self.model_manager.get_model_info(model_id)
+            
             # Generate forecast
             alpha = 1 - confidence_level
-            if return_intervals:
-                forecast, conf_int = model.forecast(
-                    steps=steps,
-                    alpha=alpha,
-                    return_conf_int=True
-                )
+            if model_info.get("model_type") == "sarimax":
+                # SARIMAX requires exogenous variables
+                if exogenous_future is None:
+                    raise ForecastError("SARIMAX models require exogenous_future variables for forecasting")
+                
+                if return_intervals:
+                    forecast, conf_int = model.forecast(
+                        steps=steps,
+                        exog_future=exogenous_future,
+                        alpha=alpha,
+                        return_conf_int=True
+                    )
+                else:
+                    forecast = model.forecast(
+                        steps=steps, 
+                        exog_future=exogenous_future,
+                        confidence_intervals=False
+                    )
+                    conf_int = None
             else:
-                forecast = model.forecast(steps=steps, confidence_intervals=False)
-                conf_int = None
+                # ARIMA/SARIMA models
+                if return_intervals:
+                    forecast, conf_int = model.forecast(
+                        steps=steps,
+                        alpha=alpha,
+                        return_conf_int=True
+                    )
+                else:
+                    forecast = model.forecast(steps=steps, confidence_intervals=False)
+                    conf_int = None
             
             # Convert to lists
             forecast_timestamps = [str(ts) for ts in forecast.index]
@@ -455,16 +510,18 @@ class ForecastService:
         series: pd.Series,
         model_type: str,
         max_models: int = 50,
-        information_criterion: str = 'aic'
+        information_criterion: str = 'aic',
+        exogenous_data: Optional[pd.DataFrame] = None
     ) -> Dict[str, Any]:
         """
         Automatically select best model parameters.
         
         Args:
             series: Time series data
-            model_type: Type of model ('arima' or 'sarima')
+            model_type: Type of model ('arima', 'sarima', or 'sarimax')
             max_models: Maximum models to test
             information_criterion: Criterion for selection
+            exogenous_data: Exogenous variables for SARIMAX models
             
         Returns:
             Selection results
@@ -475,16 +532,26 @@ class ForecastService:
                     information_criterion=information_criterion,
                     max_models=max_models
                 )
+                # Perform selection
+                selector.search(series)
             elif model_type == "sarima":
                 selector = SARIMAModelSelector(
                     information_criterion=information_criterion,
                     max_models=max_models
                 )
+                # Perform selection
+                selector.search(series)
+            elif model_type == "sarimax":
+                if exogenous_data is None:
+                    raise ValueError("SARIMAX model selection requires exogenous_data")
+                selector = SARIMAXModelSelector(
+                    information_criterion=information_criterion,
+                    max_models=max_models
+                )
+                # Perform selection
+                selector.search(series, exog=exogenous_data)
             else:
                 raise ValueError(f"Unsupported model type: {model_type}")
-            
-            # Perform selection
-            selector.search(series)
             
             # Get best model and save it
             best_model = selector.get_best_model()
