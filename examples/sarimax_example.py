@@ -218,13 +218,13 @@ def demonstrate_sarimax_basic():
 def demonstrate_sarimax_model_selection():
     """Dimostra la selezione automatica del modello SARIMAX."""
     print("\n" + "="*60)
-    print("🔍 DEMO: Selezione Automatica Modello SARIMAX")
+    print("[SEARCH] DEMO: Selezione Automatica Modello SARIMAX")
     print("="*60)
     
     # Genera dati più piccoli per velocizzare la ricerca
     series, exog = generate_sample_data_with_exog(n_periods=100)
     
-    print(f"\n🎯 Selezione automatica parametri su {len(series)} osservazioni")
+    print(f"\n[TARGET] Selezione automatica parametri su {len(series)} osservazioni")
     
     # Preprocessing rapido
     preprocessor = TimeSeriesPreprocessor()
@@ -236,7 +236,7 @@ def demonstrate_sarimax_model_selection():
     )
     
     # Selezione automatica modello
-    print("\n🔍 Ricerca parametri ottimali...")
+    print("\n[SEARCH] Ricerca parametri ottimali...")
     selector = SARIMAXModelSelector(
         p_range=(0, 2),  # Range ridotto per velocità
         d_range=(0, 1),
@@ -261,7 +261,7 @@ def demonstrate_sarimax_model_selection():
     best_model = selector.get_best_model()
     if best_model:
         model_info = best_model.get_model_info()
-        print(f"\n🏆 Miglior modello trovato:")
+        print(f"\n[BEST] Miglior modello trovato:")
         print(f"   Ordine: {model_info['order']}")
         print(f"   Ordine stagionale: {model_info['seasonal_order']}")
         print(f"   AIC: {model_info['aic']:.2f}")
@@ -270,7 +270,7 @@ def demonstrate_sarimax_model_selection():
         # Mostra risultati top 5
         results_summary = selector.get_results_summary(top_n=5)
         if not results_summary.empty:
-            print(f"\n📋 Top 5 modelli:")
+            print(f"\n[TOP] Top 5 modelli:")
             for i, row in results_summary.iterrows():
                 print(f"   {i+1}. {row['order']}x{row['seasonal_order']} - AIC: {row['aic']:.2f}")
         
@@ -278,19 +278,19 @@ def demonstrate_sarimax_model_selection():
         try:
             exog_analysis = selector.get_exog_analysis()
             if exog_analysis is not None:
-                print(f"\n🧬 Analisi variabili esogene:")
+                print(f"\n[ANALYSIS] Analisi variabili esogene:")
                 significant_vars = exog_analysis[exog_analysis['significant'] == True]['variable'].unique()
                 print(f"   Variabili significative: {list(significant_vars)}")
         except Exception as e:
-            print(f"⚠️  Errore analisi esogene: {e}")
+            print(f"[WARNING] Errore analisi esogene: {e}")
     else:
-        print("❌ Nessun modello valido trovato")
+        print("[ERROR] Nessun modello valido trovato")
 
 
 def demonstrate_sarimax_visualization():
     """Dimostra le visualizzazioni specifiche per SARIMAX."""
     print("\n" + "="*60)
-    print("📊 DEMO: Visualizzazioni SARIMAX")
+    print("[CHARTS] DEMO: Visualizzazioni SARIMAX")
     print("="*60)
     
     # Genera dati
@@ -309,7 +309,7 @@ def demonstrate_sarimax_visualization():
     )
     
     # Addestra modello
-    print("\n🤖 Addestramento modello per visualizzazioni...")
+    print("\n[TRAINING] Addestramento modello per visualizzazioni...")
     model = SARIMAXForecaster(
         order=(1, 1, 1),
         seasonal_order=(1, 0, 1, 7),
@@ -318,7 +318,7 @@ def demonstrate_sarimax_visualization():
     model.fit(series_processed, exog=exog_processed)
     
     # Crea visualizzazioni
-    print("\n📈 Creazione visualizzazioni...")
+    print("\n[PLOTTING] Creazione visualizzazioni...")
     plotter = ForecastPlotter()
     
     try:
@@ -332,12 +332,12 @@ def demonstrate_sarimax_visualization():
             title="Analisi Variabili Esogene SARIMAX"
         )
         
-        output_dir = Path("outputs/plots")
+        output_dir = Path(__file__).parent.parent / "outputs" / "plots"
         output_dir.mkdir(parents=True, exist_ok=True)
         
         fig1.savefig(output_dir / "sarimax_exog_analysis.png", dpi=300, bbox_inches='tight')
         plt.close(fig1)
-        print(f"✅ Grafico analisi esogene salvato in: outputs/plots/sarimax_exog_analysis.png")
+        print(f"[OK] Grafico analisi esogene salvato in: {output_dir}/sarimax_exog_analysis.png")
         
         # 2. Dashboard SARIMAX completa
         # Genera previsioni per la dashboard
@@ -364,13 +364,13 @@ def demonstrate_sarimax_visualization():
         
         fig2.savefig(output_dir / "sarimax_dashboard.png", dpi=300, bbox_inches='tight')
         plt.close(fig2)
-        print(f"✅ Dashboard SARIMAX salvata in: outputs/plots/sarimax_dashboard.png")
+        print(f"[OK] Dashboard SARIMAX salvata in: {output_dir}/sarimax_dashboard.png")
         
-        print(f"\n🎨 Visualizzazioni completate!")
-        print(f"   📁 Directory output: {output_dir.absolute()}")
+        print(f"\n[DONE] Visualizzazioni completate!")
+        print(f"   [DIR] Directory output: {output_dir.absolute()}")
         
     except Exception as e:
-        print(f"❌ Errore creazione visualizzazioni: {e}")
+        print(f"[ERROR] Errore creazione visualizzazioni: {e}")
 
 
 def main():
@@ -389,23 +389,23 @@ def main():
         demonstrate_sarimax_visualization()
         
         print("\n" + "="*80)
-        print("🎯 RIASSUNTO SARIMAX")
+        print("[SUMMARY] RIASSUNTO SARIMAX")
         print("="*80)
-        print("✅ SARIMAX estende SARIMA con variabili esogene")
-        print("✅ Richiede variabili esogene sia per training che per previsioni")
-        print("✅ Supporta selezione automatica parametri")
-        print("✅ Include visualizzazioni dedicate per analisi variabili esogene")
-        print("✅ Integrato con preprocessing avanzato e scaling")
-        print("✅ Fornisce analisi importanza e significatività variabili")
+        print("[OK] SARIMAX estende SARIMA con variabili esogene")
+        print("[OK] Richiede variabili esogene sia per training che per previsioni")
+        print("[OK] Supporta selezione automatica parametri")
+        print("[OK] Include visualizzazioni dedicate per analisi variabili esogene")
+        print("[OK] Integrato con preprocessing avanzato e scaling")
+        print("[OK] Fornisce analisi importanza e significatività variabili")
         
-        print("\n💡 SUGGERIMENTI:")
+        print("\n[TIPS] SUGGERIMENTI:")
         print("• Le variabili esogene devono essere note anche per i periodi futuri")
         print("• Usa il preprocessing integrato per gestire missing values e scaling")
         print("• Analizza sempre la significatività delle variabili esogene")
         print("• Considera correlazioni elevate tra variabili esogene (multicollinearità)")
         
     except Exception as e:
-        print(f"\n❌ Errore durante l'esecuzione: {e}")
+        print(f"\n[ERROR] Errore durante l'esecuzione: {e}")
         raise
 
 
