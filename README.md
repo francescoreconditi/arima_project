@@ -1,8 +1,8 @@
 # ARIMA Forecaster 🚀
 
-## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA e VAR
+## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX e VAR
 
-Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA) e VAR (Vector Autoregression). Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
+Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene) e VAR (Vector Autoregression). Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
 
 ---
 
@@ -34,12 +34,14 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 
 ```
 ├── src/arima_forecaster/           # Package principale
-│   ├── core/                       # Modelli ARIMA, SARIMA, VAR e selezione automatica
+│   ├── core/                       # Modelli ARIMA, SARIMA, SARIMAX, VAR e selezione automatica
 │   │   ├── arima_model.py         # Implementazione ARIMA base
 │   │   ├── sarima_model.py        # Modelli SARIMA con stagionalità
+│   │   ├── sarimax_model.py       # Modelli SARIMAX con variabili esogene
 │   │   ├── var_model.py           # Vector Autoregression multivariato
 │   │   ├── model_selection.py     # Selezione automatica ARIMA
-│   │   └── sarima_selection.py    # Selezione automatica SARIMA
+│   │   ├── sarima_selection.py    # Selezione automatica SARIMA
+│   │   └── sarimax_selection.py   # Selezione automatica SARIMAX
 │   ├── data/                       # Caricamento dati e preprocessing
 │   ├── evaluation/                 # Metriche valutazione e diagnostica
 │   ├── visualization/              # Grafici e dashboard avanzati
@@ -58,15 +60,25 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 ├── docs/                           # Documentazione completa
 │   ├── teoria_arima.md            # Teoria matematica ARIMA
 │   ├── teoria_sarima.md           # Teoria matematica SARIMA
-│   └── arima_vs_sarima.md         # Confronto dettagliato modelli
+│   ├── teoria_sarimax.md          # Teoria matematica SARIMAX
+│   ├── arima_vs_sarima.md         # Confronto dettagliato modelli
+│   └── sarima_vs_sarimax.md       # Confronto SARIMA vs SARIMAX
 ├── examples/                       # Script esempio pratici
-│   └── advanced_forecasting_showcase.py  # Demo funzionalità avanzate
+│   ├── advanced_forecasting_showcase.py  # Demo funzionalità avanzate
+│   ├── sarimax_example.py         # Esempio completo modelli SARIMAX
+│   └── forecasting_base.py        # Esempi base ARIMA/SARIMA
 ├── notebooks/                      # Jupyter notebooks per ricerca e sviluppo
 │   └── research_and_development.ipynb # Ambiente R&D per sperimentazione algoritmi
 ├── scripts/                        # Script di utilità
 │   ├── run_api.py                 # Lancia API server
 │   └── run_dashboard.py           # Lancia dashboard Streamlit
+├── test_sarimax_api.py             # Test script per SARIMAX API
 ├── tests/                          # Suite test completa
+│   ├── test_arima_model.py        # Test modelli ARIMA
+│   ├── test_sarima_model.py       # Test modelli SARIMA  
+│   ├── test_sarimax_model.py      # Test modelli SARIMAX
+│   ├── test_var_model.py          # Test modelli VAR
+│   └── test_api.py                # Test API REST
 └── outputs/                        # Output generati
     ├── models/                    # Modelli salvati e metadata
     ├── plots/                     # Visualizzazioni generate
@@ -145,6 +157,12 @@ python -m pytest tests/ -v
 ```bash
 # Test delle funzionalità principali
 uv run python examples/advanced_forecasting_showcase.py
+
+# Test SARIMAX con variabili esogene
+uv run python examples/sarimax_example.py
+
+# Test API REST completo
+uv run python test_sarimax_api.py
 
 # Lancia API (in background)
 uv run python scripts/run_api.py &
@@ -322,29 +340,43 @@ ensemble_forecast = tuner.forecast_ensemble(steps=12, method='weighted')
 import requests
 import json
 
-# Training di un modello via API
+# Training di un modello SARIMAX via API
 api_url = "http://localhost:8000"
 
-# Prepara dati per API
+# Prepara dati con variabili esogene per API
 data_payload = {
     "data": {
         "timestamps": serie_pulita.index.strftime('%Y-%m-%d').tolist(),
         "values": serie_pulita.values.tolist()
     },
-    "model_type": "sarima",
+    "model_type": "sarimax",
+    "exogenous_data": {
+        "variables": {
+            "temperature": temperature_data.tolist(),
+            "marketing_spend": marketing_data.tolist(),
+            "economic_indicator": economic_data.tolist()
+        }
+    },
     "auto_select": True
 }
 
-# Invia richiesta training
+# Invia richiesta training SARIMAX
 response = requests.post(f"{api_url}/models/train", json=data_payload)
 model_info = response.json()
 model_id = model_info['model_id']
 
-# Genera forecast via API
+# Genera forecast SARIMAX via API (richiede variabili esogene future)
 forecast_payload = {
     "steps": 12,
     "confidence_level": 0.95,
-    "return_intervals": True
+    "return_intervals": True,
+    "exogenous_future": {
+        "variables": {
+            "temperature": [22.0] * 12,
+            "marketing_spend": [1500.0] * 12,
+            "economic_indicator": [105.0] * 12
+        }
+    }
 }
 
 forecast_response = requests.post(
@@ -352,7 +384,19 @@ forecast_response = requests.post(
     json=forecast_payload
 )
 forecast_result = forecast_response.json()
-print("Forecast API:", forecast_result['forecast_values'][:3])
+print("Forecast SARIMAX API:", forecast_result['forecast_values'][:3])
+
+# Esempio anche con SARIMA tradizionale
+sarima_payload = {
+    "data": {
+        "timestamps": serie_pulita.index.strftime('%Y-%m-%d').tolist(),
+        "values": serie_pulita.values.tolist()
+    },
+    "model_type": "sarima",
+    "auto_select": True
+}
+sarima_response = requests.post(f"{api_url}/models/train", json=sarima_payload)
+print("SARIMA Model ID:", sarima_response.json()['model_id'])
 ```
 
 #### 7. Dashboard Interattiva (Script di Lancio)
@@ -529,7 +573,9 @@ docx_report = arima_model.generate_report(
 |-----------|-------------|---------|
 | **[Teoria ARIMA](docs/teoria_arima.md)** | Fondamenti matematici, componenti AR/I/MA, diagnostica | Teorico |
 | **[Teoria SARIMA](docs/teoria_sarima.md)** | Matematica SARIMA, stagionalità, implementazione | Teorico |
+| **[Teoria SARIMAX](docs/teoria_sarimax.md)** | Matematica SARIMAX, variabili esogene, validazione | Teorico |
 | **[ARIMA vs SARIMA](docs/arima_vs_sarima.md)** | Confronto dettagliato, scelta del modello, casi d'uso | Pratico |
+| **[SARIMA vs SARIMAX](docs/sarima_vs_sarimax.md)** | Quando usare variabili esogene, esempi pratici | Pratico |
 | **[Guida Utente](docs/guida_utente.md)** | Esempi pratici, API, workflow completo | Pratico |
 | **[Funzionalità Avanzate](ADVANCED_FEATURES.md)** | VAR, Auto-ML, API, Dashboard - guida completa | Avanzato |
 | **[CLAUDE.md](CLAUDE.md)** | Architettura, sviluppo, comandi dettagliati | Sviluppatori |
@@ -591,7 +637,7 @@ jupyter nbconvert --execute --to notebook --inplace notebooks/research_and_devel
 uv run pytest tests/test_arima_model.py -v
 
 # Test funzionalità avanzate
-uv run pytest tests/test_sarima.py tests/test_var.py -v
+uv run pytest tests/test_sarima_model.py tests/test_sarimax_model.py tests/test_var_model.py -v
 
 # Test Auto-ML e ottimizzazione
 uv run pytest tests/test_automl.py -v --timeout=300
@@ -686,6 +732,7 @@ uv run python examples/model_comparison_study.py
 ```bash
 # Forecasting base (series singole)
 uv run python examples/forecasting_base.py
+uv run python examples/sarimax_example.py
 uv run python examples/selezione_automatica.py
 
 # Reporting dinamico con Quarto
@@ -801,20 +848,21 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 
 ### ✅ **Roadmap e Funzionalità Implementate**
 
-#### 🎉 Completate (v0.3.0)
+#### 🎉 Completate (v0.4.0)
 - [x] **Modelli SARIMA**: Stagionalità completa con selezione automatica
+- [x] **Modelli SARIMAX**: Supporto completo per variabili esogene con preprocessing automatico
 - [x] **VAR Multivariato**: Forecasting serie multiple con causalità
-- [x] **API REST**: Servizi production-ready con FastAPI
-- [x] **Dashboard Streamlit**: Interfaccia web completa
+- [x] **API REST**: Servizi production-ready con FastAPI (incluso SARIMAX)
+- [x] **Dashboard Streamlit**: Interfaccia web completa con supporto SARIMAX
 - [x] **Auto-ML**: Ottimizzazione con Optuna, Hyperopt, Scikit-Optimize
 - [x] **Ensemble Methods**: Combinazione intelligente modelli
 - [x] **Report Quarto**: Generazione automatica report dinamici HTML/PDF/DOCX
-- [x] **Documentazione**: Teoria completa ARIMA vs SARIMA
+- [x] **Documentazione**: Teoria completa ARIMA, SARIMA, SARIMAX e confronti
 
-#### 🚧 In Sviluppo (v0.4.0)
-- [ ] **SARIMAX**: Modelli con variabili esogene
+#### 🚧 In Sviluppo (v0.5.0)
 - [ ] **LSTM Integration**: Hybrid ARIMA-Deep Learning
 - [ ] **Real-time Streaming**: Apache Kafka integration
+- [ ] **Advanced Exog Handling**: Automatic feature selection per SARIMAX
 - [ ] **Cloud Native**: Kubernetes operators
 
 #### 🔮 Future Releases
@@ -944,8 +992,10 @@ uv sync --all-extras && source .venv/bin/activate
 
 # 2️⃣ Test
 uv run python examples/advanced_forecasting_showcase.py
+uv run python examples/sarimax_example.py  # Test SARIMAX con variabili esogene
 
 # 3️⃣ Explore
+uv run python test_sarimax_api.py           # Test API completo
 uv run python scripts/run_api.py &          # API server
 uv run python scripts/run_dashboard.py     # Interactive dashboard
 
