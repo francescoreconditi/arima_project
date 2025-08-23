@@ -1240,23 +1240,26 @@ class ARIMADashboard:
                 if st.session_state.get('forecast_generated', False) and include_forecast:
                     plots_data = self._create_forecast_plot(output_filename)
                 
-                # Prepare precomputed forecast if available
-                precomputed_forecast = None
-                if st.session_state.get('forecast_generated', False) and st.session_state.get('forecast_result'):
-                    precomputed_forecast = st.session_state.forecast_result
-                    st.info("📊 Usando forecast già generato nella dashboard per il report")
+                # Costruisci i parametri base comuni a tutti i modelli
+                report_params = {
+                    'plots_data': plots_data,
+                    'report_title': report_title,
+                    'output_filename': output_filename,
+                    'format_type': format_type,
+                    'include_diagnostics': include_diagnostics,
+                    'include_forecast': include_forecast,
+                    'forecast_steps': forecast_steps
+                }
+                
+                # Aggiungi parametri specifici per SARIMA e SARIMAX
+                model_type = type(model).__name__
+                if model_type in ['SARIMAForecaster', 'SARIMAXForecaster']:
+                    report_params['include_seasonal_decomposition'] = True
+                if model_type == 'SARIMAXForecaster':
+                    report_params['include_exog_analysis'] = True
                 
                 # Generate the report
-                report_path = model.generate_report(
-                    plots_data=plots_data,
-                    report_title=report_title,
-                    output_filename=output_filename,
-                    format_type=format_type,
-                    include_diagnostics=include_diagnostics,
-                    include_forecast=include_forecast,
-                    forecast_steps=forecast_steps,
-                    precomputed_forecast=precomputed_forecast
-                )
+                report_path = model.generate_report(**report_params)
                 
                 # Store in session state
                 st.session_state.report_generated = True

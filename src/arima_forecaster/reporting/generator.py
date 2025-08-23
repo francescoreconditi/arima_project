@@ -187,6 +187,7 @@ class QuartoReportGenerator:
         
         # Generate format-specific YAML header
         if format_type == "html":
+            # Per ora rimuoviamo i riferimenti esterni che causano problemi
             format_yaml = '''format:
   html:
     theme: cosmo
@@ -198,10 +199,7 @@ class QuartoReportGenerator:
     fig-width: 8
     fig-height: 5
     fig-align: center
-    embed-resources: true
-    include-in-header: |
-      <link rel="stylesheet" href="{{CSS_PATH}}" />
-      <script src="{{JS_PATH}}"></script>'''
+    embed-resources: true'''
         elif format_type == "pdf":
             format_yaml = '''format:
   pdf:
@@ -218,8 +216,8 @@ class QuartoReportGenerator:
     fig-width: 8
     fig-height: 6'''
         else:
-            # Default to HTML with custom styles
-            format_yaml = format_yaml = '''format:
+            # Default to HTML without external resources
+            format_yaml = '''format:
   html:
     theme: cosmo
     toc: true
@@ -230,10 +228,7 @@ class QuartoReportGenerator:
     fig-width: 8
     fig-height: 5
     fig-align: center
-    embed-resources: true
-    include-in-header: |
-      <link rel="stylesheet" href="{{CSS_PATH}}" />
-      <script src="{{JS_PATH}}"></script>'''
+    embed-resources: true'''
         
         qmd_content = f'''---
 title: "{title}"
@@ -302,7 +297,7 @@ if metrics:
     html_table = metrics_df.to_html(index=False, classes='table table-striped', escape=False, table_id='metrics-table')
     display(HTML(html_table))
 else:
-    print("Nessuna metrica disponibile")
+    display(HTML("<p>Nessuna metrica disponibile</p>"))
 ```
 
 ## Metodologia e Approccio {{#sec-methodology}}
@@ -374,9 +369,9 @@ if model_info:
         html_table = params_df.to_html(index=False, classes='table table-striped', escape=False, table_id='params-table')
         display(HTML(html_table))
     else:
-        print("Parametri del modello non disponibili")
+        display(HTML("<p>Parametri del modello non disponibili</p>"))
 else:
-    print("Informazioni del modello non disponibili")
+    display(HTML("<p>Informazioni del modello non disponibili</p>"))
 ```
 
 ## Analisi dei Risultati {{#sec-results}}
@@ -413,9 +408,9 @@ if metrics:
         plt.tight_layout()
         plt.show()
     else:
-        print("Nessuna metrica numerica disponibile per la visualizzazione")
+        display(HTML("<p>Nessuna metrica numerica disponibile per la visualizzazione</p>"))
 else:
-    print("Metriche non disponibili")
+    display(HTML("<p>Metriche non disponibili</p>"))
 ```
 
 ### Diagnostica del Modello
@@ -445,9 +440,9 @@ if diagnostics:
         html_table = diag_df.to_html(index=False, classes='table table-striped', escape=False, table_id='diagnostics-table')
         display(HTML(html_table))
     else:
-        print("Nessun risultato diagnostico disponibile")
+        display(HTML("<p>Nessun risultato diagnostico disponibile</p>"))
 else:
-    print("Diagnostici non disponibili")
+    display(HTML("<p>Diagnostici non disponibili</p>"))
 ```
 
 ## Visualizzazioni {{#sec-plots}}
@@ -502,9 +497,9 @@ if 'r2_score' in metrics and isinstance(metrics['r2_score'], (int, float)):
 
 if interpretation:
     for item in interpretation:
-        print(item)
+        display(HTML(f"<p>{item}</p>"))
 else:
-    print("Non sono disponibili metriche per l'interpretazione automatica.")
+    display(HTML("<p>Non sono disponibili metriche per l'interpretazione automatica.</p>"))
 ```
 
 ### Raccomandazioni Operative
@@ -542,7 +537,7 @@ recommendations.extend([
 ])
 
 for rec in recommendations:
-    print(rec)
+    display(HTML(f"<p>{rec}</p>"))
 ```
 
 ## Dettagli Tecnici {#sec-technical}
@@ -663,7 +658,7 @@ for category, items in categories.items():
 display(HTML(html_output))
 ```
 
-## Forecast {{#sec-forecast}}
+## Forecast {#sec-forecast}
 
 ### Previsioni del Modello
 
@@ -696,10 +691,13 @@ if forecast_data and 'values' in forecast_data:
         forecast_df['Limite Inferiore'] = [f"{val:.2f}" for val in lower_vals]
         forecast_df['Limite Superiore'] = [f"{val:.2f}" for val in upper_vals]
     
-    print(f"### Tabella Previsioni ({steps} periodi)")
     from IPython.display import HTML, display
+    # Crea header HTML invece di usare print
+    header_html = f"<h4>Tabella Previsioni ({steps} periodi)</h4>"
     html_table = forecast_df.to_html(index=False, classes='table table-striped', escape=False, table_id='forecast-table')
-    display(HTML(html_table))
+    # Combina header e tabella
+    full_html = header_html + html_table
+    display(HTML(full_html))
     
     # Crea grafico delle previsioni
     try:
@@ -735,7 +733,7 @@ if forecast_data and 'values' in forecast_data:
         plt.show()
         
         # Statistiche delle previsioni
-        print("\\n### Statistiche Previsioni")
+        display(HTML("<h4>Statistiche Previsioni</h4>"))
         stats_data = [
             ['Valore Medio Previsto', f"{np.mean(forecast_values):.2f}"],
             ['Valore Minimo', f"{np.min(forecast_values):.2f}"],
@@ -755,25 +753,25 @@ if forecast_data and 'values' in forecast_data:
         display(HTML(html_table))
         
     except Exception as e:
-        print(f"Impossibile generare grafico delle previsioni: {e}")
+        display(HTML(f"<p class='text-danger'>Impossibile generare grafico delle previsioni: {e}</p>"))
         
 elif forecast_note:
     # Abbiamo una nota sul perché il forecast non è disponibile
-    print("### Nota sulle Previsioni")
-    print(f"⚠️ {forecast_note}")
+    display(HTML("<h4>Nota sulle Previsioni</h4>"))
+    display(HTML(f"<p class='text-warning'>⚠️ {forecast_note}</p>"))
     
     # Se è un modello SARIMAX, fornisci suggerimenti
     model_type = model_results.get('model_type', '')
     if 'SARIMAX' in model_type:
-        print("\\n**Suggerimento per modelli SARIMAX:**")
-        print("- I modelli SARIMAX richiedono variabili esogene future per generare previsioni")
-        print("- Assicurati di fornire i valori futuri delle variabili esogene utilizzate durante l'addestramento")
+        display(HTML("<p><strong>Suggerimento per modelli SARIMAX:</strong></p>"))
+        display(HTML("<ul><li>I modelli SARIMAX richiedono variabili esogene future per generare previsioni</li>"))
+        display(HTML("<li>Assicurati di fornire i valori futuri delle variabili esogene utilizzate durante l'addestramento</li></ul>"))
         if 'exog_names' in model_results:
             exog_names = model_results['exog_names']
-            print(f"- Variabili esogene richieste: {', '.join(exog_names)}")
+            display(HTML(f"<p>- Variabili esogene richieste: {', '.join(exog_names)}</p>"))
 else:
-    print("### Previsioni Non Disponibili")
-    print("I dati di previsione non sono stati generati per questo modello.")
+    display(HTML("<h4>Previsioni Non Disponibili</h4>"))
+    display(HTML("<p>I dati di previsione non sono stati generati per questo modello.</p>"))
 ```
 
 ### Variabili Esogene (solo per modelli SARIMAX)
@@ -786,7 +784,7 @@ model_type = model_results.get('model_type', '')
 exog_names = model_results.get('exog_names', [])
 
 if 'SARIMAX' in model_type and exog_names:
-    print(f"### Variabili Esogene Utilizzate nel Modello {model_type}")
+    display(HTML(f"<h4>Variabili Esogene Utilizzate nel Modello {model_type}</h4>"))
     
     exog_df = pd.DataFrame({
         'Variabile': exog_names,
@@ -797,15 +795,15 @@ if 'SARIMAX' in model_type and exog_names:
     html_table = exog_df.to_html(index=False, classes='table table-striped', escape=False, table_id='exog-vars-table')
     display(HTML(html_table))
     
-    print(f"\\n**Numero totale di variabili esogene:** {len(exog_names)}")
-    print("\\n**Importanza delle Variabili Esogene:**")
-    print("Le variabili esogene forniscono informazioni aggiuntive al modello che possono migliorare l'accuratezza delle previsioni. Queste variabili rappresentano fattori esterni che influenzano la serie temporale ma non sono predetti dal modello stesso.")
+    display(HTML(f"<p><strong>Numero totale di variabili esogene:</strong> {len(exog_names)}</p>"))
+    display(HTML("<p><strong>Importanza delle Variabili Esogene:</strong></p>"))
+    display(HTML("<p>Le variabili esogene forniscono informazioni aggiuntive al modello che possono migliorare l'accuratezza delle previsioni. Queste variabili rappresentano fattori esterni che influenzano la serie temporale ma non sono predetti dal modello stesso.</p>"))
 
 elif 'SARIMAX' in model_type and not exog_names:
-    print("⚠️ Modello SARIMAX configurato ma nessuna variabile esogena rilevata.")
+    display(HTML("<p class='text-warning'>⚠️ Modello SARIMAX configurato ma nessuna variabile esogena rilevata.</p>"))
     
 else:
-    print("Questo modello non utilizza variabili esogene.")
+    display(HTML("<p>Questo modello non utilizza variabili esogene.</p>"))
 ```
 
 ---
@@ -1142,7 +1140,8 @@ for model_name, results in models_results.items():
 models_df = pd.DataFrame(models_data, columns=[
     'Nome Modello', 'Tipo', 'Ordine (p,d,q)', 'Ordine Stagionale', 'AIC'
 ])
-print(models_df.to_markdown(index=False))
+from IPython.display import display, Markdown
+display(Markdown(models_df.to_markdown(index=False)))
 ```
 
 ## Confronto Performance
@@ -1210,9 +1209,9 @@ if metrics_data:
         plt.tight_layout()
         plt.show()
     else:
-        print("Nessuna metrica numerica comune trovata per il confronto")
+        display(HTML("<p>Nessuna metrica numerica comune trovata per il confronto</p>"))
 else:
-    print("Dati delle metriche non disponibili")
+    display(HTML("<p>Dati delle metriche non disponibili</p>"))
 ```
 
 ## Ranking dei Modelli
@@ -1264,7 +1263,7 @@ ranking_df = pd.DataFrame(ranking_data, columns=[
 # Aggiungi ranking
 ranking_df.insert(0, 'Rank', range(1, len(ranking_df) + 1))
 
-print(ranking_df.to_markdown(index=False))
+display(Markdown(ranking_df.to_markdown(index=False)))
 ```
 
 ## Raccomandazioni Finali
@@ -1274,8 +1273,7 @@ print(ranking_df.to_markdown(index=False))
 
 if len(ranking_df) > 0:
     best_model = ranking_df.iloc[0]['Modello']
-    print(f"### Modello Raccomandato: {{best_model}}")
-    print()
+    display(HTML(f"<h3>Modello Raccomandato: {best_model}</h3>"))
     
     best_results = models_results.get(best_model, {{}})
     best_metrics = best_results.get('metrics', {{}})
@@ -1292,9 +1290,9 @@ if len(ranking_df) > 0:
         recommendations.append(f"• **Modello alternativo**: {{second_best}} - Considerare come alternativa")
     
     for rec in recommendations:
-        print(rec)
+        display(HTML(f"<p>{rec}</p>"))
 else:
-    print("Nessun modello disponibile per le raccomandazioni")
+    display(HTML("<p>Nessun modello disponibile per le raccomandazioni</p>"))
 ```
 
 ---

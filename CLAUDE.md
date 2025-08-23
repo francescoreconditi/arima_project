@@ -8,8 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **PRIMA di qualsiasi modifica a qualsiasi file:**
 1. **SEMPRE** copiare il file originale in `C:\Backup\Code\{nome_progetto}\`
 2. Mantenere la struttura delle directory originale
-3. **SOLO DOPO** il backup completato, procedere con le modifiche
-4. Esempio: `cp src/file.py C:\Backup\Code\arima_project\src\file.py.backup`
+3. Rinominare il file aggiungendo in fondo al file la data e ora (es. `file.py.backup_20240427_1530`)
+4. **SOLO DOPO** il backup completato, procedere con le modifiche
+5. Esempio: `cp src/file.py C:\Backup\Code\arima_project\src\file.py.backup`
 
 ### 🔴 Gestione File Grandi (>50KB o errore "token limit")
 **Quando appare "superato il numero di token" o file >50KB:**

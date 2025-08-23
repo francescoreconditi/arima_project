@@ -164,8 +164,14 @@ uv run python examples/sarimax_example.py
 # Test API REST completo
 uv run python test_sarimax_api.py
 
-# Lancia API (in background)
+# Lancia API (in background)  
 uv run python scripts/run_api.py &
+
+# Verifica API endpoints
+curl http://localhost:8000/            # Info API
+curl http://localhost:8000/docs        # Swagger UI
+curl http://localhost:8000/scalar      # Scalar UI (moderna)
+curl http://localhost:8000/redoc       # ReDoc
 
 # Lancia dashboard (nuovo terminale)
 uv run python scripts/run_dashboard.py
@@ -532,6 +538,8 @@ docx_report = arima_model.generate_report(
 - **Model Registry**: Gestione persistente modelli trained
 - **Batch Forecasting**: Previsioni per dataset multipli
 - **Auto-Scaling**: Supporto deployment con load balancing
+- **📚 Scalar UI**: Documentazione API moderna e interattiva
+- **Multiple Doc Formats**: Swagger UI, ReDoc, Scalar per ogni esigenza
 
 #### 📊 Dashboard Interattiva
 - **Data Exploration**: Upload CSV, statistiche, visualizzazioni
@@ -574,6 +582,7 @@ docx_report = arima_model.generate_report(
 | **[Teoria ARIMA](docs/teoria_arima.md)** | Fondamenti matematici, componenti AR/I/MA, diagnostica | Teorico |
 | **[Teoria SARIMA](docs/teoria_sarima.md)** | Matematica SARIMA, stagionalità, implementazione | Teorico |
 | **[Teoria SARIMAX](docs/teoria_sarimax.md)** | Matematica SARIMAX, variabili esogene, validazione | Teorico |
+| **[Confronto ARIMA/SARIMA/SARIMAX](docs/confronto_modelli_arima.md)** | Guida completa alla scelta del modello ottimale | Pratico |
 | **[ARIMA vs SARIMA](docs/arima_vs_sarima.md)** | Confronto dettagliato, scelta del modello, casi d'uso | Pratico |
 | **[SARIMA vs SARIMAX](docs/sarima_vs_sarimax.md)** | Quando usare variabili esogene, esempi pratici | Pratico |
 | **[Guida Utente](docs/guida_utente.md)** | Esempi pratici, API, workflow completo | Pratico |
@@ -831,6 +840,7 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 | Libreria | Scopo | Funzionalità |
 |----------|-------|--------------|
 | **fastapi** | REST API framework | Async API, auto docs, validation |
+| **scalar-fastapi** | API documentation | Modern interactive API docs |
 | **uvicorn** | ASGI server | High-performance async server |
 | **pydantic** | Data validation | Type checking, serialization |
 | **streamlit** | Web dashboards | Interactive web apps |

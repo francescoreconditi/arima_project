@@ -470,12 +470,12 @@ class SARIMAForecaster:
             # Add seasonal decomposition if requested
             if include_seasonal_decomposition and self.training_data is not None:
                 try:
-                    decomposition = self.seasonal_decompose()
+                    decomposition = self.get_seasonal_decomposition()
                     if decomposition is not None:
                         model_results['seasonal_decomposition'] = {
-                            'trend_mean': float(np.nanmean(decomposition.trend.dropna())),
-                            'seasonal_amplitude': float(np.nanstd(decomposition.seasonal.dropna())),
-                            'residual_variance': float(np.nanvar(decomposition.resid.dropna()))
+                            'trend_mean': float(np.nanmean(decomposition['trend'].dropna())),
+                            'seasonal_amplitude': float(np.nanstd(decomposition['seasonal'].dropna())),
+                            'residual_variance': float(np.nanvar(decomposition['residual'].dropna()))
                         }
                 except Exception as e:
                     self.logger.warning(f"Non è stato possibile includere la decomposizione stagionale: {e}")
@@ -499,8 +499,7 @@ class SARIMAForecaster:
                 if include_diagnostics:
                     try:
                         diagnostics = evaluator.evaluate_residuals(
-                            residuals=self.fitted_model.resid,
-                            return_dict=True
+                            residuals=self.fitted_model.resid
                         )
                         model_results['diagnostics'] = diagnostics
                     except Exception as e:
