@@ -144,6 +144,8 @@ class ARIMADashboard:
                         # Store in session state
                         st.session_state.data = series
                         st.session_state.original_data = df  # Store original dataframe for exogenous variables
+                        st.session_state.timestamp_col = timestamp_col  # Store column names
+                        st.session_state.value_col = value_col
                         st.session_state.data_loaded = True
                         
                         st.success("Dati elaborati con successo!")
@@ -175,6 +177,8 @@ class ARIMADashboard:
                 series = pd.Series(values, index=dates, name='sample_data')
                 
                 st.session_state.data = series
+                st.session_state.timestamp_col = 'timestamp'  # Per dati di esempio semplici
+                st.session_state.value_col = 'sample_data'
                 st.session_state.data_loaded = True
                 
                 st.success("Dati di esempio generati!")
@@ -199,6 +203,8 @@ class ARIMADashboard:
                 
                 st.session_state.data = series
                 st.session_state.original_data = df_sample
+                st.session_state.timestamp_col = 'timestamp'  # Per dati di esempio
+                st.session_state.value_col = 'value'
                 st.session_state.data_loaded = True
                 
                 st.success("Dati di esempio con variabili esogene generati!")
@@ -375,8 +381,13 @@ class ARIMADashboard:
                     
                     # Check if we have additional columns that could be exogenous
                     if hasattr(st.session_state, 'original_data') and len(st.session_state.original_data.columns) > 2:
+                        # Escludi le colonne timestamp e value (usando i nomi reali salvati)
+                        exclude_cols = [
+                            st.session_state.get('timestamp_col', 'timestamp'),
+                            st.session_state.get('value_col', 'value')
+                        ]
                         available_columns = [col for col in st.session_state.original_data.columns 
-                                           if col not in ['timestamp', 'value']]
+                                           if col not in exclude_cols]
                         exog_variables = st.multiselect(
                             "Select exogenous variables",
                             available_columns,
@@ -409,8 +420,13 @@ class ARIMADashboard:
                     
                     # Check if we have additional columns that could be exogenous
                     if hasattr(st.session_state, 'original_data') and len(st.session_state.original_data.columns) > 2:
+                        # Escludi le colonne timestamp e value (usando i nomi reali salvati)
+                        exclude_cols = [
+                            st.session_state.get('timestamp_col', 'timestamp'),
+                            st.session_state.get('value_col', 'value')
+                        ]
                         available_columns = [col for col in st.session_state.original_data.columns 
-                                           if col not in ['timestamp', 'value']]
+                                           if col not in exclude_cols]
                         auto_exog_variables = st.multiselect(
                             "Select exogenous variables for auto-selection",
                             available_columns,
@@ -444,8 +460,55 @@ class ARIMADashboard:
                             st.error("Please select at least one exogenous variable for SARIMAX.")
                             return
                         
-                        # Prepare exogenous data
-                        exog_data = st.session_state.original_data[exog_variables]
+                        # Prepare exogenous data con preprocessing robusto
+                        try:
+                            exog_data = st.session_state.original_data[exog_variables].copy()
+                            if len(exog_data) != len(data):
+                                st.error(f"Mismatch dimensioni: serie ha {len(data)} osservazioni, variabili esogene hanno {len(exog_data)} osservazioni")
+                                return
+                            exog_data.index = data.index
+                            
+                            # Applica preprocessing alle variabili esogene
+                            try:
+                                from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, validate_exog_data, suggest_preprocessing_method
+                            except ImportError:
+                                st.error("Modulo preprocessing non disponibile - usando dati originali")
+                                exog_data = st.session_state.original_data[exog_variables].copy()
+                                exog_data.index = data.index
+                                raise Exception("Preprocessing non disponibile")
+                            
+                            # Valida dati esogeni
+                            is_valid, error_msg = validate_exog_data(exog_data, len(data))
+                            if not is_valid:
+                                st.error(f"Problemi con variabili esogene: {error_msg}")
+                                return
+                            
+                            # Suggerisci e applica preprocessing
+                            preprocessing_method = suggest_preprocessing_method(exog_data)
+                            preprocessor = ExogenousPreprocessor(method=preprocessing_method, handle_outliers=True)
+                            exog_data_processed = preprocessor.fit_transform(exog_data)
+                            
+                            # Salva il preprocessor per il forecast
+                            st.session_state.exog_preprocessor = preprocessor
+                            
+                            # Informa l'utente del preprocessing applicato
+                            st.info(f"🔧 Preprocessing automatico applicato: {preprocessing_method.upper()}")
+                            with st.expander("Dettagli preprocessing"):
+                                stats = preprocessor.get_stats()
+                                for var, var_stats in stats.items():
+                                    st.write(f"**{var}**: {var_stats}")
+                            
+                            # Usa i dati processati
+                            exog_data = exog_data_processed
+                            
+                        except KeyError as e:
+                            st.error(f"Variabile esogena non trovata: {e}")
+                            return
+                        except Exception as e:
+                            st.warning(f"Errore preprocessing: {e} - usando dati originali")
+                            # Fallback ai dati originali
+                            exog_data = st.session_state.original_data[exog_variables].copy()
+                            exog_data.index = data.index
                         
                         model = SARIMAXForecaster(
                             order=(p, d, q),
@@ -501,8 +564,55 @@ class ARIMADashboard:
                             st.error("Please select at least one exogenous variable for Auto-SARIMAX.")
                             return
                         
-                        # Prepare exogenous data
-                        exog_data = st.session_state.original_data[auto_exog_variables]
+                        # Prepare exogenous data con preprocessing robusto
+                        try:
+                            exog_data = st.session_state.original_data[auto_exog_variables].copy()
+                            if len(exog_data) != len(data):
+                                st.error(f"Mismatch dimensioni: serie ha {len(data)} osservazioni, variabili esogene hanno {len(exog_data)} osservazioni")
+                                return
+                            exog_data.index = data.index
+                            
+                            # Applica preprocessing alle variabili esogene
+                            try:
+                                from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, validate_exog_data, suggest_preprocessing_method
+                            except ImportError:
+                                st.error("Modulo preprocessing non disponibile - usando dati originali")
+                                exog_data = st.session_state.original_data[exog_variables].copy()
+                                exog_data.index = data.index
+                                raise Exception("Preprocessing non disponibile")
+                            
+                            # Valida dati esogeni
+                            is_valid, error_msg = validate_exog_data(exog_data, len(data))
+                            if not is_valid:
+                                st.error(f"Problemi con variabili esogene: {error_msg}")
+                                return
+                            
+                            # Suggerisci e applica preprocessing
+                            preprocessing_method = suggest_preprocessing_method(exog_data)
+                            preprocessor = ExogenousPreprocessor(method=preprocessing_method, handle_outliers=True)
+                            exog_data_processed = preprocessor.fit_transform(exog_data)
+                            
+                            # Salva il preprocessor per il forecast
+                            st.session_state.exog_preprocessor = preprocessor
+                            
+                            # Informa l'utente del preprocessing applicato
+                            st.info(f"🔧 Preprocessing automatico applicato: {preprocessing_method.upper()}")
+                            with st.expander("Dettagli preprocessing"):
+                                stats = preprocessor.get_stats()
+                                for var, var_stats in stats.items():
+                                    st.write(f"**{var}**: {var_stats}")
+                            
+                            # Usa i dati processati
+                            exog_data = exog_data_processed
+                            
+                        except KeyError as e:
+                            st.error(f"Variabile esogena non trovata: {e}")
+                            return
+                        except Exception as e:
+                            st.warning(f"Errore preprocessing: {e} - usando dati originali")
+                            # Fallback ai dati originali
+                            exog_data = st.session_state.original_data[auto_exog_variables].copy()
+                            exog_data.index = data.index
                         
                         selector = SARIMAXModelSelector(
                             p_range=(0, max_p),
@@ -513,10 +623,18 @@ class ARIMADashboard:
                             Q_range=(0, max_Q),
                             seasonal_periods=seasonal_periods,
                             information_criterion=ic,
-                            max_models=max_models
+                            max_models=max_models,
+                            exog_names=auto_exog_variables
                         )
-                        selector.search(data, exog=exog_data, verbose=False)
-                        model = selector.get_best_model()
+                        
+                        with st.spinner(f"Testando {max_models} combinazioni di modelli SARIMAX..."):
+                            selector.search(data, exog=exog_data, verbose=False)
+                            model = selector.get_best_model()
+                        
+                        # Verifica che il modello sia stato trovato
+                        if model is None:
+                            st.error("Nessun modello SARIMAX valido trovato. Prova a modificare i parametri di ricerca.")
+                            return
                         
                         # Show selection results
                         st.subheader("Selezione Miglior Modello")
@@ -524,7 +642,8 @@ class ARIMADashboard:
                         st.write(f"Selected seasonal order: {selector.best_seasonal_order}")
                         st.write(f"Exogenous variables: {auto_exog_variables}")
                         results_df = selector.get_results_summary(10)
-                        st.dataframe(results_df)
+                        if not results_df.empty:
+                            st.dataframe(results_df)
                         
                         # Store exogenous variables for forecasting
                         st.session_state.exog_variables = auto_exog_variables
@@ -667,7 +786,7 @@ class ARIMADashboard:
                 uploaded_exog = st.file_uploader(
                     "Upload CSV with future exogenous values",
                     type=['csv'],
-                    help=f"CSV should have {forecast_steps} rows and columns: {', '.join(st.session_state.exog_variables)}"
+                    help=f"CSV deve contenere almeno {forecast_steps} righe e le colonne: {', '.join(st.session_state.exog_variables)}. Se ha più righe, verranno usate solo le prime {forecast_steps}."
                 )
                 
                 if uploaded_exog is not None:
@@ -676,12 +795,27 @@ class ARIMADashboard:
                         st.write("Uploaded exogenous data preview:", exog_future.head())
                         
                         # Validate columns
-                        if not all(col in exog_future.columns for col in st.session_state.exog_variables):
-                            st.error(f"CSV must contain columns: {st.session_state.exog_variables}")
+                        missing_cols = [col for col in st.session_state.exog_variables if col not in exog_future.columns]
+                        if missing_cols:
+                            st.error(f"CSV manca le seguenti colonne richieste: {missing_cols}")
+                            st.info(f"Colonne richieste: {st.session_state.exog_variables}")
+                            st.info(f"Colonne trovate nel CSV: {list(exog_future.columns)}")
                             exog_future = None
-                        elif len(exog_future) != forecast_steps:
-                            st.error(f"CSV must have exactly {forecast_steps} rows for the forecast horizon.")
+                        elif len(exog_future) < forecast_steps:
+                            st.error(f"CSV ha insufficienti righe per l'orizzonte di forecast.")
+                            st.info(f"Righe richieste: {forecast_steps}, Righe trovate: {len(exog_future)}")
                             exog_future = None
+                        else:
+                            # Seleziona solo le colonne necessarie
+                            exog_future = exog_future[st.session_state.exog_variables]
+                            
+                            # Se ci sono più righe del necessario, prendi solo le prime N
+                            if len(exog_future) > forecast_steps:
+                                total_rows = len(exog_future)
+                                exog_future = exog_future.head(forecast_steps)
+                                st.warning(f"⚠️ CSV aveva {total_rows} righe, utilizzate solo le prime {forecast_steps} per il forecast")
+                            
+                            st.success(f"✓ CSV caricato correttamente con {len(exog_future)} righe per {forecast_steps} steps di forecast")
                     except Exception as e:
                         st.error(f"Error reading CSV: {e}")
                         exog_future = None
@@ -696,6 +830,44 @@ class ARIMADashboard:
                         if exog_future is None:
                             st.error("Please provide future exogenous variables for SARIMAX forecast.")
                             return
+                        
+                        # Applica lo stesso preprocessing ai dati futuri
+                        if hasattr(st.session_state, 'exog_preprocessor') and st.session_state.exog_preprocessor:
+                            try:
+                                st.info("🔧 Applicando preprocessing ai dati futuri...")
+                                
+                                # Debug: mostra range prima e dopo
+                                st.write("**Debug - Dati futuri prima del preprocessing:**")
+                                for var in st.session_state.exog_variables:
+                                    if var in exog_future.columns:
+                                        min_val, max_val = exog_future[var].min(), exog_future[var].max()
+                                        st.write(f"   {var}: {min_val:.2f} - {max_val:.2f}")
+                                
+                                exog_future_original = exog_future.copy()
+                                exog_future = st.session_state.exog_preprocessor.transform(exog_future)
+                                
+                                st.write("**Debug - Dati futuri dopo preprocessing:**")
+                                for var in st.session_state.exog_variables:
+                                    if var in exog_future.columns:
+                                        min_val, max_val = exog_future[var].min(), exog_future[var].max()
+                                        st.write(f"   {var}: {min_val:.3f} - {max_val:.3f}")
+                                
+                                st.success("✓ Preprocessing applicato ai dati futuri")
+                                
+                            except Exception as e:
+                                st.error(f"Errore nel preprocessing dei dati futuri: {e}")
+                                logger.error(f"Future data preprocessing failed: {e}")
+                                return
+                        else:
+                            st.warning("⚠️ Preprocessor non trovato in sessione - usando dati futuri originali")
+                            st.write("**PROBLEMA**: Questo può causare forecast non coerenti se il modello è stato trainato con preprocessing.")
+                            st.write("**SOLUZIONE**: Rifare il training del modello SARIMAX per salvare il preprocessor.")
+                            if not hasattr(st.session_state, 'exog_preprocessor'):
+                                st.write("Motivo: exog_preprocessor non esiste nella sessione")
+                            else:
+                                st.write(f"Motivo: exog_preprocessor è {st.session_state.exog_preprocessor}")
+                            
+                            st.info("💡 Suggerimento: Vai alla sezione 'Model Training' e re-addestra il modello SARIMAX per risolvere il problema.")
                         
                         if show_intervals:
                             forecast, conf_int = model.forecast(
@@ -725,6 +897,25 @@ class ARIMADashboard:
                                 confidence_intervals=False
                             )
                             conf_int = None
+                    
+                    # Controllo di sanità sui risultati del forecast
+                    if hasattr(st.session_state, 'original_data') and 'target_column' in st.session_state:
+                        historical_mean = st.session_state.original_data[st.session_state.target_column].mean()
+                        forecast_mean = forecast.mean()
+                        ratio = forecast_mean / historical_mean
+                        
+                        if ratio > 10 or ratio < 0.1:
+                            st.error(f"⚠️ **PROBLEMA RILEVATO**: Il forecast sembra non coerente con i dati storici!")
+                            st.write(f"- Media dati storici: {historical_mean:.2f}")
+                            st.write(f"- Media forecast: {forecast_mean:.2f}")
+                            st.write(f"- Ratio: {ratio:.2f}")
+                            
+                            if ratio > 10:
+                                st.write("**Possibili cause:**")
+                                st.write("- Manca il preprocessing sui dati futuri (problema più comune)")
+                                st.write("- Errore nella preparazione delle variabili esogene")
+                                st.write("- Il modello potrebbe essere sovraadattato")
+                                st.info("💡 **Soluzione suggerita**: Re-addestrare il modello SARIMAX dalla sezione Training")
                     
                     st.session_state.forecast_result = {
                         'forecast': forecast,
@@ -1049,6 +1240,12 @@ class ARIMADashboard:
                 if st.session_state.get('forecast_generated', False) and include_forecast:
                     plots_data = self._create_forecast_plot(output_filename)
                 
+                # Prepare precomputed forecast if available
+                precomputed_forecast = None
+                if st.session_state.get('forecast_generated', False) and st.session_state.get('forecast_result'):
+                    precomputed_forecast = st.session_state.forecast_result
+                    st.info("📊 Usando forecast già generato nella dashboard per il report")
+                
                 # Generate the report
                 report_path = model.generate_report(
                     plots_data=plots_data,
@@ -1057,7 +1254,8 @@ class ARIMADashboard:
                     format_type=format_type,
                     include_diagnostics=include_diagnostics,
                     include_forecast=include_forecast,
-                    forecast_steps=forecast_steps
+                    forecast_steps=forecast_steps,
+                    precomputed_forecast=precomputed_forecast
                 )
                 
                 # Store in session state

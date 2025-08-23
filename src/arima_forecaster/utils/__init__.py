@@ -8,6 +8,12 @@ from .exceptions import (
     ForecastError
 )
 
+try:
+    from .preprocessing import ExogenousPreprocessor, validate_exog_data, suggest_preprocessing_method
+    _preprocessing_available = True
+except ImportError:
+    _preprocessing_available = False
+
 __all__ = [
     "setup_logger",
     "get_logger", 
@@ -16,3 +22,10 @@ __all__ = [
     "ModelTrainingError", 
     "ForecastError"
 ]
+
+if _preprocessing_available:
+    __all__.extend([
+        "ExogenousPreprocessor",
+        "validate_exog_data", 
+        "suggest_preprocessing_method"
+    ])

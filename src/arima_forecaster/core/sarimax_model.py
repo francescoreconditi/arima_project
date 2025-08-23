@@ -611,7 +611,9 @@ class SARIMAXForecaster:
         include_forecast: bool = True,
         forecast_steps: int = 12,
         include_seasonal_decomposition: bool = True,
-        include_exog_analysis: bool = True
+        include_exog_analysis: bool = True,
+        exog_future: Optional[pd.DataFrame] = None,
+        precomputed_forecast: Optional[Dict[str, Any]] = None
     ) -> Path:
         """
         Generate comprehensive Quarto report for the SARIMAX model analysis.
@@ -707,24 +709,49 @@ class SARIMAXForecaster:
                 if include_diagnostics:
                     try:
                         diagnostics = evaluator.evaluate_residuals(
-                            residuals=self.fitted_model.resid,
-                            return_dict=True
+                            residuals=self.fitted_model.resid
                         )
                         model_results['diagnostics'] = diagnostics
                     except Exception as e:
                         self.logger.warning(f"Non è stato possibile calcolare i diagnostici: {e}")
             
-            # Add forecast if requested (NOTE: requires exog_future for SARIMAX with exog vars)
+            # Add forecast if requested
             if include_forecast:
                 try:
-                    if self.exog_names:
+                    # Usa forecast precompilato se disponibile
+                    if precomputed_forecast:
+                        self.logger.info("Usando forecast precompilato per il report")
+                        forecast_series = precomputed_forecast.get('forecast')
+                        conf_int = precomputed_forecast.get('conf_int')
+                        confidence_level = precomputed_forecast.get('confidence_level', 0.95)
+                        
+                        if forecast_series is not None:
+                            model_results['forecast'] = {
+                                'steps': len(forecast_series),
+                                'values': forecast_series.tolist(),
+                                'index': forecast_series.index.astype(str).tolist(),
+                                'confidence_level': confidence_level
+                            }
+                            
+                            if conf_int is not None:
+                                model_results['forecast']['confidence_intervals'] = {
+                                    'lower': conf_int.iloc[:, 0].tolist(),
+                                    'upper': conf_int.iloc[:, 1].tolist()
+                                }
+                        
+                    # Altrimenti genera nuovo forecast se possibile
+                    elif self.exog_names and exog_future is None:
                         self.logger.warning("Forecast nel report non generato: SARIMAX richiede variabili esogene future")
                         model_results['forecast_note'] = "Forecast non disponibile: necessarie variabili esogene future"
+                        
+                    # Genera nuovo forecast
                     else:
-                        forecast_result = self.forecast(
-                            steps=forecast_steps,
-                            confidence_intervals=True
-                        )
+                        kwargs = {'steps': forecast_steps, 'confidence_intervals': True}
+                        if self.exog_names and exog_future is not None:
+                            kwargs['exog_future'] = exog_future
+                            
+                        forecast_result = self.forecast(**kwargs)
+                        
                         if isinstance(forecast_result, tuple):
                             forecast_series, conf_int = forecast_result
                             model_results['forecast'] = {
@@ -742,6 +769,7 @@ class SARIMAXForecaster:
                                 'values': forecast_result.tolist(),
                                 'index': forecast_result.index.astype(str).tolist()
                             }
+                            
                 except Exception as e:
                     self.logger.warning(f"Non è stato possibile generare il forecast per il report: {e}")
             

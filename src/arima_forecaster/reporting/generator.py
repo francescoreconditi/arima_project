@@ -1,5 +1,5 @@
 """
-Quarto report generator for ARIMA and SARIMA models.
+Quarto report generator for ARIMA, SARIMA and SARIMAX models.
 """
 
 import os
@@ -17,7 +17,7 @@ from ..utils.exceptions import ForecastError
 
 class QuartoReportGenerator:
     """
-    Generates comprehensive Quarto reports for ARIMA/SARIMA model analysis.
+    Generates comprehensive Quarto reports for ARIMA, SARIMA and SARIMAX model analysis.
     """
     
     def __init__(self, output_dir: Union[str, Path] = "outputs/reports"):
@@ -86,7 +86,7 @@ class QuartoReportGenerator:
         self,
         model_results: Dict[str, Any],
         plots_data: Optional[Dict[str, str]] = None,
-        report_title: str = "ARIMA Model Analysis Report",
+        report_title: str = "Time Series Model Analysis Report",
         output_filename: str = None,
         format_type: str = "html"
     ) -> Path:
@@ -357,9 +357,15 @@ if model_info:
                 ['S (Periodicità Stagionale)', str(seasonal_order[3])]
             ])
     
+    # Variabili esogene se presenti
+    if 'exog_names' in model_results and model_results['exog_names']:
+        exog_names = model_results['exog_names']
+        params_data.append(['Variabili Esogene', ', '.join(exog_names)])
+        params_data.append(['Numero Variabili Esogene', str(len(exog_names))])
+    
     # Altri parametri del modello
     for key, value in model_info.items():
-        if key not in ['order', 'seasonal_order'] and isinstance(value, (str, int, float)):
+        if key not in ['order', 'seasonal_order', 'exog_names'] and isinstance(value, (str, int, float)):
             params_data.append([key.replace('_', ' ').title(), str(value)])
     
     if params_data:
@@ -657,6 +663,151 @@ for category, items in categories.items():
 display(HTML(html_output))
 ```
 
+## Forecast {{#sec-forecast}}
+
+### Previsioni del Modello
+
+```{python}
+#| label: forecast-analysis
+#| fig-cap: "Andamento delle Previsioni con Intervalli di Confidenza"
+
+forecast_data = model_results.get('forecast', {})
+forecast_note = model_results.get('forecast_note', '')
+
+if forecast_data and 'values' in forecast_data:
+    # Abbiamo dati di forecast
+    forecast_values = forecast_data['values']
+    forecast_index = forecast_data.get('index', list(range(len(forecast_values))))
+    steps = forecast_data.get('steps', len(forecast_values))
+    confidence_level = forecast_data.get('confidence_level', 0.95)
+    
+    # Crea tabella dei risultati (converte stringhe in float se necessario)
+    forecast_values = [float(val) if isinstance(val, str) else val for val in forecast_values]
+    forecast_df = pd.DataFrame({
+        'Periodo': forecast_index,
+        'Valore Previsto': [f"{val:.2f}" for val in forecast_values]
+    })
+    
+    # Aggiungi intervalli di confidenza se disponibili
+    if 'confidence_intervals' in forecast_data:
+        conf_int = forecast_data['confidence_intervals']
+        lower_vals = [float(val) if isinstance(val, str) else val for val in conf_int['lower']]
+        upper_vals = [float(val) if isinstance(val, str) else val for val in conf_int['upper']]
+        forecast_df['Limite Inferiore'] = [f"{val:.2f}" for val in lower_vals]
+        forecast_df['Limite Superiore'] = [f"{val:.2f}" for val in upper_vals]
+    
+    print(f"### Tabella Previsioni ({steps} periodi)")
+    from IPython.display import HTML, display
+    html_table = forecast_df.to_html(index=False, classes='table table-striped', escape=False, table_id='forecast-table')
+    display(HTML(html_table))
+    
+    # Crea grafico delle previsioni
+    try:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Plot dei valori previsti
+        x_pos = list(range(len(forecast_values)))
+        ax.plot(x_pos, forecast_values, 'ro-', linewidth=2, markersize=6, label=f'Previsioni', color='red')
+        
+        # Plot degli intervalli di confidenza se disponibili
+        if 'confidence_intervals' in forecast_data:
+            conf_int = forecast_data['confidence_intervals']
+            lower_vals = [float(val) if isinstance(val, str) else val for val in conf_int['lower']]
+            upper_vals = [float(val) if isinstance(val, str) else val for val in conf_int['upper']]
+            ax.fill_between(x_pos, lower_vals, upper_vals, 
+                           alpha=0.3, color='red', label=f'Intervallo {confidence_level:.0%}')
+        
+        ax.set_title(f'Previsioni del Modello - {steps} Periodi Futuri', fontsize=14, fontweight='bold')
+        ax.set_xlabel('Periodo')
+        ax.set_ylabel('Valore Previsto')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        
+        # Aggiungi etichette sui punti
+        for i, (x, y) in enumerate(zip(x_pos, forecast_values)):
+            if i % max(1, len(x_pos)//10) == 0:  # Mostra ogni 10° etichetta per evitare sovraffollamento
+                ax.annotate(f'{y:.1f}', (x, y), textcoords="offset points", xytext=(0,10), ha='center', fontsize=8)
+        
+        plt.xticks(x_pos[::max(1, len(x_pos)//10)], 
+                  [str(idx) for idx in forecast_index[::max(1, len(x_pos)//10)]], 
+                  rotation=45)
+        plt.tight_layout()
+        plt.show()
+        
+        # Statistiche delle previsioni
+        print("\\n### Statistiche Previsioni")
+        stats_data = [
+            ['Valore Medio Previsto', f"{np.mean(forecast_values):.2f}"],
+            ['Valore Minimo', f"{np.min(forecast_values):.2f}"],
+            ['Valore Massimo', f"{np.max(forecast_values):.2f}"],
+            ['Deviazione Standard', f"{np.std(forecast_values):.2f}"]
+        ]
+        
+        if 'confidence_intervals' in forecast_data:
+            conf_int = forecast_data['confidence_intervals']
+            lower_vals = [float(val) if isinstance(val, str) else val for val in conf_int['lower']]
+            upper_vals = [float(val) if isinstance(val, str) else val for val in conf_int['upper']]
+            avg_interval_width = np.mean(np.array(upper_vals) - np.array(lower_vals))
+            stats_data.append(['Larghezza Media Intervallo', f"{avg_interval_width:.2f}"])
+        
+        stats_df = pd.DataFrame(stats_data, columns=['Statistica', 'Valore'])
+        html_table = stats_df.to_html(index=False, classes='table table-striped', escape=False, table_id='forecast-stats')
+        display(HTML(html_table))
+        
+    except Exception as e:
+        print(f"Impossibile generare grafico delle previsioni: {e}")
+        
+elif forecast_note:
+    # Abbiamo una nota sul perché il forecast non è disponibile
+    print("### Nota sulle Previsioni")
+    print(f"⚠️ {forecast_note}")
+    
+    # Se è un modello SARIMAX, fornisci suggerimenti
+    model_type = model_results.get('model_type', '')
+    if 'SARIMAX' in model_type:
+        print("\\n**Suggerimento per modelli SARIMAX:**")
+        print("- I modelli SARIMAX richiedono variabili esogene future per generare previsioni")
+        print("- Assicurati di fornire i valori futuri delle variabili esogene utilizzate durante l'addestramento")
+        if 'exog_names' in model_results:
+            exog_names = model_results['exog_names']
+            print(f"- Variabili esogene richieste: {', '.join(exog_names)}")
+else:
+    print("### Previsioni Non Disponibili")
+    print("I dati di previsione non sono stati generati per questo modello.")
+```
+
+### Variabili Esogene (solo per modelli SARIMAX)
+
+```{python}
+#| label: exogenous-variables
+#| tbl-cap: "Variabili Esogene Utilizzate"
+
+model_type = model_results.get('model_type', '')
+exog_names = model_results.get('exog_names', [])
+
+if 'SARIMAX' in model_type and exog_names:
+    print(f"### Variabili Esogene Utilizzate nel Modello {model_type}")
+    
+    exog_df = pd.DataFrame({
+        'Variabile': exog_names,
+        'Descrizione': [f"Variabile esogena {i+1}" for i in range(len(exog_names))]
+    })
+    
+    from IPython.display import HTML, display
+    html_table = exog_df.to_html(index=False, classes='table table-striped', escape=False, table_id='exog-vars-table')
+    display(HTML(html_table))
+    
+    print(f"\\n**Numero totale di variabili esogene:** {len(exog_names)}")
+    print("\\n**Importanza delle Variabili Esogene:**")
+    print("Le variabili esogene forniscono informazioni aggiuntive al modello che possono migliorare l'accuratezza delle previsioni. Queste variabili rappresentano fattori esterni che influenzano la serie temporale ma non sono predetti dal modello stesso.")
+
+elif 'SARIMAX' in model_type and not exog_names:
+    print("⚠️ Modello SARIMAX configurato ma nessuna variabile esogena rilevata.")
+    
+else:
+    print("Questo modello non utilizza variabili esogene.")
+```
+
 ---
 
 *Report generato automaticamente dalla libreria ARIMA Forecaster*
@@ -703,24 +854,43 @@ display(HTML(html_output))
                 env=env
             )
             
+            # Debug del processo quarto
+            self.logger.info(f"Quarto command: {' '.join(cmd)}")
+            self.logger.info(f"Return code: {result.returncode}")
+            if result.stdout:
+                self.logger.info(f"Stdout: {result.stdout}")
+            if result.stderr:
+                self.logger.warning(f"Stderr: {result.stderr}")
+            
             if result.returncode != 0:
                 self.logger.error(f"Quarto render failed: {result.stderr}")
                 raise ForecastError(f"Quarto rendering failed: {result.stderr}")
             
-            # Move the generated file to final location
+            # Cerca file generati nella directory (fallback)
+            generated_files = list(qmd_path.parent.glob("*.html"))
+            self.logger.info(f"HTML files found in {qmd_path.parent}: {[f.name for f in generated_files]}")
+            
+            # Cerca il file atteso o qualsiasi HTML con nome simile
             if temp_output_path.exists():
-                import shutil
-                # Ensure output directory exists
-                final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(temp_output_path), str(final_output_path))
-                
-                # Fix image paths and inject magnifying lens functionality
-                if format_type == "html":
-                    self._fix_html_resources(final_output_path, output_filename)
-                
-                return final_output_path
+                output_file = temp_output_path
+            elif generated_files:
+                # Usa il primo HTML trovato se il nome atteso non esiste
+                output_file = generated_files[0]
+                self.logger.info(f"Using fallback HTML file: {output_file.name}")
             else:
-                raise ForecastError(f"Expected output file not found: {temp_output_path}")
+                raise ForecastError(f"No HTML output found in {qmd_path.parent}")
+            
+            # Move the generated file to final location
+            import shutil
+            # Ensure output directory exists
+            final_output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(output_file), str(final_output_path))
+            
+            # Fix image paths and inject magnifying lens functionality
+            if format_type == "html":
+                self._fix_html_resources(final_output_path, output_filename)
+            
+            return final_output_path
             
         except FileNotFoundError:
             raise ForecastError(
@@ -739,6 +909,8 @@ display(HTML(html_output))
             return obj.tolist()
         elif isinstance(obj, (np.integer, np.floating)):
             return float(obj)
+        elif isinstance(obj, (int, float)):
+            return obj  # Keep native Python numbers as-is
         elif isinstance(obj, pd.Series):
             return obj.tolist()
         elif isinstance(obj, pd.DataFrame):
@@ -750,9 +922,20 @@ display(HTML(html_output))
         elif pd.isna(obj) if hasattr(pd, 'isna') else False:
             return None
         else:
-            # Try to convert to basic types
+            # Try to preserve numeric types before converting to string
             try:
-                return str(obj)
+                # Check if it's a numeric string that should remain a number
+                if isinstance(obj, str):
+                    try:
+                        # Try to parse as int first, then float
+                        if '.' not in obj:
+                            return int(obj)
+                        else:
+                            return float(obj)
+                    except ValueError:
+                        return obj  # Keep as string if not numeric
+                else:
+                    return str(obj)
             except:
                 return None
     
@@ -895,7 +1078,7 @@ display(HTML(html_output))
         
         qmd_content = f'''---
 title: "{title}"
-subtitle: "Confronto Comparativo dei Modelli ARIMA/SARIMA"
+subtitle: "Analisi Completa del Modello {model_type}"
 author: "ARIMA Forecaster Library"
 date: "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 format:

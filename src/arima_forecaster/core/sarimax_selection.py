@@ -130,9 +130,16 @@ class SARIMAXModelSelector:
                 # Elaborazione parallela
                 self.results = self._fit_models_parallel(series, exog, param_combinations, verbose)
             
-            # Trova miglior modello
+            # Trova miglior modello con validazione
             if self.results:
-                best_result = min(self.results, key=lambda x: x[self.information_criterion])
+                # Filtra risultati sospetti per evitare overfitting
+                valid_results = self._filter_suspicious_results(self.results)
+                
+                if not valid_results:
+                    self.logger.warning("Tutti i modelli sembrano avere problemi di overfitting - usando il migliore disponibile")
+                    valid_results = self.results
+                
+                best_result = min(valid_results, key=lambda x: x[self.information_criterion])
                 self.best_order = best_result['order']
                 self.best_seasonal_order = best_result['seasonal_order']
                 
@@ -420,6 +427,86 @@ class SARIMAXModelSelector:
             self.logger.warning("Matplotlib/Seaborn non disponibili per i grafici")
         except Exception as e:
             self.logger.error(f"Impossibile creare grafico: {e}")
+    
+    def _filter_suspicious_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Filtra risultati sospetti che potrebbero indicare overfitting.
+        
+        Args:
+            results: Lista di risultati dei modelli
+            
+        Returns:
+            Lista filtrata di risultati validi
+        """
+        if not results:
+            return results
+        
+        valid_results = []
+        n_obs = results[0].get('n_observations', 100)  # Fallback se mancante
+        
+        # Calcola statistiche per rilevare anomalie
+        aic_values = [r['aic'] for r in results]
+        bic_values = [r['bic'] for r in results]
+        
+        # Soglie per rilevare valori sospetti
+        median_aic = np.median(aic_values)
+        q1_aic, q3_aic = np.percentile(aic_values, [25, 75])
+        iqr_aic = q3_aic - q1_aic
+        
+        # Soglie adattive basate sui dati
+        min_reasonable_aic = max(50, median_aic - 3 * iqr_aic)  # Non può essere troppo basso
+        max_reasonable_aic = median_aic + 3 * iqr_aic
+        
+        self.logger.info(f"Validazione risultati: AIC mediana={median_aic:.2f}, range ragionevole=[{min_reasonable_aic:.2f}, {max_reasonable_aic:.2f}]")
+        
+        filtered_count = 0
+        for result in results:
+            aic = result['aic']
+            bic = result['bic']
+            order = result['order']
+            seasonal_order = result['seasonal_order']
+            
+            # Controlli per overfitting/problemi numerici
+            suspicious = False
+            reasons = []
+            
+            # 1. AIC troppo basso (possibile overfitting)
+            if aic < min_reasonable_aic:
+                suspicious = True
+                reasons.append(f"AIC troppo basso ({aic:.2f})")
+            
+            # 2. AIC troppo alto (modello pessimo)
+            if aic > max_reasonable_aic:
+                suspicious = True
+                reasons.append(f"AIC troppo alto ({aic:.2f})")
+            
+            # 3. Differenza AIC-BIC sospetta
+            aic_bic_diff = bic - aic
+            if aic_bic_diff < 0:  # BIC non può essere minore di AIC
+                suspicious = True
+                reasons.append(f"BIC < AIC (diff={aic_bic_diff:.2f})")
+            
+            # 4. Modello troppo complesso per i dati disponibili
+            total_params = sum(order) + sum(seasonal_order[:3])
+            if total_params > n_obs / 10:  # Regola empirica: max 10% parametri vs osservazioni
+                suspicious = True
+                reasons.append(f"Troppi parametri ({total_params}) per {n_obs} osservazioni")
+            
+            # 5. Valori infiniti o NaN
+            if not np.isfinite(aic) or not np.isfinite(bic):
+                suspicious = True
+                reasons.append("AIC/BIC non finiti")
+            
+            if suspicious:
+                filtered_count += 1
+                self.logger.debug(f"Filtrato modello {order}x{seasonal_order}: {', '.join(reasons)}")
+            else:
+                valid_results.append(result)
+        
+        if filtered_count > 0:
+            self.logger.info(f"Filtrati {filtered_count}/{len(results)} modelli sospetti")
+        
+        return valid_results
 
 
 def _fit_sarimax_model(
