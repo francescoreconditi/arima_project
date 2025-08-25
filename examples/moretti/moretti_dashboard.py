@@ -14,6 +14,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import os
+import time
 
 # Configurazione pagina
 st.set_page_config(
@@ -29,7 +30,7 @@ st.markdown("""
     .main {padding-top: 0px;}
     .block-container {padding-top: 1rem; padding-bottom: 1rem;}
     
-    /* Stile per le metriche con bordi e allineamento */
+    /* Stile per le metriche con bordi e allineamento centrato */
     [data-testid="metric-container"] {
         background-color: #1e1e1e;
         border: 2px solid #444444;
@@ -37,22 +38,28 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         margin-bottom: 10px;
+        text-align: center;
     }
     
-    /* Allineamento a destra per i valori delle metriche */
+    /* Centratura titolo metrica */
     [data-testid="metric-container"] > div:first-child {
-        text-align: left;
+        text-align: center;
     }
     
+    /* Centratura valore principale */
     [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        text-align: right;
+        text-align: center;
         font-weight: bold;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
     
-    /* Allineamento a destra per il delta */
+    /* Centratura delta */
     [data-testid="metric-container"] [data-testid="stMetricDelta"] {
-        text-align: right;
-        justify-content: flex-end;
+        text-align: center;
+        justify-content: center;
+        display: flex;
     }
     
     .metric-card {
@@ -65,10 +72,24 @@ st.markdown("""
         padding: 15px;
         border-radius: 5px;
         margin: 10px 0;
+        color: #000000;
+        font-weight: 500;
     }
-    .alert-critica {background-color: #ffcccc; border-left: 5px solid #ff0000;}
-    .alert-alta {background-color: #ffe6cc; border-left: 5px solid #ff9900;}
-    .alert-media {background-color: #ffffcc; border-left: 5px solid #ffcc00;}
+    .alert-critica {
+        background-color: #ffffff; 
+        border: 3px solid #dc3545; 
+        box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+    }
+    .alert-alta {
+        background-color: #ffffff; 
+        border: 3px solid #fd7e14; 
+        box-shadow: 0 2px 6px rgba(253, 126, 20, 0.3);
+    }
+    .alert-media {
+        background-color: #ffffff; 
+        border: 3px solid #ffc107; 
+        box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,16 +98,88 @@ st.markdown("""
 # SIMULAZIONE DATI (in produzione: connessione DB)
 # =====================================================
 
-def carica_dati_simulati(lead_time_mod=100, domanda_mod=100):
-    """Carica dati simulati per demo con modificatori
+def carica_dati_da_csv(lead_time_mod=100, domanda_mod=100):
+    """Carica dati da file CSV con modificatori
     
     Args:
         lead_time_mod: Modificatore lead time in percentuale (100 = normale)
         domanda_mod: Modificatore domanda in percentuale (100 = normale)
     """
     
-    # Catalogo prodotti
-    prodotti = pd.DataFrame({
+    # Path to data directory
+    data_dir = Path(__file__).parent / "data"
+    
+    try:
+        # Carica prodotti da CSV
+        prodotti_path = data_dir / "prodotti_dettaglio.csv"
+        if prodotti_path.exists():
+            prodotti = pd.read_csv(prodotti_path)
+            # Applica modificatori al lead time
+            prodotti['lead_time'] = (prodotti['lead_time'] * lead_time_mod / 100).astype(int)
+        else:
+            # Fallback ai dati hardcoded se il CSV non esiste
+            prodotti = carica_dati_fallback_prodotti(lead_time_mod)
+    except Exception as e:
+        print(f"[WARNING] Errore caricamento prodotti CSV: {e}. Uso dati fallback.")
+        prodotti = carica_dati_fallback_prodotti(lead_time_mod)
+    
+    # Carica storico vendite da CSV
+    try:
+        vendite_path = data_dir / "vendite_storiche_dettagliate.csv"
+        if vendite_path.exists():
+            vendite_csv = pd.read_csv(vendite_path, parse_dates=['data'])
+            # Prendi gli ultimi 90 giorni
+            vendite_csv = vendite_csv.tail(90).copy()
+            # Applica modificatore domanda
+            codici_prodotti = [col for col in vendite_csv.columns if col != 'data']
+            for codice in codici_prodotti:
+                vendite_csv[codice] = (vendite_csv[codice] * domanda_mod / 100).astype(int)
+            
+            vendite = vendite_csv.set_index('data')
+        else:
+            # Fallback ai dati generati
+            vendite = carica_dati_fallback_vendite(prodotti, domanda_mod)
+    except Exception as e:
+        print(f"[WARNING] Errore caricamento vendite CSV: {e}. Uso dati fallback.")
+        vendite = carica_dati_fallback_vendite(prodotti, domanda_mod)
+    
+    # Genera previsioni basate sui dati storici
+    future_dates = pd.date_range(start=datetime.now()+timedelta(days=1), periods=30, freq='D')
+    previsioni = pd.DataFrame()
+    
+    for codice in vendite.columns:
+        if codice in prodotti['codice'].values:
+            base = vendite[codice].mean()
+            # Applica modificatore domanda alle previsioni
+            previsioni[codice] = np.random.poisson(max(base, 0.1), 30) * (1 + 0.1*np.random.randn(30))
+            previsioni[f'{codice}_lower'] = previsioni[codice] * 0.8
+            previsioni[f'{codice}_upper'] = previsioni[codice] * 1.2
+    
+    previsioni['data'] = future_dates
+    previsioni = previsioni.set_index('data')
+    
+    # Carica ordini da CSV
+    try:
+        ordini_path = data_dir / "ordini_attivi.csv"
+        if ordini_path.exists():
+            ordini = pd.read_csv(ordini_path, parse_dates=['data_ordine', 'data_consegna_prevista'])
+            # Seleziona solo colonne necessarie per compatibilità
+            ordini = ordini[['id_ordine', 'prodotto_codice', 'quantita', 'fornitore', 
+                           'data_ordine', 'data_consegna_prevista', 'stato', 'costo_totale']].copy()
+            ordini.rename(columns={'prodotto_codice': 'prodotto'}, inplace=True)
+        else:
+            # Fallback ai dati hardcoded
+            ordini = carica_dati_fallback_ordini()
+    except Exception as e:
+        print(f"[WARNING] Errore caricamento ordini CSV: {e}. Uso dati fallback.")
+        ordini = carica_dati_fallback_ordini()
+    
+    return prodotti, vendite, previsioni, ordini
+
+
+def carica_dati_fallback_prodotti(lead_time_mod=100):
+    """Dati fallback per prodotti se CSV non disponibile"""
+    return pd.DataFrame({
         'codice': ['CRZ001', 'CRZ002', 'MAT001', 'MAT002', 'RIA001', 'ELT001'],
         'nome': [
             'Carrozzina Pieghevole Standard',
@@ -109,35 +202,24 @@ def carica_dati_simulati(lead_time_mod=100, domanda_mod=100):
                      int(5 * lead_time_mod / 100), int(10 * lead_time_mod / 100)],
         'criticita': [5, 5, 5, 4, 4, 5]
     })
-    
-    # Storico vendite (ultimi 90 giorni)
+
+
+def carica_dati_fallback_vendite(prodotti, domanda_mod=100):
+    """Dati fallback per vendite se CSV non disponibile"""
     date_range = pd.date_range(end=datetime.now(), periods=90, freq='D')
     vendite = pd.DataFrame()
     
     for codice in prodotti['codice']:
-        base = np.random.randint(5, 30)
-        # Applica modificatore domanda alle vendite storiche
+        base = np.random.randint(1, 8)
         vendite[codice] = np.random.poisson(base, 90) * (1 + 0.2*np.sin(np.arange(90)*2*np.pi/30)) * (domanda_mod / 100)
     
     vendite['data'] = date_range
-    vendite = vendite.set_index('data')
-    
-    # Previsioni (prossimi 30 giorni)
-    future_dates = pd.date_range(start=datetime.now()+timedelta(days=1), periods=30, freq='D')
-    previsioni = pd.DataFrame()
-    
-    for codice in prodotti['codice']:
-        base = vendite[codice].mean()
-        # Applica modificatore domanda alle previsioni
-        previsioni[codice] = np.random.poisson(base, 30) * (1 + 0.1*np.random.randn(30)) * (domanda_mod / 100)
-        previsioni[f'{codice}_lower'] = previsioni[codice] * 0.8
-        previsioni[f'{codice}_upper'] = previsioni[codice] * 1.2
-    
-    previsioni['data'] = future_dates
-    previsioni = previsioni.set_index('data')
-    
-    # Ordini in corso
-    ordini = pd.DataFrame({
+    return vendite.set_index('data')
+
+
+def carica_dati_fallback_ordini():
+    """Dati fallback per ordini se CSV non disponibile"""
+    return pd.DataFrame({
         'id_ordine': ['ORD001', 'ORD002', 'ORD003'],
         'prodotto': ['CRZ001', 'MAT001', 'ELT001'],
         'quantita': [30, 50, 40],
@@ -155,8 +237,44 @@ def carica_dati_simulati(lead_time_mod=100, domanda_mod=100):
         'stato': ['In transito', 'Confermato', 'In elaborazione'],
         'costo_totale': [8400, 21000, 4800]
     })
+
+
+# Alias per compatibilità con il codice esistente
+def carica_scenari_whatif():
+    """Carica scenari what-if da CSV"""
+    data_dir = Path(__file__).parent / "data"
+    scenari_path = data_dir / "scenari_whatif.csv"
     
-    return prodotti, vendite, previsioni, ordini
+    try:
+        if scenari_path.exists():
+            return pd.read_csv(scenari_path)
+        else:
+            # Scenari di default
+            return pd.DataFrame({
+                'scenario_nome': ['Scenario_Base', 'Crisi_Fornitori', 'Boom_Domanda'],
+                'descrizione': ['Situazione Attuale', 'Problemi Supply Chain', 'Crescita Post-Pandemia'],
+                'lead_time_modifier': [100, 150, 100],
+                'domanda_modifier': [100, 100, 180],
+                'impact_description': [
+                    'Baseline normale operativo',
+                    'Lead time aumentati del 50%',
+                    'Aumento domanda 80%'
+                ]
+            })
+    except Exception as e:
+        print(f"[WARNING] Errore caricamento scenari: {e}")
+        return pd.DataFrame({
+            'scenario_nome': ['Scenario_Base'],
+            'descrizione': ['Situazione Attuale'],
+            'lead_time_modifier': [100],
+            'domanda_modifier': [100],
+            'impact_description': ['Baseline normale operativo']
+        })
+
+
+def carica_dati_simulati(lead_time_mod=100, domanda_mod=100):
+    """Alias per compatibilità - ora carica da CSV"""
+    return carica_dati_da_csv(lead_time_mod, domanda_mod)
 
 
 # =====================================================
@@ -429,19 +547,19 @@ def mostra_kpi_principali(prodotti, vendite, ordini):
     
     with col1:
         st.markdown(f"""
-        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px;">
+        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
             <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">💰 Valore Magazzino</div>
-            <div style="color: white; font-size: 28px; font-weight: bold; text-align: right;">€{valore_magazzino:,.0f}</div>
-            <div style="color: #4CAF50; font-size: 14px; text-align: right; margin-top: 5px;">▲ +{np.random.randint(1,10)}%</div>
+            <div style="color: white; font-size: 28px; font-weight: bold;">€{valore_magazzino:,.0f}</div>
+            <div style="color: #4CAF50; font-size: 14px; margin-top: 5px;">▲ +{np.random.randint(1,10)}%</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown(f"""
-        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px;">
+        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
             <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">📦 Vendite Ultimo Mese</div>
-            <div style="color: white; font-size: 28px; font-weight: bold; text-align: right;">{vendite_mese:,.0f}</div>
-            <div style="color: #4CAF50; font-size: 14px; text-align: right; margin-top: 5px;">▲ +{np.random.randint(5,15)}%</div>
+            <div style="color: white; font-size: 28px; font-weight: bold;">{vendite_mese:,.0f}</div>
+            <div style="color: #4CAF50; font-size: 14px; margin-top: 5px;">▲ +{np.random.randint(5,15)}%</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -450,28 +568,28 @@ def mostra_kpi_principali(prodotti, vendite, ordini):
         delta_symbol = "▲" if prodotti_sotto_scorta > 0 else "✓"
         delta_text = f"+{prodotti_sotto_scorta}" if prodotti_sotto_scorta > 0 else "OK"
         st.markdown(f"""
-        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px;">
+        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
             <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">⚠️ Prodotti Sotto Scorta</div>
-            <div style="color: white; font-size: 28px; font-weight: bold; text-align: right;">{prodotti_sotto_scorta}</div>
-            <div style="color: {delta_color}; font-size: 14px; text-align: right; margin-top: 5px;">{delta_symbol} {delta_text}</div>
+            <div style="color: white; font-size: 28px; font-weight: bold;">{prodotti_sotto_scorta}</div>
+            <div style="color: {delta_color}; font-size: 14px; margin-top: 5px;">{delta_symbol} {delta_text}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
         st.markdown(f"""
-        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px;">
+        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
             <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">🚚 Ordini in Corso</div>
-            <div style="color: white; font-size: 28px; font-weight: bold; text-align: right;">{ordini_attivi}</div>
-            <div style="color: #2196F3; font-size: 14px; text-align: right; margin-top: 5px;">━ Stabile</div>
+            <div style="color: white; font-size: 28px; font-weight: bold;">{ordini_attivi}</div>
+            <div style="color: #2196F3; font-size: 14px; margin-top: 5px;">━ Stabile</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col5:
         st.markdown(f"""
-        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px;">
+        <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
             <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">✅ Service Level</div>
-            <div style="color: white; font-size: 28px; font-weight: bold; text-align: right;">{service_level:.1f}%</div>
-            <div style="color: #4CAF50; font-size: 14px; text-align: right; margin-top: 5px;">▲ +{np.random.uniform(0.5, 2):.1f}%</div>
+            <div style="color: white; font-size: 28px; font-weight: bold;">{service_level:.1f}%</div>
+            <div style="color: #4CAF50; font-size: 14px; margin-top: 5px;">▲ +{np.random.uniform(0.5, 2):.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -498,11 +616,13 @@ def mostra_alerts(prodotti):
     if alerts:
         for alert in sorted(alerts, key=lambda x: 0 if x['urgenza']=='CRITICA' else 1):
             css_class = 'alert-critica' if alert['urgenza'] == 'CRITICA' else 'alert-alta'
+            urgenza_color = '#dc3545' if alert['urgenza'] == 'CRITICA' else '#fd7e14'
+            
             st.markdown(f"""
             <div class='alert-box {css_class}'>
-                <strong>[{alert['urgenza']}] {alert['tipo']}</strong><br>
-                {alert['messaggio']}<br>
-                <em>Azione suggerita: {alert['azione']}</em>
+                <strong style='color: {urgenza_color}; font-size: 16px;'>[{alert['urgenza']}] {alert['tipo']}</strong><br>
+                <span style='color: #000000; font-size: 14px;'>{alert['messaggio']}</span><br>
+                <em style='color: #333333; font-size: 13px;'>Azione suggerita: {alert['azione']}</em>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -640,17 +760,18 @@ def tabella_ordini(ordini):
     ordini_display['data_consegna_prevista'] = ordini_display['data_consegna_prevista'].dt.strftime('%d/%m/%Y')
     ordini_display['costo_totale'] = ordini_display['costo_totale'].apply(lambda x: f"€{x:,.2f}")
     
-    # Colora per stato
+    # Colora per stato con contrasto migliorato e testo centrato
     def color_stato(stato):
         colors = {
-            'In elaborazione': 'background-color: #ffffcc',
-            'Confermato': 'background-color: #ccffcc',
-            'In transito': 'background-color: #ccf2ff',
-            'Consegnato': 'background-color: #e6e6e6'
+            'In elaborazione': 'background-color: #ffffff; color: #856404; font-weight: bold; border: 2px solid #ffc107; border-radius: 4px; padding: 4px; text-align: center;',
+            'Confermato': 'background-color: #ffffff; color: #155724; font-weight: bold; border: 2px solid #28a745; border-radius: 4px; padding: 4px; text-align: center;',
+            'In transito': 'background-color: #ffffff; color: #004085; font-weight: bold; border: 2px solid #007bff; border-radius: 4px; padding: 4px; text-align: center;',
+            'In produzione': 'background-color: #ffffff; color: #721c24; font-weight: bold; border: 2px solid #dc3545; border-radius: 4px; padding: 4px; text-align: center;',
+            'Consegnato': 'background-color: #ffffff; color: #383d41; font-weight: bold; border: 2px solid #6c757d; border-radius: 4px; padding: 4px; text-align: center;'
         }
-        return colors.get(stato, '')
+        return colors.get(stato, 'background-color: #ffffff; color: #000000; font-weight: bold; text-align: center;')
     
-    styled = ordini_display.style.applymap(
+    styled = ordini_display.style.map(
         color_stato,
         subset=['stato']
     )
@@ -1179,6 +1300,21 @@ def calcola_suggerimenti_riordino(prodotti, previsioni, domanda_mod=100):
 def main():
     # Header
     st.title("🏥 Moretti S.p.A. - Sistema Gestione Scorte Intelligente")
+    
+    # Info caricamento dati
+    data_dir = Path(__file__).parent / "data"
+    csv_files_exist = all([
+        (data_dir / "prodotti_dettaglio.csv").exists(),
+        (data_dir / "vendite_storiche_dettagliate.csv").exists(),
+        (data_dir / "ordini_attivi.csv").exists(),
+        (data_dir / "fornitori_dettaglio.csv").exists()
+    ])
+    
+    if csv_files_exist:
+        st.success("✅ **Dati caricati da file CSV esterni** - Dashboard pronta per demo clienti!")
+    else:
+        st.warning("⚠️ Alcuni file CSV mancanti - Utilizzo dati fallback simulati")
+    
     st.markdown("---")
     
     # Recupera i modificatori dalla sidebar (non ancora definiti, li definiremo dopo)
@@ -1191,11 +1327,71 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        st.header("⚙️ Controlli")
+        st.header("⚙️ Controlli Dashboard")
+        
+        # Carica scenari what-if
+        scenari_df = carica_scenari_whatif()
+        
+        # Selezione scenario
+        st.subheader("🎭 Scenari What-If")
+        scenario_options = dict(zip(scenari_df['scenario_nome'], scenari_df['descrizione']))
+        scenario_selected = st.selectbox(
+            "Seleziona Scenario:",
+            options=list(scenario_options.keys()),
+            format_func=lambda x: f"{scenario_options[x]} ({x})",
+            help="Scenari predefiniti per analisi what-if"
+        )
+        
+        # Ottieni parametri del scenario selezionato
+        scenario_row = scenari_df[scenari_df['scenario_nome'] == scenario_selected].iloc[0]
+        scenario_lead_time = int(scenario_row['lead_time_modifier'])
+        scenario_domanda = int(scenario_row['domanda_modifier'])
+        
+        # Mostra dettagli scenario
+        with st.expander(f"📋 Dettagli {scenario_selected}", expanded=False):
+            st.write(f"**Descrizione:** {scenario_row['descrizione']}")
+            st.write(f"**Impact:** {scenario_row['impact_description']}")
+            if 'business_case' in scenario_row:
+                st.write(f"**Business Case:** {scenario_row['business_case']}")
+        
+        st.markdown("---")
+        
+        # Parametri personalizzati (override scenario)
+        st.subheader("🎮 Override Parametri")
+        use_custom = st.checkbox("Usa parametri personalizzati", value=False)
+        
+        if use_custom:
+            lead_time_mod = st.slider(
+                "Lead Time Modifier (%)",
+                min_value=50,
+                max_value=200,
+                value=scenario_lead_time,
+                step=5,
+                help="Modifica i tempi di consegna"
+            )
+            
+            domanda_mod = st.slider(
+                "Domanda Modifier (%)",
+                min_value=30,
+                max_value=250,
+                value=scenario_domanda,
+                step=5,
+                help="Modifica la domanda prevista"
+            )
+        else:
+            lead_time_mod = scenario_lead_time
+            domanda_mod = scenario_domanda
+            
+            # Mostra i parametri del scenario corrente
+            st.write(f"**Lead Time:** {lead_time_mod}%")
+            st.write(f"**Domanda:** {domanda_mod}%")
+        
+        st.markdown("---")
         
         # Filtro categoria
+        st.subheader("📂 Filtri Dati")
         categorie = ['Tutte'] + list(prodotti['categoria'].unique())
-        categoria_sel = st.selectbox("📂 Categoria", categorie)
+        categoria_sel = st.selectbox("Categoria", categorie)
         
         if categoria_sel != 'Tutte':
             prodotti_filtrati = prodotti[prodotti['categoria'] == categoria_sel]
@@ -1204,54 +1400,35 @@ def main():
         
         # Selezione prodotto per grafici
         prodotto_sel = st.selectbox(
-            "📦 Prodotto per Analisi",
+            "Prodotto per Analisi",
             prodotti_filtrati['codice'].tolist(),
             format_func=lambda x: prodotti[prodotti['codice']==x]['nome'].values[0]
         )
         
         st.markdown("---")
         
-        # Parametri simulazione
-        st.subheader("🎮 Parametri Simulazione")
+        # Info dati
+        st.subheader("📊 Info Dati")
+        data_info = f"""
+        **Prodotti Totali:** {len(prodotti)}  
+        **Prodotti Visualizzati:** {len(prodotti_filtrati)}  
+        **Giorni Storico:** 120  
+        **Giorni Previsione:** 30  
+        **Fonte Dati:** File CSV  
+        """
+        st.info(data_info)
         
-        lead_time_mod = st.slider(
-            "Lead Time Modifier (%)",
-            min_value=50,
-            max_value=150,
-            value=st.session_state.get('lead_time_mod', 100),
-            step=10,
-            key='lead_time_mod',
-            help="Modifica i tempi di consegna: 50% = dimezza, 150% = aumenta del 50%"
-        )
-        
-        domanda_mod = st.slider(
-            "Domanda Modifier (%)",
-            min_value=50,
-            max_value=200,
-            value=st.session_state.get('domanda_mod', 100),
-            step=10,
-            key='domanda_mod',
-            help="Modifica la domanda prevista: 50% = dimezza, 200% = raddoppia"
-        )
-        
-        # Mostra l'effetto dei modificatori
-        if lead_time_mod != 100 or domanda_mod != 100:
-            st.info(f"""📊 **Effetti Applicati:**
-            - Lead Time: {lead_time_mod}% {'(ridotto)' if lead_time_mod < 100 else '(aumentato)' if lead_time_mod > 100 else '(normale)'}
-            - Domanda: {domanda_mod}% {'(ridotta)' if domanda_mod < 100 else '(aumentata)' if domanda_mod > 100 else '(normale)'}
+        # Sistema features
+        with st.expander("🔧 Sistema Features"):
+            st.write("""
+            - ✅ Caricamento dati da CSV
+            - ✅ Scenari What-If predefiniti 
+            - ✅ Forecasting ARIMA/SARIMA
+            - ✅ Dashboard interattiva
+            - ✅ Report automatizzati
+            - ✅ Analisi fornitori
+            - ✅ Alert intelligenti
             """)
-        
-        st.markdown("---")
-        
-        # Info sistema
-        st.info("""
-        **Sistema Features:**
-        - Previsioni SARIMA/VAR
-        - Ottimizzazione Multi-Fornitore
-        - Alert Automatici
-        - Integrazione Dati ISTAT
-        - Analisi What-If
-        """)
     
     # Layout principale
     
@@ -1276,12 +1453,13 @@ def main():
     st.markdown("---")
     
     # Grafici Analisi
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📈 Trend Vendite",
-        "🔮 Previsioni",
+        "🔮 Previsioni", 
         "📋 Ordini",
         "💡 Suggerimenti",
-        "📄 Report"
+        "📄 Report",
+        "🗃️ Dati CSV"
     ])
     
     with tab1:
@@ -1589,21 +1767,140 @@ def main():
                                 st.components.v1.html(html_content, height=600, scrolling=True)
                     else:
                         st.error("❌ Errore nella generazione del report. Verificare che Quarto sia installato.")
+    
+    with tab6:
+        st.subheader("🗃️ Gestione File CSV")
         
-        # Info box
-        with st.expander("ℹ️ Informazioni su Quarto Reports", expanded=False):
-            st.info("""
-            **Quarto** è un sistema di publishing scientifico open-source che permette di:
-            - Creare report dinamici con dati real-time
-            - Esportare in multipli formati (HTML, PDF, Word, etc.)
-            - Includere codice, grafici e analisi interattive
-            - Mantenere consistenza nel branding aziendale
+        # Mostra status dei file CSV
+        st.markdown("### 📁 Status File Dati")
+        
+        data_files = {
+            'prodotti_dettaglio.csv': 'Catalogo prodotti con scorte e parametri',
+            'vendite_storiche_dettagliate.csv': 'Storico vendite ultimi 120 giorni',
+            'ordini_attivi.csv': 'Ordini in corso con fornitori',
+            'fornitori_dettaglio.csv': 'Database fornitori e condizioni',
+            'scenari_whatif.csv': 'Scenari predefiniti per analisi',
+            'categorie_config.csv': 'Configurazione categorie prodotti'
+        }
+        
+        for filename, description in data_files.items():
+            file_path = data_dir / filename
+            if file_path.exists():
+                try:
+                    # Leggi file info
+                    df = pd.read_csv(file_path)
+                    file_size = file_path.stat().st_size
+                    mod_time = datetime.fromtimestamp(file_path.stat().st_mtime).strftime('%d/%m/%Y %H:%M')
+                    
+                    st.markdown(f"""
+                    **✅ {filename}**  
+                    📝 {description}  
+                    📊 {len(df)} righe × {len(df.columns)} colonne | 📁 {file_size:,} bytes | 🕐 {mod_time}
+                    """)
+                    
+                    # Mostra anteprima in expander
+                    with st.expander(f"👁️ Anteprima {filename}", expanded=False):
+                        st.dataframe(df.head(10), use_container_width=True)
+                        
+                        if len(df) > 10:
+                            st.info(f"Mostrate prime 10 righe di {len(df)} totali")
+                        
+                        # Per file vendite, mostra statistiche aggiuntive
+                        if 'vendite_storiche' in filename:
+                            st.markdown("**📈 Statistiche Vendite:**")
+                            vendite_cols = [col for col in df.columns if col != 'data']
+                            if vendite_cols:
+                                stats_df = pd.DataFrame({
+                                    'Prodotto': vendite_cols,
+                                    'Media Giornaliera': [df[col].mean() for col in vendite_cols],
+                                    'Max Giornaliero': [df[col].max() for col in vendite_cols],
+                                    'Totale Periodo': [df[col].sum() for col in vendite_cols]
+                                })
+                                st.dataframe(stats_df, use_container_width=True)
+                    
+                except Exception as e:
+                    st.error(f"❌ Errore lettura {filename}: {e}")
+            else:
+                st.markdown(f"""
+                **❌ {filename}**  
+                📝 {description}  
+                ⚠️ File non trovato - Utilizzo dati fallback
+                """)
+        
+        st.markdown("---")
+        
+        # Sezione per personalizzare i dati
+        st.markdown("### 🎨 Personalizzazione Dati per Demo")
+        
+        st.info("""
+        **💡 Suggerimenti per Demo Clienti:**
+        
+        1. **Modifica prodotti_dettaglio.csv** per includere prodotti specifici del cliente
+        2. **Aggiorna vendite_storiche_dettagliate.csv** con pattern realistici del settore
+        3. **Personalizza fornitori_dettaglio.csv** con fornitori reali del territorio
+        4. **Crea scenari_whatif.csv** specifici per le sfide del cliente
+        5. **Configura categorie_config.csv** per le categorie del client
+        
+        ✨ **Risultato:** Dashboard completamente brandizzata per il cliente!
+        """)
+        
+        # Tabella format requirements
+        with st.expander("📋 Formato File CSV Richiesti", expanded=False):
+            st.markdown("""
+            **prodotti_dettaglio.csv:**
+            ```
+            codice,nome,categoria,scorte_attuali,scorta_minima,scorta_sicurezza,prezzo_medio,lead_time,criticita
+            ```
             
-            **Requisiti:**
-            - Quarto CLI installato (https://quarto.org/docs/get-started/)
-            - Per PDF: LaTeX distribution (TinyTeX consigliato)
-            - Per DOCX: Microsoft Word o LibreOffice
+            **vendite_storiche_dettagliate.csv:**
+            ```
+            data,CRZ001,CRZ002,MAT001,... (una colonna per prodotto)
+            ```
+            
+            **ordini_attivi.csv:**
+            ```
+            id_ordine,prodotto_codice,quantita,fornitore,data_ordine,data_consegna_prevista,stato,costo_totale
+            ```
+            
+            **fornitori_dettaglio.csv:**
+            ```
+            nome_fornitore,categoria_specializzazione,lead_time_medio,affidabilita_percentuale,prezzo_1_10_unita
+            ```
+            
+            **scenari_whatif.csv:**
+            ```
+            scenario_nome,descrizione,lead_time_modifier,domanda_modifier,impact_description
+            ```
             """)
+        
+        # Azioni file
+        st.markdown("### ⚡ Azioni Rapide")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🔄 Ricarica Dati", help="Ricarica tutti i dati dai CSV"):
+                st.experimental_rerun()
+        
+        with col2:
+            if st.button("📊 Rigenerazione Vendite", help="Rigenera il file vendite storiche"):
+                try:
+                    # Rigenera vendite storiche
+                    exec(open(data_dir.parent / "generate_vendite_storiche.py").read())
+                    st.success("✅ Vendite storiche rigenerate!")
+                    time.sleep(1)
+                    st.experimental_rerun()
+                except Exception as e:
+                    st.error(f"❌ Errore rigenerazione: {e}")
+        
+        with col3:
+            st.download_button(
+                "📥 Download Template CSV",
+                data="codice,nome,categoria,scorte_attuali,scorta_minima\nEXAMPLE001,Prodotto Esempio,Categoria1,100,50",
+                file_name="template_prodotti.csv",
+                mime="text/csv",
+                help="Scarica template per creare nuovi file prodotti"
+            )
     
     # Footer
     st.markdown("---")
