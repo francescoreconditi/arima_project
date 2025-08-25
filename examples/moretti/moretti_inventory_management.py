@@ -8,7 +8,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 import json
-from dataclasses import dataclass
+from pydantic import BaseModel
 from enum import Enum
 from pathlib import Path
 
@@ -38,8 +38,7 @@ class ProdottoCategoria(Enum):
     HOME_CARE = "Ausili Home Care"
 
 
-@dataclass
-class ProdottoMedicale:
+class ProdottoMedicale(BaseModel):
     """Definizione prodotto medicale con caratteristiche"""
     codice: str
     nome: str
@@ -53,8 +52,7 @@ class ProdottoMedicale:
     criticita: int  # 1-5, 5=massima criticità
     
 
-@dataclass
-class Fornitore:
+class Fornitore(BaseModel):
     """Definizione fornitore con pricing multi-tier"""
     codice: str
     nome: str

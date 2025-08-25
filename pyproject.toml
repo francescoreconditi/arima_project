@@ -204,19 +204,37 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
+    "--cov=src/arima_forecaster",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-branch",
 ]
 testpaths = ["tests"]
 filterwarnings = [
     "error",
     "ignore::UserWarning",
-    "ignore::DeprecationWarning",
+    "ignore::DeprecationWarning", 
     "ignore::PendingDeprecationWarning",
+    "ignore::RuntimeWarning:statsmodels.*",
+    "ignore::FutureWarning:pandas.*",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
+    "integration: marks tests as integration tests", 
     "unit: marks tests as unit tests",
+    "api: marks tests as API/FastAPI tests",
+    "e2e: marks tests as end-to-end integration tests",
+    "health: marks tests for health check endpoints",
+    "training: marks tests for model training functionality",
+    "forecasting: marks tests for forecasting functionality",
+    "diagnostics: marks tests for model diagnostics",
+    "reports: marks tests for report generation",
+    "models: marks tests for model management",
 ]
+# Configurazione per test API asincroni
+asyncio_mode = "auto"
+# Timeout per test lenti
+timeout = 300
 
 # Configurazione coverage
 [tool.coverage.run]
@@ -243,5 +261,13 @@ exclude_lines = [
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+]
 
 # Pre-commit hooks configuration is in .pre-commit-config.yaml

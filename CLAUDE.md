@@ -36,6 +36,8 @@ Se qualcosa va storto:
 ### 🔴 Commenti nei Sorgenti
 Quando possibile SEMPRE scrivere commenti nei sorgenti in Italiano.
 
+### 🔴 Preferisci sempre Pydantic a Dataclass
+
 ## Panoramica del Progetto
 
 Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva e reporting dinamico con Quarto.

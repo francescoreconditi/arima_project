@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel
 from enum import Enum
 from pathlib import Path
 
@@ -29,8 +29,7 @@ class ProdottoCategoria(Enum):
     HOME_CARE = "Ausili Home Care"
 
 
-@dataclass
-class ProdottoMedicale:
+class ProdottoMedicale(BaseModel):
     """Definizione prodotto medicale"""
     codice: str
     nome: str
@@ -42,8 +41,7 @@ class ProdottoMedicale:
     criticita: int  # 1-5
 
 
-@dataclass  
-class Fornitore:
+class Fornitore(BaseModel):
     """Fornitore con pricing semplificato"""
     codice: str
     nome: str
@@ -58,26 +56,26 @@ class GeneratoreDatiVeloce:
     
     def __init__(self):
         self.prodotti = [
-            ProdottoMedicale("CRZ001", "Carrozzina Standard", ProdottoCategoria.CARROZZINE, 
-                           280.0, 15, 20, 10, 5),
-            ProdottoMedicale("MAT001", "Materasso Antidecubito", ProdottoCategoria.ANTIDECUBITO,
-                           450.0, 10, 15, 8, 5),
-            ProdottoMedicale("ELT001", "Saturimetro", ProdottoCategoria.ELETTROMEDICALI,
-                           120.0, 7, 25, 12, 4)
+            ProdottoMedicale(codice="CRZ001", nome="Carrozzina Standard", categoria=ProdottoCategoria.CARROZZINE, 
+                           prezzo_medio=280.0, lead_time_giorni=15, scorta_minima=20, scorta_sicurezza=10, criticita=5),
+            ProdottoMedicale(codice="MAT001", nome="Materasso Antidecubito", categoria=ProdottoCategoria.ANTIDECUBITO,
+                           prezzo_medio=450.0, lead_time_giorni=10, scorta_minima=15, scorta_sicurezza=8, criticita=5),
+            ProdottoMedicale(codice="ELT001", nome="Saturimetro", categoria=ProdottoCategoria.ELETTROMEDICALI,
+                           prezzo_medio=120.0, lead_time_giorni=7, scorta_minima=25, scorta_sicurezza=12, criticita=4)
         ]
         
         self.fornitori = {
             "CRZ001": [
-                Fornitore("F001", "MedSupply Italia", 300.0, 0.15, 15, 0.95),
-                Fornitore("F002", "EuroMedical", 310.0, 0.12, 12, 0.92)
+                Fornitore(codice="F001", nome="MedSupply Italia", prezzo_base=300.0, sconto_quantita=0.15, lead_time=15, affidabilita=0.95),
+                Fornitore(codice="F002", nome="EuroMedical", prezzo_base=310.0, sconto_quantita=0.12, lead_time=12, affidabilita=0.92)
             ],
             "MAT001": [
-                Fornitore("F003", "AntiDecubito Pro", 480.0, 0.18, 10, 0.98),
-                Fornitore("F004", "Medical Comfort", 470.0, 0.15, 14, 0.90)
+                Fornitore(codice="F003", nome="AntiDecubito Pro", prezzo_base=480.0, sconto_quantita=0.18, lead_time=10, affidabilita=0.98),
+                Fornitore(codice="F004", nome="Medical Comfort", prezzo_base=470.0, sconto_quantita=0.15, lead_time=14, affidabilita=0.90)
             ],
             "ELT001": [
-                Fornitore("F005", "DiagnosticPro", 130.0, 0.10, 7, 0.96),
-                Fornitore("F006", "TechMed", 125.0, 0.08, 9, 0.93)
+                Fornitore(codice="F005", nome="DiagnosticPro", prezzo_base=130.0, sconto_quantita=0.10, lead_time=7, affidabilita=0.96),
+                Fornitore(codice="F006", nome="TechMed", prezzo_base=125.0, sconto_quantita=0.08, lead_time=9, affidabilita=0.93)
             ]
         }
     
