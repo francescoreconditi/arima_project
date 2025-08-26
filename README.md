@@ -10,6 +10,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 
 - **🌊 Modelli SARIMA**: Gestione completa della stagionalità con parametri (P,D,Q,s)
 - **🌐 Modelli SARIMAX**: Modelli con variabili esogene per incorporare fattori esterni
+- **⭐ Advanced Exog Handling**: Selezione automatica feature, preprocessing intelligente, diagnostica
 - **📈 Modelli VAR**: Forecasting multivariato con analisi di causalità e impulse response
 - **🤖 Auto-ML**: Ottimizzazione automatica con Optuna, Hyperopt e Scikit-Optimize  
 - **🌐 API REST**: Servizi di forecasting production-ready con FastAPI multilingue
@@ -39,6 +40,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   ├── arima_model.py         # Implementazione ARIMA base
 │   │   ├── sarima_model.py        # Modelli SARIMA con stagionalità
 │   │   ├── sarimax_model.py       # Modelli SARIMAX con variabili esogene
+│   │   ├── sarimax_auto_selector.py  # ⭐ Advanced Exog Handling con auto feature selection
 │   │   ├── var_model.py           # Vector Autoregression multivariato
 │   │   ├── model_selection.py     # Selezione automatica ARIMA
 │   │   ├── sarima_selection.py    # Selezione automatica SARIMA
@@ -57,8 +59,10 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── automl/                     # Auto-ML e ottimizzazione avanzata
 │   │   ├── optimizer.py           # Ottimizzatori con Optuna/Hyperopt
 │   │   └── tuner.py               # Hyperparameter tuning avanzato
-│   ├── utils/                       # Logging, eccezioni e sistema traduzioni
+│   ├── utils/                       # Logging, eccezioni, traduzioni e Advanced Exog Utils
 │   │   ├── translations.py         # Sistema traduzioni centralizzato multilingue
+│   │   ├── preprocessing.py        # ⭐ Preprocessing avanzato variabili esogene
+│   │   ├── exog_diagnostics.py     # ⭐ Diagnostica completa variabili esogene
 │   │   ├── logger.py               # Logging configurabile
 │   │   └── exceptions.py           # Eccezioni personalizzate
 │   └── assets/                      # Risorse static del progetto
@@ -72,6 +76,9 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 ├── examples/                       # Script esempio pratici
 │   ├── advanced_forecasting_showcase.py  # Demo funzionalità avanzate
 │   ├── sarimax_example.py         # Esempio completo modelli SARIMAX
+│   ├── moretti/                   # ⭐ Caso pratico completo Moretti S.p.A.
+│   │   ├── test_advanced_exog_handling.py  # ⭐ Demo Advanced Exog Handling completo
+│   │   └── moretti_dashboard.py   # Dashboard multilingue sistema medicale
 │   └── forecasting_base.py        # Esempi base ARIMA/SARIMA
 ├── notebooks/                      # Jupyter notebooks per ricerca e sviluppo
 │   └── research_and_development.ipynb # Ambiente R&D per sperimentazione algoritmi
@@ -233,7 +240,89 @@ print("Componenti:", decomposizione.keys())
 forecast_sarima = sarima_model.forecast(steps=24)  # 2 anni
 ```
 
-#### 3. Forecasting con Variabili Esogene (SARIMAX)
+#### 3. ⭐ Advanced Exogenous Handling (NUOVO)
+
+```python
+from arima_forecaster.core import SARIMAXAutoSelector
+from arima_forecaster.utils import ExogenousPreprocessor, ExogDiagnostics, analyze_feature_relationships
+import pandas as pd
+
+# Dati con molte variabili esogene (es. caso Moretti medicale)
+serie_vendite = pd.read_csv('vendite_carrozzine.csv', parse_dates=True, index_col=0)
+variabili_esogene = pd.DataFrame({
+    'popolazione_over65': demographics_data,
+    'temperatura_media': weather_data,
+    'spesa_sanitaria': healthcare_budget_data,
+    'covid_impact': covid_data,
+    'competitor_price': competitor_data,
+    'marketing_budget': marketing_data,
+    'pil_regionale': economic_data,
+    'search_trends': google_trends_data,
+    'supply_disruption': supply_chain_data,
+    # ... fino a 20+ variabili esogene
+})
+
+# 1. Analisi preliminare relazioni
+relationships = analyze_feature_relationships(variabili_esogene, serie_vendite)
+print("High correlation features:", [f for f, c in relationships['correlations'].items() if abs(c) > 0.5])
+
+# 2. Preprocessing avanzato automatico
+preprocessor = ExogenousPreprocessor(
+    method='auto',  # Sceglie metodo ottimale automaticamente
+    handle_outliers=True,
+    outlier_method='modified_zscore',
+    missing_strategy='interpolate',
+    detect_multicollinearity=True,
+    stationarity_test=True
+)
+
+exog_processed = preprocessor.fit_transform(variabili_esogene)
+print(f"Features dopo preprocessing: {exog_processed.shape[1]} (da {variabili_esogene.shape[1]})")
+
+# 3. SARIMAX con selezione automatica feature
+selector = SARIMAXAutoSelector(
+    order=(1, 1, 1),
+    seasonal_order=(1, 1, 1, 7),  # Stagionalità settimanale
+    max_features=8,  # Seleziona top 8 feature automaticamente
+    selection_method='stepwise',  # 'lasso', 'elastic_net', 'f_test'
+    feature_engineering=['lags', 'differences'],  # Feature engineering auto
+    preprocessing_method='robust',
+    validation_split=0.2
+)
+
+# 4. Training con auto-selezione
+selector.fit_with_exog(serie_vendite, variabili_esogene)
+
+# 5. Analisi feature selezionate
+feature_analysis = selector.get_feature_analysis()
+print(f"Features selezionate: {feature_analysis['feature_details']['selected_features']}")
+print(f"Selection ratio: {feature_analysis['selection_summary']['selection_ratio']:.1%}")
+
+# 6. Diagnostica completa
+diagnostics = ExogDiagnostics(max_lag=7)
+diagnostic_results = diagnostics.full_diagnostic_suite(
+    target_series=serie_vendite,
+    exog_data=variabili_esogene,
+    fitted_model=selector.fitted_model
+)
+
+print(f"Overall assessment: {diagnostic_results['summary']['overall_assessment']}")
+for rec in diagnostic_results['recommendations'][:3]:
+    print(f"Recommendation: {rec}")
+
+# 7. Forecasting con variabili esogene future
+forecast_exog = variabili_esogene.iloc[-30:].copy()  # Ultimi 30 giorni per pattern
+forecast_result = selector.forecast_with_exog(
+    steps=30,
+    exog=forecast_exog,
+    confidence_intervals=True
+)
+
+print(f"Forecast SARIMAX con {len(selector.selected_features)} features selezionate automaticamente")
+print(f"Accuracy (AIC): {selector.fitted_model.aic:.1f}")
+```
+
+#### 4. Forecasting con Variabili Esogene (SARIMAX)
 
 ```python
 from arima_forecaster import SARIMAXForecaster, SARIMAXModelSelector, TimeSeriesPreprocessor
@@ -878,10 +967,12 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 - [x] **Report Quarto**: Generazione automatica report dinamici HTML/PDF/DOCX
 - [x] **Documentazione**: Teoria completa ARIMA, SARIMA, SARIMAX e confronti
 
+#### ✅ Implementato (v0.4.1)
+- [x] **Advanced Exog Handling**: Selezione automatica feature, preprocessing avanzato, diagnostica per SARIMAX
+
 #### 🚧 In Sviluppo (v0.5.0)
 - [ ] **LSTM Integration**: Hybrid ARIMA-Deep Learning
 - [ ] **Real-time Streaming**: Apache Kafka integration
-- [ ] **Advanced Exog Handling**: Automatic feature selection per SARIMAX
 - [ ] **Cloud Native**: Kubernetes operators
 
 #### 🔮 Future Releases

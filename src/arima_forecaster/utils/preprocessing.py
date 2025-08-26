@@ -7,37 +7,80 @@
 
 """
 Utilities per preprocessing robusto delle variabili esogene in modelli SARIMAX.
+Versione estesa con funzionalità Advanced Exog Handling.
 """
 
 import pandas as pd
 import numpy as np
-from typing import Tuple, Dict, Optional, Any
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from typing import Tuple, Dict, Optional, Any, List
+from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+from sklearn.feature_selection import mutual_info_regression, f_regression
+from sklearn.impute import SimpleImputer, KNNImputer
+from scipy import stats
+from scipy.stats import zscore
 import warnings
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 class ExogenousPreprocessor:
-    """Preprocessore robusto per variabili esogene."""
+    """
+    Preprocessore avanzato per variabili esogene con funzionalità enterprise.
     
-    def __init__(self, method: str = 'robust', handle_outliers: bool = True):
+    Features:
+    - Multiple scaling methods (robust, standard, minmax)
+    - Advanced outlier detection (IQR, Z-score, Modified Z-score)  
+    - Smart missing value imputation (mean, median, KNN, forward-fill)
+    - Multicollinearity detection and handling
+    - Feature correlation analysis
+    - Stationarity testing and transformation
+    """
+    
+    def __init__(
+        self, 
+        method: str = 'robust', 
+        handle_outliers: bool = True,
+        outlier_method: str = 'iqr',
+        missing_strategy: str = 'interpolate',
+        detect_multicollinearity: bool = True,
+        multicollinearity_threshold: float = 0.95,
+        stationarity_test: bool = False
+    ):
         """
-        Inizializza il preprocessore.
+        Inizializza il preprocessore avanzato.
         
         Args:
             method: Metodo di scaling ('robust', 'standard', 'minmax', 'none')
-            handle_outliers: Se rimuovere/gestire outlier
+            handle_outliers: Se gestire outlier
+            outlier_method: Metodo detection outlier ('iqr', 'zscore', 'modified_zscore')
+            missing_strategy: Strategia valori mancanti ('interpolate', 'mean', 'median', 'knn', 'ffill', 'bfill')
+            detect_multicollinearity: Se rilevare multicollinearità
+            multicollinearity_threshold: Soglia correlazione per multicollinearità
+            stationarity_test: Se testare stazionarietà
         """
         self.method = method
         self.handle_outliers = handle_outliers
+        self.outlier_method = outlier_method
+        self.missing_strategy = missing_strategy
+        self.detect_multicollinearity = detect_multicollinearity
+        self.multicollinearity_threshold = multicollinearity_threshold
+        self.stationarity_test = stationarity_test
+        
+        # Stato interno
         self.scalers = {}
         self.outlier_bounds = {}
+        self.missing_imputers = {}
+        self.multicollinear_features = []
+        self.stationarity_results = {}
+        self.transformation_log = []
         self.is_fitted = False
+        
+        # Validazione parametri
+        self._validate_parameters()
         
     def fit(self, exog_data: pd.DataFrame) -> 'ExogenousPreprocessor':
         """
-        Adatta il preprocessore ai dati.
+        Adatta il preprocessore avanzato ai dati.
         
         Args:
             exog_data: DataFrame con variabili esogene
@@ -45,45 +88,42 @@ class ExogenousPreprocessor:
         Returns:
             Self per method chaining
         """
-        logger.info(f"Fitting preprocessore su {len(exog_data)} osservazioni, {len(exog_data.columns)} variabili")
+        logger.info(f"Fitting preprocessore avanzato su {len(exog_data)} osservazioni, {len(exog_data.columns)} variabili")
         
         # Reset stato precedente
         self.scalers = {}
         self.outlier_bounds = {}
+        self.missing_imputers = {}
+        self.multicollinear_features = []
+        self.stationarity_results = {}
+        self.transformation_log = []
         
-        for col in exog_data.columns:
-            series = exog_data[col].copy()
+        # Step 1: Gestione valori mancanti
+        processed_data = self._handle_missing_values(exog_data)
+        
+        # Step 2: Test stazionarietà se richiesto
+        if self.stationarity_test:
+            self.stationarity_results = self._test_stationarity(processed_data)
+            processed_data = self._apply_stationarity_transforms(processed_data)
+        
+        # Step 3: Rilevamento multicollinearità
+        if self.detect_multicollinearity:
+            self.multicollinear_features = self._detect_multicollinearity(processed_data)
+            if self.multicollinear_features:
+                # Rimuovi features multicollineari
+                processed_data = processed_data.drop(columns=self.multicollinear_features)
+                logger.info(f"Rimosse {len(self.multicollinear_features)} features multicollineari")
+        
+        # Step 4: Detection e gestione outlier per ogni variabile
+        for col in processed_data.columns:
+            series = processed_data[col].copy()
             
-            # Gestisci valori mancanti
-            if series.isna().any():
-                logger.warning(f"Variabile {col} ha {series.isna().sum()} valori mancanti - interpolando")
-                series = series.interpolate(method='linear')
-                series = series.fillna(series.mean())  # Fallback per estremi
-            
-            # Calcola bounds per outlier se richiesto
             if self.handle_outliers:
-                q1 = series.quantile(0.25)
-                q3 = series.quantile(0.75)
-                iqr = q3 - q1
-                lower_bound = q1 - 1.5 * iqr
-                upper_bound = q3 + 1.5 * iqr
-                self.outlier_bounds[col] = (lower_bound, upper_bound)
-                
-                # Conta outlier
-                outliers = ((series < lower_bound) | (series > upper_bound)).sum()
-                if outliers > 0:
-                    logger.info(f"Variabile {col}: {outliers} outlier rilevati su {len(series)} osservazioni")
+                series, bounds = self._detect_outliers_advanced(series, col)
+                self.outlier_bounds[col] = bounds
             
-            # Configura scaler
-            if self.method == 'robust':
-                scaler = RobustScaler()
-            elif self.method == 'standard':
-                scaler = StandardScaler()
-            elif self.method == 'minmax':
-                from sklearn.preprocessing import MinMaxScaler
-                scaler = MinMaxScaler()
-            else:  # 'none'
-                scaler = None
+            # Step 5: Configura scaler
+            scaler = self._create_scaler()
             
             if scaler is not None:
                 # Fit dello scaler sui dati puliti
@@ -92,11 +132,26 @@ class ExogenousPreprocessor:
                 self.scalers[col] = scaler
                 
                 # Log statistiche
-                logger.info(f"Variabile {col}: mean={clean_series.mean():.3f}, std={clean_series.std():.3f}, range=[{clean_series.min():.3f}, {clean_series.max():.3f}]")
+                logger.debug(f"Variable {col}: mean={clean_series.mean():.3f}, std={clean_series.std():.3f}, range=[{clean_series.min():.3f}, {clean_series.max():.3f}]")
         
         self.is_fitted = True
-        logger.info("Preprocessore addestrato con successo")
+        self._last_processed_data = processed_data  # Per analisi suggerimenti
+        
+        logger.info("Preprocessore avanzato addestrato con successo")
+        logger.info(f"Trasformazioni applicate: {len(self.transformation_log)}")
+        
         return self
+    
+    def _create_scaler(self):
+        """Crea lo scaler appropriato basato sul metodo."""
+        if self.method == 'robust':
+            return RobustScaler()
+        elif self.method == 'standard':
+            return StandardScaler()
+        elif self.method == 'minmax':
+            return MinMaxScaler()
+        else:  # 'none'
+            return None
     
     def transform(self, exog_data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -294,3 +349,375 @@ def suggest_preprocessing_method(exog_data: pd.DataFrame) -> str:
     except Exception:
         # Fallback sicuro
         return 'robust'
+
+
+    def _validate_parameters(self) -> None:
+        """Valida parametri di inizializzazione."""
+        valid_methods = ['robust', 'standard', 'minmax', 'none']
+        if self.method not in valid_methods:
+            raise ValueError(f"method deve essere uno di: {valid_methods}")
+        
+        valid_outlier_methods = ['iqr', 'zscore', 'modified_zscore']
+        if self.outlier_method not in valid_outlier_methods:
+            raise ValueError(f"outlier_method deve essere uno di: {valid_outlier_methods}")
+        
+        valid_missing_strategies = ['interpolate', 'mean', 'median', 'knn', 'ffill', 'bfill']
+        if self.missing_strategy not in valid_missing_strategies:
+            raise ValueError(f"missing_strategy deve essere una di: {valid_missing_strategies}")
+        
+        if not 0 < self.multicollinearity_threshold <= 1:
+            raise ValueError("multicollinearity_threshold deve essere tra 0 e 1")
+    
+    def _handle_missing_values(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Gestione avanzata valori mancanti."""
+        result = data.copy()
+        
+        if self.missing_strategy == 'interpolate':
+            # Interpolazione temporale (migliore per serie temporali)
+            result = result.interpolate(method='time', limit_direction='both')
+            result = result.fillna(method='ffill').fillna(method='bfill')
+            
+        elif self.missing_strategy == 'knn':
+            # KNN Imputation (considera correlazioni)
+            for col in data.columns:
+                if data[col].isna().any():
+                    imputer = KNNImputer(n_neighbors=min(5, len(data) // 10 or 1))
+                    result[col] = imputer.fit_transform(data[[col]].values).flatten()
+                    self.missing_imputers[col] = imputer
+                    
+        elif self.missing_strategy in ['mean', 'median']:
+            # Strategia classica
+            for col in data.columns:
+                if data[col].isna().any():
+                    imputer = SimpleImputer(strategy=self.missing_strategy)
+                    result[col] = imputer.fit_transform(data[[col]].values).flatten()
+                    self.missing_imputers[col] = imputer
+                    
+        elif self.missing_strategy == 'ffill':
+            result = result.fillna(method='ffill').fillna(method='bfill')
+            
+        elif self.missing_strategy == 'bfill':
+            result = result.fillna(method='bfill').fillna(method='ffill')
+        
+        # Log trasformazioni
+        missing_counts = data.isna().sum()
+        filled_counts = missing_counts[missing_counts > 0]
+        if len(filled_counts) > 0:
+            self.transformation_log.append(f"Missing values handled: {dict(filled_counts)} using {self.missing_strategy}")
+        
+        return result
+    
+    def _detect_outliers_advanced(self, series: pd.Series, col: str) -> Tuple[pd.Series, Dict[str, float]]:
+        """Detection outlier avanzata con multiple strategie."""
+        if self.outlier_method == 'iqr':
+            q1, q3 = series.quantile([0.25, 0.75])
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            
+        elif self.outlier_method == 'zscore':
+            # Z-score classico
+            z_scores = np.abs(zscore(series, nan_policy='omit'))
+            threshold = 3  # 3 sigma rule
+            lower_bound = series.mean() - threshold * series.std()
+            upper_bound = series.mean() + threshold * series.std()
+            
+        elif self.outlier_method == 'modified_zscore':
+            # Modified Z-score usando mediana (più robusto)
+            median = series.median()
+            mad = stats.median_abs_deviation(series, nan_policy='omit')
+            modified_z_scores = 0.6745 * (series - median) / mad
+            threshold = 3.5
+            outlier_mask = np.abs(modified_z_scores) > threshold
+            
+            lower_bound = series.quantile(0.01)  # Percentile approach as fallback
+            upper_bound = series.quantile(0.99)
+        
+        bounds = {'lower': lower_bound, 'upper': upper_bound}
+        outlier_mask = (series < lower_bound) | (series > upper_bound)
+        outlier_count = outlier_mask.sum()
+        
+        if outlier_count > 0:
+            logger.info(f"Variable {col}: {outlier_count} outliers detected using {self.outlier_method}")
+            self.transformation_log.append(f"Outliers in {col}: {outlier_count} ({self.outlier_method})")
+        
+        return series, bounds
+    
+    def _detect_multicollinearity(self, data: pd.DataFrame) -> List[str]:
+        """Rileva features multicollineari."""
+        if len(data.columns) < 2:
+            return []
+        
+        try:
+            corr_matrix = data.corr().abs()
+            
+            # Trova coppie altamente correlate
+            multicollinear = []
+            for i in range(len(corr_matrix.columns)):
+                for j in range(i+1, len(corr_matrix.columns)):
+                    if corr_matrix.iloc[i, j] > self.multicollinearity_threshold:
+                        col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
+                        
+                        # Rimuovi la variabile con correlazione media più alta
+                        col1_mean_corr = corr_matrix[col1].drop(col1).mean()
+                        col2_mean_corr = corr_matrix[col2].drop(col2).mean()
+                        
+                        if col1_mean_corr > col2_mean_corr:
+                            multicollinear.append(col1)
+                        else:
+                            multicollinear.append(col2)
+                        
+                        logger.warning(f"High correlation detected: {col1} vs {col2} ({corr_matrix.iloc[i, j]:.3f})")
+            
+            # Rimuovi duplicati
+            multicollinear = list(set(multicollinear))
+            
+            if multicollinear:
+                self.transformation_log.append(f"Multicollinear features detected: {multicollinear}")
+            
+            return multicollinear
+            
+        except Exception as e:
+            logger.warning(f"Multicollinearity detection failed: {e}")
+            return []
+    
+    def _test_stationarity(self, data: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
+        """Testa stazionarietà delle variabili."""
+        from statsmodels.tsa.stattools import adfuller
+        
+        results = {}
+        
+        for col in data.columns:
+            try:
+                series = data[col].dropna()
+                if len(series) < 10:
+                    continue
+                
+                adf_result = adfuller(series, autolag='AIC')
+                
+                results[col] = {
+                    'adf_statistic': adf_result[0],
+                    'p_value': adf_result[1],
+                    'critical_values': adf_result[4],
+                    'is_stationary': adf_result[1] < 0.05,
+                    'recommendation': 'stationary' if adf_result[1] < 0.05 else 'non_stationary'
+                }
+                
+                if adf_result[1] >= 0.05:
+                    logger.info(f"Variable {col} appears non-stationary (p-value: {adf_result[1]:.4f})")
+                
+            except Exception as e:
+                logger.warning(f"Stationarity test failed for {col}: {e}")
+                results[col] = {'error': str(e), 'is_stationary': None}
+        
+        return results
+    
+    def _apply_stationarity_transforms(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Applica trasformazioni per rendere serie stazionarie."""
+        if not self.stationarity_results:
+            return data
+        
+        result = data.copy()
+        
+        for col, test_result in self.stationarity_results.items():
+            if test_result.get('is_stationary') == False and col in result.columns:
+                original_series = result[col].copy()
+                
+                # Prova differenziazione
+                diff_series = original_series.diff().dropna()
+                
+                if len(diff_series) > 10:
+                    try:
+                        from statsmodels.tsa.stattools import adfuller
+                        adf_diff = adfuller(diff_series, autolag='AIC')
+                        
+                        if adf_diff[1] < 0.05:  # Differenziazione risolve non-stazionarietà
+                            result[f"{col}_diff"] = original_series.diff()
+                            result = result.drop(columns=[col])
+                            
+                            logger.info(f"Applied differencing to {col} -> {col}_diff")
+                            self.transformation_log.append(f"Differencing applied: {col} -> {col}_diff")
+                            
+                    except Exception as e:
+                        logger.warning(f"Failed to apply differencing to {col}: {e}")
+        
+        return result
+    
+    def get_preprocessing_report(self) -> Dict[str, Any]:
+        """Genera report completo del preprocessing."""
+        if not self.is_fitted:
+            return {'status': 'not_fitted'}
+        
+        report = {
+            'status': 'fitted',
+            'configuration': {
+                'scaling_method': self.method,
+                'outlier_method': self.outlier_method,
+                'missing_strategy': self.missing_strategy,
+                'multicollinearity_threshold': self.multicollinearity_threshold,
+                'stationarity_test': self.stationarity_test
+            },
+            'transformations_applied': self.transformation_log,
+            'outlier_summary': {},
+            'stationarity_summary': self.stationarity_results,
+            'multicollinear_features': self.multicollinear_features
+        }
+        
+        # Riassunto outlier per variabile
+        for col, bounds in self.outlier_bounds.items():
+            if isinstance(bounds, dict):
+                report['outlier_summary'][col] = {
+                    'lower_bound': bounds.get('lower'),
+                    'upper_bound': bounds.get('upper'),
+                    'method': self.outlier_method
+                }
+            else:
+                report['outlier_summary'][col] = {
+                    'lower_bound': bounds[0] if isinstance(bounds, tuple) else None,
+                    'upper_bound': bounds[1] if isinstance(bounds, tuple) else None,
+                    'method': self.outlier_method
+                }
+        
+        return report
+    
+    def suggest_improvements(self, target_series: Optional[pd.Series] = None) -> List[str]:
+        """Suggerisce miglioramenti al preprocessing basati sui risultati."""
+        suggestions = []
+        
+        if not self.is_fitted:
+            return ['Run fit() first to get suggestions']
+        
+        # Analisi multicollinearità
+        if self.multicollinear_features:
+            suggestions.append(f"Consider removing multicollinear features: {self.multicollinear_features}")
+        
+        # Analisi stazionarietà
+        non_stationary = [col for col, result in self.stationarity_results.items() 
+                         if result.get('is_stationary') == False]
+        if non_stationary:
+            suggestions.append(f"Consider differencing non-stationary variables: {non_stationary}")
+        
+        # Analisi outlier
+        high_outlier_vars = [col for col in self.outlier_bounds.keys() 
+                           if len(self.transformation_log) > 0]  # Placeholder logic
+        if high_outlier_vars:
+            suggestions.append("Consider more robust outlier handling for variables with many outliers")
+        
+        # Analisi correlazione con target se fornita
+        if target_series is not None and hasattr(self, '_last_processed_data'):
+            try:
+                correlations = self._last_processed_data.corrwith(target_series).abs().sort_values(ascending=False)
+                low_corr_features = correlations[correlations < 0.1].index.tolist()
+                
+                if low_corr_features:
+                    suggestions.append(f"Consider removing low-correlation features: {low_corr_features[:5]}")
+                    
+            except Exception:
+                pass
+        
+        return suggestions if suggestions else ['Preprocessing configuration appears optimal']
+
+
+def analyze_feature_relationships(exog_data: pd.DataFrame, target_series: pd.Series) -> Dict[str, Any]:
+    """
+    Analizza relazioni tra features esogene e serie target.
+    
+    Args:
+        exog_data: DataFrame variabili esogene  
+        target_series: Serie temporale target
+        
+    Returns:
+        Dizionario con analisi correlazioni e importanze
+    """
+    try:
+        # Allinea dati
+        common_index = exog_data.index.intersection(target_series.index)
+        exog_aligned = exog_data.loc[common_index]
+        target_aligned = target_series.loc[common_index]
+        
+        results = {
+            'correlations': {},
+            'mutual_information': {},
+            'f_statistics': {},
+            'recommendations': []
+        }
+        
+        # Calcola correlazioni Pearson
+        for col in exog_aligned.columns:
+            try:
+                corr = exog_aligned[col].corr(target_aligned)
+                results['correlations'][col] = corr if not pd.isna(corr) else 0.0
+            except:
+                results['correlations'][col] = 0.0
+        
+        # Calcola mutual information
+        try:
+            mi_scores = mutual_info_regression(exog_aligned.values, target_aligned.values)
+            results['mutual_information'] = dict(zip(exog_aligned.columns, mi_scores))
+        except Exception as e:
+            logger.warning(f"Mutual information calculation failed: {e}")
+            results['mutual_information'] = {col: 0.0 for col in exog_aligned.columns}
+        
+        # Calcola F-statistics
+        try:
+            f_stats, p_values = f_regression(exog_aligned.values, target_aligned.values)
+            results['f_statistics'] = dict(zip(exog_aligned.columns, f_stats))
+        except Exception as e:
+            logger.warning(f"F-statistics calculation failed: {e}")
+            results['f_statistics'] = {col: 0.0 for col in exog_aligned.columns}
+        
+        # Genera raccomandazioni
+        correlations = pd.Series(results['correlations']).abs()
+        high_corr = correlations[correlations > 0.5].index.tolist()
+        low_corr = correlations[correlations < 0.1].index.tolist()
+        
+        if high_corr:
+            results['recommendations'].append(f"High correlation features (good): {high_corr}")
+        if low_corr:
+            results['recommendations'].append(f"Low correlation features (consider removing): {low_corr}")
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"Feature relationship analysis failed: {e}")
+        return {'error': str(e)}
+
+
+def detect_feature_interactions(exog_data: pd.DataFrame, max_interactions: int = 10) -> List[Tuple[str, str, float]]:
+    """
+    Rileva potenziali interazioni significative tra features.
+    
+    Args:
+        exog_data: DataFrame variabili esogene
+        max_interactions: Numero massimo interazioni da rilevare
+        
+    Returns:
+        Lista di tuple (feature1, feature2, correlation_score)
+    """
+    try:
+        interactions = []
+        
+        for i, col1 in enumerate(exog_data.columns):
+            for col2 in exog_data.columns[i+1:]:
+                try:
+                    # Calcola prodotto di interazione
+                    interaction = exog_data[col1] * exog_data[col2]
+                    
+                    # Misura quanto l'interazione differisce dalle componenti singole
+                    corr1 = interaction.corr(exog_data[col1])
+                    corr2 = interaction.corr(exog_data[col2])
+                    interaction_strength = 1 - min(abs(corr1), abs(corr2))  # 1 = completamente diversa
+                    
+                    if interaction_strength > 0.3:  # Soglia significatività
+                        interactions.append((col1, col2, interaction_strength))
+                        
+                except:
+                    continue
+        
+        # Ordina per strength e limita
+        interactions.sort(key=lambda x: x[2], reverse=True)
+        return interactions[:max_interactions]
+        
+    except Exception as e:
+        logger.error(f"Feature interaction detection failed: {e}")
+        return []

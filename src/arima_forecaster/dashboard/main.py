@@ -18,10 +18,12 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster, VARForecaster, SARIMAXForecaster
-from arima_forecaster.core import ARIMAModelSelector, SARIMAModelSelector, SARIMAXModelSelector
+from arima_forecaster.core import ARIMAModelSelector, SARIMAModelSelector, SARIMAXModelSelector, SARIMAXAutoSelector
 from arima_forecaster.data import DataLoader, TimeSeriesPreprocessor
 from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.utils.logger import get_logger
+from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, analyze_feature_relationships
+from arima_forecaster.utils.exog_diagnostics import ExogDiagnostics
 
 # Page configuration
 st.set_page_config(
@@ -68,7 +70,7 @@ class ARIMADashboard:
         st.sidebar.title("Navigation")
         page = st.sidebar.selectbox(
             "Select Page",
-            ["Data Upload", "Data Exploration", "Model Training", "Forecasting", "Model Diagnostics", "Report Generation"]
+            ["Data Upload", "Data Exploration", "Advanced Exog Analysis", "Model Training", "Forecasting", "Model Diagnostics", "Report Generation"]
         )
         
         # Route to appropriate page
@@ -76,6 +78,8 @@ class ARIMADashboard:
             self.data_upload_page()
         elif page == "Data Exploration":
             self.data_exploration_page()
+        elif page == "Advanced Exog Analysis":
+            self.advanced_exog_analysis_page()
         elif page == "Model Training":
             self.model_training_page()
         elif page == "Forecasting":
@@ -359,7 +363,7 @@ class ARIMADashboard:
         with col1:
             model_type = st.selectbox(
                 "Select model type",
-                ['ARIMA', 'SARIMA', 'SARIMAX', 'Auto-ARIMA', 'Auto-SARIMA', 'Auto-SARIMAX']
+                ['ARIMA', 'SARIMA', 'SARIMAX', 'Advanced SARIMAX', 'Auto-ARIMA', 'Auto-SARIMA', 'Auto-SARIMAX']
             )
             
             if model_type in ['ARIMA', 'SARIMA', 'SARIMAX']:
@@ -376,6 +380,40 @@ class ARIMADashboard:
                     s = st.number_input("Seasonal period (s)", min_value=2, max_value=365, value=12)
                 
                 if model_type == 'SARIMAX':
+            
+            elif model_type == 'Advanced SARIMAX':
+                st.subheader("⭐ Advanced Exogenous Handling")
+                st.info("Automatic feature selection, preprocessing, and diagnostics for SARIMAX with multiple exogenous variables")
+                
+                # Parametri base SARIMA
+                st.write("**Base SARIMA Parameters**")
+                p = st.number_input("AR order (p)", min_value=0, max_value=3, value=1, key="adv_p")
+                d = st.number_input("Differencing (d)", min_value=0, max_value=2, value=1, key="adv_d")  
+                q = st.number_input("MA order (q)", min_value=0, max_value=3, value=1, key="adv_q")
+                
+                st.write("**Seasonal Parameters**")
+                P = st.number_input("Seasonal AR (P)", min_value=0, max_value=2, value=1, key="adv_P")
+                D = st.number_input("Seasonal Diff (D)", min_value=0, max_value=1, value=1, key="adv_D")
+                Q = st.number_input("Seasonal MA (Q)", min_value=0, max_value=2, value=1, key="adv_Q")
+                s = st.number_input("Seasonal period (s)", min_value=2, max_value=365, value=12, key="adv_s")
+                
+                # Advanced Exog parameters
+                st.write("**Advanced Exog Settings**")
+                max_features = st.number_input("Max features to select", min_value=3, max_value=20, value=8, key="adv_max_features")
+                selection_method = st.selectbox("Feature selection method", 
+                                               ['stepwise', 'lasso', 'elastic_net', 'f_test'], 
+                                               key="adv_selection")
+                
+                preprocessing_method = st.selectbox("Preprocessing method", 
+                                                  ['auto', 'robust', 'standard', 'minmax'], 
+                                                  key="adv_preprocessing")
+                
+                feature_engineering = st.multiselect("Feature engineering", 
+                                                   ['lags', 'differences', 'interactions'], 
+                                                   default=['lags'], 
+                                                   key="adv_engineering")
+                
+                if model_type == 'SARIMAX' or model_type == 'Advanced SARIMAX':
                     st.write("**Exogenous Variables**")
                     st.info("SARIMAX requires exogenous variables. Upload data with additional columns for exogenous variables.")
                     
@@ -519,6 +557,76 @@ class ARIMADashboard:
                         # Store exogenous variables for forecasting
                         st.session_state.exog_variables = exog_variables
                         st.session_state.exog_data = exog_data
+                    
+                    elif model_type == 'Advanced SARIMAX':
+                        if not exog_variables:
+                            st.error("Please select at least one exogenous variable for Advanced SARIMAX.")
+                            return
+                        
+                        st.info("🚀 Training Advanced SARIMAX with automatic feature selection...")
+                        
+                        # Prepare exogenous data
+                        try:
+                            exog_data = st.session_state.original_data[exog_variables].copy()
+                            if len(exog_data) != len(data):
+                                st.error(f"Dimension mismatch: series has {len(data)} observations, exog has {len(exog_data)}")
+                                return
+                            exog_data.index = data.index
+                            
+                            # Create Advanced SARIMAX selector
+                            model = SARIMAXAutoSelector(
+                                order=(p, d, q),
+                                seasonal_order=(P, D, Q, s),
+                                max_features=max_features,
+                                selection_method=selection_method,
+                                feature_engineering=feature_engineering,
+                                preprocessing_method=preprocessing_method,
+                                validation_split=0.2
+                            )
+                            
+                            # Training with automatic feature selection
+                            model.fit_with_exog(data, exog_data)
+                            
+                            # Display feature analysis
+                            feature_analysis = model.get_feature_analysis()
+                            
+                            st.success("🎯 Advanced SARIMAX training completed!")
+                            
+                            # Display selection summary
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Original Features", 
+                                         feature_analysis['selection_summary']['original_features'])
+                            with col2:
+                                st.metric("Selected Features", 
+                                         feature_analysis['selection_summary']['selected_features'])
+                            with col3:
+                                st.metric("Selection Ratio", 
+                                         f"{feature_analysis['selection_summary']['selection_ratio']:.1%}")
+                            
+                            # Display selected features
+                            with st.expander("Selected Features Details"):
+                                st.write("**Selected Features:**")
+                                for feat in feature_analysis['feature_details']['selected_features']:
+                                    st.write(f"• {feat}")
+                                
+                                if feature_analysis['feature_details']['feature_importance']:
+                                    st.write("**Feature Importance:**")
+                                    importance_data = []
+                                    for feat, importance in feature_analysis['feature_details']['feature_importance'].items():
+                                        importance_data.append({'Feature': feat, 'Importance': abs(importance)})
+                                    
+                                    importance_df = pd.DataFrame(importance_data).sort_values('Importance', ascending=False)
+                                    st.dataframe(importance_df)
+                            
+                            # Store for forecasting
+                            st.session_state.exog_variables = exog_variables
+                            st.session_state.exog_data = exog_data
+                            st.session_state.selected_features = model.selected_features
+                            
+                        except Exception as e:
+                            st.error(f"Advanced SARIMAX training failed: {str(e)}")
+                            return
                         
                     elif model_type == 'Auto-ARIMA':
                         selector = ARIMAModelSelector(
@@ -1559,6 +1667,321 @@ class ARIMADashboard:
                 })
             
             st.json(debug_info)
+    
+    def advanced_exog_analysis_page(self):
+        """⭐ Advanced Exogenous Variables Analysis Page."""
+        st.header("⭐ Advanced Exogenous Variables Analysis")
+        st.markdown("Comprehensive analysis, preprocessing, and diagnostics for exogenous variables")
+        
+        if not st.session_state.get('data_loaded', False):
+            st.warning("Please load data first in the 'Data Upload' page.")
+            return
+        
+        # Check if we have exogenous data
+        if not hasattr(st.session_state, 'original_data') or len(st.session_state.original_data.columns) <= 2:
+            st.warning("No exogenous variables found. Please upload data with additional columns for exogenous analysis.")
+            return
+        
+        # Get data
+        data = st.session_state.get('preprocessed_data', st.session_state.data)
+        
+        # Get available exogenous variables
+        exclude_cols = [
+            st.session_state.get('timestamp_col', 'timestamp'),
+            st.session_state.get('value_col', 'value')
+        ]
+        available_columns = [col for col in st.session_state.original_data.columns 
+                           if col not in exclude_cols]
+        
+        st.info(f"Found {len(available_columns)} potential exogenous variables")
+        
+        # Variable selection
+        st.subheader("1. 🎯 Exogenous Variable Selection")
+        selected_exog = st.multiselect(
+            "Select exogenous variables for analysis",
+            available_columns,
+            default=available_columns[:min(8, len(available_columns))],
+            help="Select up to 15 variables for comprehensive analysis"
+        )
+        
+        if not selected_exog:
+            st.warning("Please select at least one exogenous variable.")
+            return
+        
+        # Prepare exog data
+        try:
+            exog_data = st.session_state.original_data[selected_exog].copy()
+            exog_data.index = data.index
+        except Exception as e:
+            st.error(f"Error preparing exog data: {e}")
+            return
+        
+        # Analysis tabs
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📊 Relationships Analysis", 
+            "🔧 Preprocessing Analysis", 
+            "🧪 Advanced Diagnostics",
+            "📈 Feature Selection"
+        ])
+        
+        with tab1:
+            st.subheader("📊 Feature Relationships Analysis")
+            
+            if st.button("Analyze Relationships", key="analyze_relationships"):
+                with st.spinner("Analyzing feature relationships..."):
+                    try:
+                        relationships = analyze_feature_relationships(exog_data, data)
+                        
+                        # Correlation analysis
+                        st.write("**Correlation Analysis:**")
+                        corr_data = []
+                        for var, corr in relationships['correlations'].items():
+                            corr_data.append({
+                                'Variable': var,
+                                'Correlation': corr,
+                                'Abs Correlation': abs(corr),
+                                'Strength': 'Strong' if abs(corr) > 0.5 else 'Medium' if abs(corr) > 0.3 else 'Weak'
+                            })
+                        
+                        corr_df = pd.DataFrame(corr_data).sort_values('Abs Correlation', ascending=False)
+                        st.dataframe(corr_df)
+                        
+                        # Visualization
+                        fig = px.bar(
+                            corr_df, 
+                            x='Variable', 
+                            y='Correlation',
+                            color='Strength',
+                            title='Feature Correlations with Target',
+                            color_discrete_map={'Strong': '#ff4444', 'Medium': '#ffaa44', 'Weak': '#44ff44'}
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Recommendations
+                        if relationships.get('recommendations'):
+                            st.write("**🎯 Recommendations:**")
+                            for rec in relationships['recommendations']:
+                                st.write(f"• {rec}")
+                        
+                    except Exception as e:
+                        st.error(f"Relationship analysis failed: {e}")
+        
+        with tab2:
+            st.subheader("🔧 Preprocessing Analysis")
+            
+            # Preprocessing options
+            col1, col2 = st.columns(2)
+            with col1:
+                preprocessing_method = st.selectbox(
+                    "Preprocessing method", 
+                    ['auto', 'robust', 'standard', 'minmax', 'none'],
+                    key="preprocessing_analysis"
+                )
+                
+                outlier_method = st.selectbox(
+                    "Outlier detection",
+                    ['iqr', 'zscore', 'modified_zscore'],
+                    key="outlier_analysis"
+                )
+                
+            with col2:
+                missing_strategy = st.selectbox(
+                    "Missing values strategy",
+                    ['interpolate', 'mean', 'median', 'knn', 'ffill', 'bfill'],
+                    key="missing_analysis"
+                )
+                
+                detect_multicollinearity = st.checkbox("Detect multicollinearity", value=True, key="multicoll_analysis")
+                stationarity_test = st.checkbox("Test stationarity", value=True, key="stationarity_analysis")
+            
+            if st.button("Run Preprocessing Analysis", key="run_preprocessing"):
+                with st.spinner("Running preprocessing analysis..."):
+                    try:
+                        # Create advanced preprocessor
+                        preprocessor = ExogenousPreprocessor(
+                            method=preprocessing_method,
+                            handle_outliers=True,
+                            outlier_method=outlier_method,
+                            missing_strategy=missing_strategy,
+                            detect_multicollinearity=detect_multicollinearity,
+                            stationarity_test=stationarity_test
+                        )
+                        
+                        # Fit and transform
+                        exog_processed = preprocessor.fit_transform(exog_data)
+                        
+                        # Show results
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Original Features", len(exog_data.columns))
+                        with col2:
+                            st.metric("Processed Features", len(exog_processed.columns))
+                        with col3:
+                            reduction_pct = (1 - len(exog_processed.columns) / len(exog_data.columns)) * 100
+                            st.metric("Reduction", f"{reduction_pct:.1f}%")
+                        
+                        # Detailed report
+                        report = preprocessor.get_preprocessing_report()
+                        
+                        with st.expander("📋 Detailed Preprocessing Report"):
+                            st.write("**Configuration:**")
+                            st.json(report['configuration'])
+                            
+                            if report['transformations_applied']:
+                                st.write("**Transformations Applied:**")
+                                for transformation in report['transformations_applied']:
+                                    st.write(f"• {transformation}")
+                            
+                            if report['multicollinear_features']:
+                                st.write("**Removed Multicollinear Features:**")
+                                for feat in report['multicollinear_features']:
+                                    st.write(f"• {feat}")
+                        
+                        # Store preprocessed data
+                        st.session_state.exog_processed = exog_processed
+                        st.session_state.exog_preprocessor = preprocessor
+                        
+                    except Exception as e:
+                        st.error(f"Preprocessing analysis failed: {e}")
+        
+        with tab3:
+            st.subheader("🧪 Advanced Diagnostics")
+            
+            if st.button("Run Advanced Diagnostics", key="run_diagnostics"):
+                with st.spinner("Running comprehensive diagnostics..."):
+                    try:
+                        # Create diagnostics engine
+                        diagnostics = ExogDiagnostics(max_lag=min(7, len(data) // 10), significance_level=0.05)
+                        
+                        # Run full diagnostic suite
+                        diagnostic_results = diagnostics.full_diagnostic_suite(
+                            target_series=data,
+                            exog_data=exog_data
+                        )
+                        
+                        # Display summary
+                        summary = diagnostic_results.get('summary', {})
+                        st.write("**📊 Diagnostic Summary:**")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Overall Assessment", summary.get('overall_assessment', 'unknown').upper())
+                        with col2:
+                            st.metric("Features Analyzed", summary.get('feature_count', 0))
+                        with col3:
+                            st.metric("Critical Issues", len(summary.get('critical_issues', [])))
+                        
+                        # Detailed results in expanders
+                        with st.expander("🔍 Stationarity Analysis"):
+                            stationarity = diagnostic_results.get('stationarity', {})
+                            stationary_count = sum(1 for result in stationarity.values() 
+                                                 if result.get('consensus') == 'stationary')
+                            
+                            st.write(f"**Stationary variables: {stationary_count}/{len(stationarity)}**")
+                            
+                            for var, result in stationarity.items():
+                                if 'consensus' in result:
+                                    status = "✅" if result['consensus'] == 'stationary' else "❌"
+                                    st.write(f"{status} **{var}**: {result['consensus']}")
+                        
+                        with st.expander("🔗 Causality Analysis"):
+                            causality = diagnostic_results.get('causality', {})
+                            causal_vars = [var for var, result in causality.items() 
+                                         if result.get('is_causal', False)]
+                            
+                            st.write(f"**Causal variables found: {len(causal_vars)}**")
+                            
+                            for var, result in causality.items():
+                                if 'is_causal' in result:
+                                    status = "🎯" if result['is_causal'] else "◯"
+                                    strength = result.get('strength', 'unknown')
+                                    st.write(f"{status} **{var}**: {result['interpretation']} ({strength})")
+                        
+                        with st.expander("📈 Feature Importance"):
+                            importance = diagnostic_results.get('feature_importance', {})
+                            top_features = importance.get('top_features', [])[:5]
+                            
+                            st.write("**Top Important Features:**")
+                            for i, feat in enumerate(top_features, 1):
+                                st.write(f"{i}. {feat}")
+                        
+                        # Recommendations
+                        recommendations = diagnostic_results.get('recommendations', [])
+                        if recommendations:
+                            st.write("**🎯 Recommendations:**")
+                            for i, rec in enumerate(recommendations, 1):
+                                st.write(f"{i}. {rec}")
+                        
+                        # Store diagnostic results
+                        st.session_state.diagnostic_results = diagnostic_results
+                        
+                    except Exception as e:
+                        st.error(f"Advanced diagnostics failed: {e}")
+        
+        with tab4:
+            st.subheader("📈 Feature Selection Preview")
+            
+            # Feature selection parameters
+            col1, col2 = st.columns(2)
+            with col1:
+                max_features = st.number_input("Max features to select", 
+                                             min_value=2, 
+                                             max_value=len(selected_exog), 
+                                             value=min(8, len(selected_exog)),
+                                             key="feature_selection_max")
+                selection_method = st.selectbox("Selection method",
+                                              ['stepwise', 'lasso', 'elastic_net', 'f_test'],
+                                              key="feature_selection_method")
+            
+            with col2:
+                feature_engineering = st.multiselect("Feature engineering",
+                                                   ['lags', 'differences', 'interactions'],
+                                                   default=['lags'],
+                                                   key="feature_selection_engineering")
+                
+                validation_split = st.slider("Validation split", 0.1, 0.3, 0.2, key="feature_selection_validation")
+            
+            if st.button("Preview Feature Selection", key="preview_feature_selection"):
+                with st.spinner("Running feature selection preview..."):
+                    try:
+                        # Create temporary selector for preview
+                        selector = SARIMAXAutoSelector(
+                            order=(1, 1, 1),
+                            seasonal_order=(1, 1, 1, 12),
+                            max_features=max_features,
+                            selection_method=selection_method,
+                            feature_engineering=feature_engineering,
+                            preprocessing_method='robust',
+                            validation_split=validation_split
+                        )
+                        
+                        # Dry run - just feature selection part (più veloce)
+                        st.info("This is a preview - full training available in 'Model Training' section")
+                        
+                        # Show what would be selected (simulato)
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Input Features", len(selected_exog))
+                        with col2:
+                            st.metric("Max Features", max_features)
+                        with col3:
+                            st.metric("Method", selection_method.upper())
+                        
+                        # Simulate feature selection results
+                        st.write("**Feature Selection Configuration:**")
+                        config_info = {
+                            'Selection Method': selection_method,
+                            'Max Features': max_features,
+                            'Feature Engineering': feature_engineering,
+                            'Validation Split': validation_split,
+                            'Input Variables': selected_exog
+                        }
+                        st.json(config_info)
+                        
+                        st.info("💡 Run 'Advanced SARIMAX' in the Model Training page for full feature selection and training")
+                        
+                    except Exception as e:
+                        st.error(f"Feature selection preview failed: {e}")
 
 
 def main():

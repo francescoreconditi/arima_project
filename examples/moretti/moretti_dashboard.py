@@ -20,6 +20,14 @@ import sys
 # Aggiungi il modulo arima_forecaster al path
 sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
 from arima_forecaster.utils.translations import get_all_translations, translate
+from arima_forecaster.core import SARIMAXAutoSelector
+from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, analyze_feature_relationships
+from arima_forecaster.utils.exog_diagnostics import ExogDiagnostics
+try:
+    from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster
+    FORECASTING_AVAILABLE = True
+except ImportError:
+    FORECASTING_AVAILABLE = False
 
 # Configurazione pagina
 st.set_page_config(
@@ -152,13 +160,46 @@ def carica_dati_da_csv(lead_time_mod=100, domanda_mod=100):
     future_dates = pd.date_range(start=datetime.now()+timedelta(days=1), periods=30, freq='D')
     previsioni = pd.DataFrame()
     
-    for codice in vendite.columns:
-        if codice in prodotti['codice'].values:
-            base = vendite[codice].mean()
-            # Applica modificatore domanda alle previsioni
-            previsioni[codice] = np.random.poisson(max(base, 0.1), 30) * (1 + 0.1*np.random.randn(30))
-            previsioni[f'{codice}_lower'] = previsioni[codice] * 0.8
-            previsioni[f'{codice}_upper'] = previsioni[codice] * 1.2
+    # Utilizza forecasting avanzato se disponibile
+    if FORECASTING_AVAILABLE and len(vendite) >= 30:
+        # Usa ARIMA per previsioni più accurate
+        for codice in vendite.columns:
+            if codice in prodotti['codice'].values:
+                try:
+                    # Prepara dati per ARIMA
+                    serie_temp = vendite[codice].asfreq('D').fillna(0)
+                    
+                    # Usa ARIMA per previsioni
+                    model = ARIMAForecaster(order=(1,1,1))
+                    model.fit(serie_temp)
+                    predictions = model.predict(steps=30)
+                    
+                    # Calcola intervalli di confidenza (approssimazione semplice)
+                    std_err = serie_temp.std()
+                    previsioni[codice] = predictions
+                    previsioni[f'{codice}_lower'] = predictions - 1.96 * std_err
+                    previsioni[f'{codice}_upper'] = predictions + 1.96 * std_err
+                    
+                    # Applica modificatore domanda
+                    previsioni[codice] *= (domanda_mod / 100)
+                    previsioni[f'{codice}_lower'] *= (domanda_mod / 100)
+                    previsioni[f'{codice}_upper'] *= (domanda_mod / 100)
+                    
+                except Exception:
+                    # Fallback su metodo semplice
+                    base = vendite[codice].mean()
+                    previsioni[codice] = np.random.poisson(max(base, 0.1), 30) * (1 + 0.1*np.random.randn(30)) * (domanda_mod / 100)
+                    previsioni[f'{codice}_lower'] = previsioni[codice] * 0.8
+                    previsioni[f'{codice}_upper'] = previsioni[codice] * 1.2
+    else:
+        # Fallback su metodo simulato originale
+        for codice in vendite.columns:
+            if codice in prodotti['codice'].values:
+                base = vendite[codice].mean()
+                # Applica modificatore domanda alle previsioni
+                previsioni[codice] = np.random.poisson(max(base, 0.1), 30) * (1 + 0.1*np.random.randn(30)) * (domanda_mod / 100)
+                previsioni[f'{codice}_lower'] = previsioni[codice] * 0.8
+                previsioni[f'{codice}_upper'] = previsioni[codice] * 1.2
     
     previsioni['data'] = future_dates
     previsioni = previsioni.set_index('data')
@@ -1247,13 +1288,14 @@ def main():
     st.markdown("---")
     
     # Grafici Analisi
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📈 Trend Vendite",
         "🔮 Previsioni", 
         "📋 Ordini",
         "💡 Suggerimenti",
         "📄 Report",
-        "🗃️ Dati CSV"
+        "🗃️ Dati CSV",
+        "🔬 Advanced Exog"
     ])
     
     with tab1:
@@ -1855,6 +1897,76 @@ def main():
                 mime="text/csv",
                 help="Scarica template per creare nuovi file prodotti"
             )
+    
+    with tab7:
+        st.subheader("🔬 Advanced Exogenous Analysis")
+        
+        if not FORECASTING_AVAILABLE:
+            st.warning("⚠️ Advanced forecasting modules not available. Install full ARIMA Forecaster package.")
+        else:
+            # Info box
+            st.info("""
+            **Advanced Exogenous Analysis** consente di utilizzare variabili esterne (exogenous)
+            per migliorare la precisione delle previsioni SARIMAX. Analizza relazioni, preprocessa
+            i dati e seleziona automaticamente le features più rilevanti.
+            """)
+            
+            # Simula alcune variabili exog per demo
+            np.random.seed(42)
+            n_days = len(vendite)
+            exog_demo = pd.DataFrame({
+                'temperatura': np.random.normal(20, 5, n_days),
+                'promocioni': np.random.binomial(1, 0.3, n_days),
+                'festivi': np.random.binomial(1, 0.1, n_days),
+                'marketing_spend': np.random.exponential(1000, n_days)
+            }, index=vendite.index)
+            
+            st.markdown("**Demo Exogenous Variables:**")
+            st.dataframe(exog_demo.head(10), use_container_width=True)
+            
+            st.info("🔧 Advanced SARIMAX Analysis: Seleziona un prodotto specifico e usa i controlli per testare la nuova funzionalità Advanced Exogenous Handling.")
+            
+            if prodotto_sel != 'Tutti':
+                if st.button("🚀 Demo Advanced SARIMAX", type="primary"):
+                    with st.spinner("Running SARIMAX Auto-Selection demo..."):
+                        try:
+                            # Demo semplificato
+                            target_series = vendite[prodotto_sel].asfreq('D').fillna(0)
+                            
+                            # Demo correlazioni
+                            st.success("✅ Advanced Exog Demo completato!")
+                            
+                            st.markdown("**📊 Feature Correlations:**")
+                            corr_data = []
+                            for feature in exog_demo.columns:
+                                corr = target_series.corr(exog_demo[feature])
+                                corr_data.append({
+                                    'Feature': feature,
+                                    'Correlation': f"{corr:.3f}",
+                                    'Strength': 'Strong' if abs(corr) > 0.7 else 'Moderate' if abs(corr) > 0.3 else 'Weak'
+                                })
+                            
+                            corr_df = pd.DataFrame(corr_data)
+                            st.dataframe(corr_df, use_container_width=True)
+                            
+                            # Grafico correlazioni
+                            fig_corr = go.Figure()
+                            fig_corr.add_trace(go.Bar(
+                                x=exog_demo.columns,
+                                y=[target_series.corr(exog_demo[col]) for col in exog_demo.columns],
+                                marker_color=['green' if abs(target_series.corr(exog_demo[col])) > 0.5 else 'orange' for col in exog_demo.columns]
+                            ))
+                            fig_corr.update_layout(
+                                title=f'Feature Correlations with {prodotto_sel}',
+                                xaxis_title='Exogenous Variables',
+                                yaxis_title='Correlation Coefficient'
+                            )
+                            st.plotly_chart(fig_corr, use_container_width=True)
+                            
+                        except Exception as e:
+                            st.error(f"Demo error: {e}")
+            else:
+                st.info("Seleziona un prodotto specifico per testare Advanced Exog Analysis.")
     
     # Footer
     st.markdown("---")

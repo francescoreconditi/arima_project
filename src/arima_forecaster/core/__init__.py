@@ -7,6 +7,7 @@ from .sarima_selection import SARIMAModelSelector
 from .sarimax_model import SARIMAXForecaster
 from .sarimax_selection import SARIMAXModelSelector
 from .var_model import VARForecaster
+from .sarimax_auto_selector import SARIMAXAutoSelector
 
 __all__ = [
     "ARIMAForecaster", 
@@ -15,5 +16,6 @@ __all__ = [
     "SARIMAModelSelector",
     "SARIMAXForecaster",
     "SARIMAXModelSelector",
+    "SARIMAXAutoSelector",  # Advanced Exog Handling
     "VARForecaster"
 ]

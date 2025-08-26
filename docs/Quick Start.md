@@ -250,13 +250,13 @@ Il forecasting non è "fatto una volta e dimenticato". Richiede manutenzione.
 
 ### Caso: Negozio Abbigliamento
 
-**1. Dati**: 18 mesi vendite giornaliere t-shirt
-**2. Preprocessing**: Sistema rileva picchi Black Friday, li normalizza
-**3. Analisi**: Trova stagionalità estate/inverno + trend crescita
-**4. Modello**: Sistema sceglie modello stagionale automaticamente  
-**5. Previsioni**: Estate prossima +25% vs inverno, confidenza 90%
-**6. Accuratezza**: MAPE 12% (ottimo per retail)
-**7. Azione**: Aumento ordini +30% per collezione primavera/estate
+1. **Dati**: 18 mesi vendite giornaliere t-shirt
+2. **Preprocessing**: Sistema rileva picchi Black Friday, li normalizza
+3. **Analisi**: Trova stagionalità estate/inverno + trend crescita
+4. **Modello**: Sistema sceglie modello stagionale automaticamente  
+5. **Previsioni**: Estate prossima +25% vs inverno, confidenza 90%
+6. **Accuratezza**: MAPE 12% (ottimo per retail)
+7. **Azione**: Aumento ordini +30% per collezione primavera/estate
 
 **Risultato Business**: Stock-out ridotti del 40%, rotazione inventory +15%
 
