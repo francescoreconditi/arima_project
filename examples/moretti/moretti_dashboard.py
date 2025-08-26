@@ -1391,7 +1391,7 @@ def main():
         # Filtro categoria
         st.subheader("📂 Filtri Dati")
         categorie = ['Tutte'] + list(prodotti['categoria'].unique())
-        categoria_sel = st.selectbox("Categoria", categorie)
+        categoria_sel = st.selectbox("Categoria", categorie, key="categoria_filter")
         
         if categoria_sel != 'Tutte':
             prodotti_filtrati = prodotti[prodotti['categoria'] == categoria_sel]
@@ -1399,11 +1399,30 @@ def main():
             prodotti_filtrati = prodotti
         
         # Selezione prodotto per grafici
-        prodotto_sel = st.selectbox(
-            "Prodotto per Analisi",
-            prodotti_filtrati['codice'].tolist(),
-            format_func=lambda x: prodotti[prodotti['codice']==x]['nome'].values[0]
-        )
+        # Aggiungo "Tutti" come prima opzione
+        opzioni_prodotti = ['Tutti'] + prodotti_filtrati['codice'].tolist()
+        
+        # Reset prodotto a "Tutti" quando cambia categoria
+        if 'last_categoria' not in st.session_state:
+            st.session_state.last_categoria = categoria_sel
+        
+        if st.session_state.last_categoria != categoria_sel:
+            st.session_state.last_categoria = categoria_sel
+            # Forza il reset a "Tutti"
+            prodotto_sel = st.selectbox(
+                "Prodotto per Analisi",
+                opzioni_prodotti,
+                index=0,  # Seleziona "Tutti"
+                format_func=lambda x: x if x == 'Tutti' else prodotti[prodotti['codice']==x]['nome'].values[0],
+                key="prodotto_filter_reset"
+            )
+        else:
+            prodotto_sel = st.selectbox(
+                "Prodotto per Analisi",
+                opzioni_prodotti,
+                format_func=lambda x: x if x == 'Tutti' else prodotti[prodotti['codice']==x]['nome'].values[0],
+                key="prodotto_filter"
+            )
         
         st.markdown("---")
         
@@ -1465,84 +1484,244 @@ def main():
     with tab1:
         col1, col2 = st.columns(2)
         
-        with col1:
-            st.plotly_chart(
-                grafico_trend_vendite(vendite, prodotto_sel),
-                use_container_width=True
-            )
-        
-        with col2:
-            # Statistiche vendite
-            st.subheader("📊 Statistiche Vendite")
+        # Gestione caso "Tutti" vs prodotto singolo
+        if prodotto_sel == 'Tutti':
+            # Aggregazione dati per tutti i prodotti
+            vendite_aggregate = vendite[prodotti_filtrati['codice'].tolist()].sum(axis=1)
             
-            stats_vendite = pd.DataFrame({
-                'Metrica': [
-                    'Media Giornaliera',
-                    'Deviazione Standard',
-                    'Vendite Max',
-                    'Vendite Min',
-                    'Trend Ultimo Mese'
-                ],
-                'Valore': [
-                    f"{vendite[prodotto_sel].mean():.1f}",
-                    f"{vendite[prodotto_sel].std():.1f}",
-                    f"{vendite[prodotto_sel].max():.0f}",
-                    f"{vendite[prodotto_sel].min():.0f}",
-                    f"{(vendite[prodotto_sel].tail(30).mean() - vendite[prodotto_sel].head(30).mean()) / vendite[prodotto_sel].head(30).mean() * 100:+.1f}%"
-                ]
-            })
+            with col1:
+                # Grafico aggregato
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Scatter(
+                    x=vendite_aggregate.index,
+                    y=vendite_aggregate.values,
+                    mode='lines',
+                    name='Vendite Totali',
+                    line=dict(color='blue', width=2)
+                ))
+                
+                # Media mobile
+                ma7 = vendite_aggregate.rolling(7).mean()
+                fig_trend.add_trace(go.Scatter(
+                    x=ma7.index,
+                    y=ma7.values,
+                    mode='lines',
+                    name='Media Mobile 7gg',
+                    line=dict(color='orange', width=2, dash='dash')
+                ))
+                
+                fig_trend.update_layout(
+                    title="Trend Vendite - Tutti i Prodotti",
+                    xaxis_title="Data",
+                    yaxis_title="Unità Vendute",
+                    hovermode='x unified',
+                    showlegend=True
+                )
+                st.plotly_chart(fig_trend, use_container_width=True)
             
-            st.dataframe(stats_vendite, use_container_width=True, hide_index=True)
+            with col2:
+                # Statistiche vendite aggregate
+                st.subheader("📊 Statistiche Vendite Aggregate")
+                
+                stats_vendite = pd.DataFrame({
+                    'Metrica': [
+                        'Media Giornaliera Totale',
+                        'Deviazione Standard',
+                        'Vendite Max Giornaliere',
+                        'Vendite Min Giornaliere',
+                        'Trend Ultimo Mese'
+                    ],
+                    'Valore': [
+                        f"{vendite_aggregate.mean():.1f}",
+                        f"{vendite_aggregate.std():.1f}",
+                        f"{vendite_aggregate.max():.0f}",
+                        f"{vendite_aggregate.min():.0f}",
+                        f"{(vendite_aggregate.tail(30).mean() - vendite_aggregate.head(30).mean()) / vendite_aggregate.head(30).mean() * 100:+.1f}%"
+                    ]
+                })
+                
+                st.dataframe(stats_vendite, use_container_width=True, hide_index=True)
+                
+                # Distribuzione vendite aggregate
+                fig_dist = px.histogram(
+                    vendite_aggregate,
+                    nbins=20,
+                    title="Distribuzione Vendite Totali",
+                    labels={'value': 'Unità', 'count': 'Frequenza'}
+                )
+                fig_dist.update_layout(height=300, showlegend=False)
+                st.plotly_chart(fig_dist, use_container_width=True)
+        else:
+            # Caso prodotto singolo (codice esistente)
+            with col1:
+                st.plotly_chart(
+                    grafico_trend_vendite(vendite, prodotto_sel),
+                    use_container_width=True
+                )
             
-            # Distribuzione vendite
-            fig_dist = px.histogram(
-                vendite[prodotto_sel],
-                nbins=20,
-                title="Distribuzione Vendite",
-                labels={'value': 'Unità', 'count': 'Frequenza'}
-            )
-            fig_dist.update_layout(height=300, showlegend=False)
-            st.plotly_chart(fig_dist, use_container_width=True)
+            with col2:
+                # Statistiche vendite
+                st.subheader("📊 Statistiche Vendite")
+                
+                stats_vendite = pd.DataFrame({
+                    'Metrica': [
+                        'Media Giornaliera',
+                        'Deviazione Standard',
+                        'Vendite Max',
+                        'Vendite Min',
+                        'Trend Ultimo Mese'
+                    ],
+                    'Valore': [
+                        f"{vendite[prodotto_sel].mean():.1f}",
+                        f"{vendite[prodotto_sel].std():.1f}",
+                        f"{vendite[prodotto_sel].max():.0f}",
+                        f"{vendite[prodotto_sel].min():.0f}",
+                        f"{(vendite[prodotto_sel].tail(30).mean() - vendite[prodotto_sel].head(30).mean()) / vendite[prodotto_sel].head(30).mean() * 100:+.1f}%"
+                    ]
+                })
+                
+                st.dataframe(stats_vendite, use_container_width=True, hide_index=True)
+                
+                # Distribuzione vendite
+                fig_dist = px.histogram(
+                    vendite[prodotto_sel],
+                    nbins=20,
+                    title="Distribuzione Vendite",
+                    labels={'value': 'Unità', 'count': 'Frequenza'}
+                )
+                fig_dist.update_layout(height=300, showlegend=False)
+                st.plotly_chart(fig_dist, use_container_width=True)
     
     with tab2:
         col1, col2 = st.columns(2)
         
-        with col1:
-            st.plotly_chart(
-                grafico_previsioni(previsioni, prodotto_sel),
-                use_container_width=True
-            )
-        
-        with col2:
-            st.subheader("📈 Metriche Previsione")
+        if prodotto_sel == 'Tutti':
+            # Previsioni aggregate per tutti i prodotti
+            prodotti_list = prodotti_filtrati['codice'].tolist()
+            previsioni_aggregate = previsioni[prodotti_list].sum(axis=1)
             
-            # Calcola metriche
-            prev_totale = previsioni[prodotto_sel].sum()
-            prev_media = previsioni[prodotto_sel].mean()
-            prev_max = previsioni[prodotto_sel].max()
-            confidence_range = (
-                previsioni[f'{prodotto_sel}_upper'].mean() - 
-                previsioni[f'{prodotto_sel}_lower'].mean()
-            )
+            # Calcolo intervalli di confidenza aggregati
+            upper_cols = [f'{cod}_upper' for cod in prodotti_list if f'{cod}_upper' in previsioni.columns]
+            lower_cols = [f'{cod}_lower' for cod in prodotti_list if f'{cod}_lower' in previsioni.columns]
             
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.metric("Totale 30gg", f"{prev_totale:.0f}")
-                st.metric("Media Giornaliera", f"{prev_media:.1f}")
-            with col_b:
-                st.metric("Picco Previsto", f"{prev_max:.0f}")
-                st.metric("Range Confidenza", f"±{confidence_range/2:.1f}")
-            
-            # Confronto con storico
-            st.subheader("📊 Confronto con Storico")
-            
-            storico_media = vendite[prodotto_sel].tail(30).mean()
-            variazione = (prev_media - storico_media) / storico_media * 100
-            
-            if variazione > 0:
-                st.warning(f"⬆️ Aumento previsto del {variazione:.1f}% rispetto agli ultimi 30 giorni")
+            if upper_cols and lower_cols:
+                previsioni_upper = previsioni[upper_cols].sum(axis=1)
+                previsioni_lower = previsioni[lower_cols].sum(axis=1)
             else:
-                st.success(f"⬇️ Diminuzione prevista del {abs(variazione):.1f}% rispetto agli ultimi 30 giorni")
+                # Se non ci sono intervalli, usa +/- 10% come stima
+                previsioni_upper = previsioni_aggregate * 1.1
+                previsioni_lower = previsioni_aggregate * 0.9
+            
+            with col1:
+                # Grafico previsioni aggregate
+                fig_prev = go.Figure()
+                
+                # Previsione principale
+                fig_prev.add_trace(go.Scatter(
+                    x=previsioni_aggregate.index,
+                    y=previsioni_aggregate.values,
+                    mode='lines',
+                    name='Previsione Totale',
+                    line=dict(color='green', width=3)
+                ))
+                
+                # Intervallo di confidenza
+                fig_prev.add_trace(go.Scatter(
+                    x=previsioni_upper.index,
+                    y=previsioni_upper.values,
+                    mode='lines',
+                    name='Limite Superiore',
+                    line=dict(color='lightgreen', width=1, dash='dash'),
+                    showlegend=False
+                ))
+                
+                fig_prev.add_trace(go.Scatter(
+                    x=previsioni_lower.index,
+                    y=previsioni_lower.values,
+                    mode='lines',
+                    name='Limite Inferiore',
+                    line=dict(color='lightgreen', width=1, dash='dash'),
+                    fill='tonexty',
+                    fillcolor='rgba(0, 255, 0, 0.1)',
+                    showlegend=False
+                ))
+                
+                fig_prev.update_layout(
+                    title="Previsioni 30 giorni - Tutti i Prodotti",
+                    xaxis_title="Data",
+                    yaxis_title="Unità Previste",
+                    hovermode='x unified',
+                    showlegend=True
+                )
+                
+                st.plotly_chart(fig_prev, use_container_width=True)
+            
+            with col2:
+                st.subheader("📈 Metriche Previsione Aggregate")
+                
+                # Calcola metriche aggregate
+                prev_totale = previsioni_aggregate.sum()
+                prev_media = previsioni_aggregate.mean()
+                prev_max = previsioni_aggregate.max()
+                confidence_range = (previsioni_upper.mean() - previsioni_lower.mean())
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.metric("Totale 30gg", f"{prev_totale:.0f}")
+                    st.metric("Media Giornaliera", f"{prev_media:.1f}")
+                with col_b:
+                    st.metric("Picco Previsto", f"{prev_max:.0f}")
+                    st.metric("Range Confidenza", f"±{confidence_range/2:.1f}")
+                
+                # Confronto con storico
+                st.subheader("📊 Confronto con Storico")
+                
+                vendite_aggregate = vendite[prodotti_list].sum(axis=1)
+                storico_media = vendite_aggregate.tail(30).mean()
+                variazione = (prev_media - storico_media) / storico_media * 100
+                
+                if variazione > 0:
+                    st.warning(f"⬆️ Aumento previsto del {variazione:.1f}% rispetto agli ultimi 30 giorni")
+                else:
+                    st.success(f"⬇️ Diminuzione prevista del {abs(variazione):.1f}% rispetto agli ultimi 30 giorni")
+        else:
+            # Caso prodotto singolo (codice esistente)
+            with col1:
+                st.plotly_chart(
+                    grafico_previsioni(previsioni, prodotto_sel),
+                    use_container_width=True
+                )
+            
+            with col2:
+                st.subheader("📈 Metriche Previsione")
+                
+                # Calcola metriche
+                prev_totale = previsioni[prodotto_sel].sum()
+                prev_media = previsioni[prodotto_sel].mean()
+                prev_max = previsioni[prodotto_sel].max()
+                confidence_range = (
+                    previsioni[f'{prodotto_sel}_upper'].mean() - 
+                    previsioni[f'{prodotto_sel}_lower'].mean()
+                )
+                
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.metric("Totale 30gg", f"{prev_totale:.0f}")
+                    st.metric("Media Giornaliera", f"{prev_media:.1f}")
+                with col_b:
+                    st.metric("Picco Previsto", f"{prev_max:.0f}")
+                    st.metric("Range Confidenza", f"±{confidence_range/2:.1f}")
+                
+                # Confronto con storico
+                st.subheader("📊 Confronto con Storico")
+                
+                storico_media = vendite[prodotto_sel].tail(30).mean()
+                variazione = (prev_media - storico_media) / storico_media * 100
+                
+                if variazione > 0:
+                    st.warning(f"⬆️ Aumento previsto del {variazione:.1f}% rispetto agli ultimi 30 giorni")
+                else:
+                    st.success(f"⬇️ Diminuzione prevista del {abs(variazione):.1f}% rispetto agli ultimi 30 giorni")
     
     with tab3:
         tabella_ordini(ordini)

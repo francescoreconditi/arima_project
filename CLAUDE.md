@@ -20,6 +20,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. **Test immediato** dopo ogni singola modifica
 5. **MAI** sostituire blocchi >50 righe senza mappare completamente il file
 
+### 🔴 Prevenzione Errori API con Caratteri Unicode
+**Per evitare crash "no low surrogate in string" con file contenenti emoji/unicode:**
+1. **File >500 righe con emoji** (es. moretti_dashboard.py): usare SEMPRE Edit singoli, MAI MultiEdit
+2. **Modifiche chirurgiche**: blocchi <100 righe per volta
+3. **Evitare emoji nelle modifiche**: non includere emoji/unicode nelle parti old_string/new_string
+4. **Approccio incrementale**: più modifiche piccole invece di una grande
+5. **Esempi file a rischio**: dashboard Streamlit, file con UI, report HTML con simboli
+
 ### 🔴 Regola d'Oro Inviolabile
 ```
 Un errore = danni ai clienti = soldi persi
