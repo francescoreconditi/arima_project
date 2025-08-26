@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(touch:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(uv run:*)",
+      "Bash(python:*)",
+      "Bash(start \"C:\\Progetti\\arima_project\\outputs\\reports\\test_magnifier_fix.html\")",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(copy:*)",
+      "Bash(cp:*)",
+      "Bash(uv pip install:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:www.morettispa.com)",
+      "Bash(timeout 60 uv run python moretti_inventory_management.py)",
+      "Bash(timeout 120 uv run python moretti_inventory_management.py)",
+      "Bash(timeout 180 uv run:*)",
+      "Bash(timeout 10 uv run streamlit run:*)",
+      "Read(/c:\\temp/**)",
+      "Read(/c:\\temp/**)",
+      "Read(/c:\\temp/**)",
+      "Read(/c:\\temp/**)",
+      "Bash(quarto:*)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Bash(uv add:*)",
+      "Bash(timeout 10 uv run:*)",
+      "Bash(timeout 15 uv run:*)",
+      "Read(/C:\\temp/**)",
+      "Bash(timeout 8 uv run streamlit run:*)",
+      "Read(/C:\\temp/**)",
+      "Read(/C:\\temp/**)",
+      "Read(/c:\\temp/**)"
+    ],
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\Progetti\\arima_project",
+      "C:\\Backup\\Code\\arima_project"
+    ]
+  }
+}

@@ -51,6 +51,12 @@ uv run pytest tests/api/ -m e2e -v
 
 # Test performance
 uv run pytest tests/api/ -m performance -v
+
+# Test sistema multilingue ⭐ NUOVO
+uv run pytest tests/api/ -m i18n -v
+
+# Test traduzioni
+uv run pytest tests/api/ -m translations -v
 ```
 
 ### Test Paralleli (Più Veloce)
@@ -76,6 +82,8 @@ uv run pytest tests/api/ -n auto --cov=src/arima_forecaster
 - `@pytest.mark.concurrent` - Test operazioni concorrenti
 - `@pytest.mark.edge_case` - Test edge cases
 - `@pytest.mark.error_handling` - Test gestione errori
+- `@pytest.mark.i18n` - Test supporto multilingue **⭐ NUOVO**
+- `@pytest.mark.translations` - Test sistema traduzioni
 
 ## 📊 Coverage Report
 
@@ -157,6 +165,15 @@ xdg-open htmlcov/index.html  # Linux
 - Consistenza caching
 - Metriche e monitoring
 
+### 9. **Test Multilingue (i18n)** ⭐ **NUOVO**
+- Parametro `?lang=` per tutti gli endpoint
+- Risposte localizzate in 5 lingue (IT, EN, ES, FR, ZH)
+- Messaggi di errore tradotti
+- Encoding UTF-8 per caratteri cinesi
+- Fallback a lingua default
+- Headers `Content-Language` corretti
+- Test compatibilità client browser
+
 ## 🛠️ Fixture Condivise (conftest.py)
 
 ### Fixture App e Client
@@ -236,6 +253,8 @@ uv run pytest tests/api/ --memray -v
 ✅ **Security**: Headers, CORS, path traversal  
 ✅ **Integration**: Workflow end-to-end completi  
 ✅ **Documentation**: Schema OpenAPI e UI access  
+✅ **Multilingue**: Supporto 5 lingue e encoding UTF-8 ⭐ **NUOVO**  
+✅ **Translations**: Sistema traduzioni centralizzato  
 
 ## 🎯 Metriche Target
 

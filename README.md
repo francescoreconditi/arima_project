@@ -2,7 +2,7 @@
 
 ## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX e VAR
 
-Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene) e VAR (Vector Autoregression). Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
+Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene) e VAR (Vector Autoregression). Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
 
 ---
 
@@ -12,9 +12,10 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **🌐 Modelli SARIMAX**: Modelli con variabili esogene per incorporare fattori esterni
 - **📈 Modelli VAR**: Forecasting multivariato con analisi di causalità e impulse response
 - **🤖 Auto-ML**: Ottimizzazione automatica con Optuna, Hyperopt e Scikit-Optimize  
-- **🌐 API REST**: Servizi di forecasting production-ready con FastAPI
-- **📊 Dashboard Streamlit**: Interfaccia web interattiva per utenti non tecnici
-- **📄 Report Quarto**: Generazione report dinamici professionali con analisi automatiche
+- **🌐 API REST**: Servizi di forecasting production-ready con FastAPI multilingue
+- **📊 Dashboard Streamlit**: Interfaccia web interattiva multilingue (IT, EN, ES, FR, ZH)
+- **🌍 Sistema Traduzioni**: Gestione centralizzata traduzioni per 5 lingue
+- **📄 Report Quarto**: Generazione report dinamici multilingue con analisi automatiche
 - **🎯 Ensemble Methods**: Combinazione intelligente di modelli diversi
 - **⚡ Ottimizzazione Parallela**: Selezione modelli veloce su hardware multi-core
 
@@ -56,7 +57,12 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── automl/                     # Auto-ML e ottimizzazione avanzata
 │   │   ├── optimizer.py           # Ottimizzatori con Optuna/Hyperopt
 │   │   └── tuner.py               # Hyperparameter tuning avanzato
-│   └── utils/                      # Logging ed eccezioni personalizzate
+│   ├── utils/                       # Logging, eccezioni e sistema traduzioni
+│   │   ├── translations.py         # Sistema traduzioni centralizzato multilingue
+│   │   ├── logger.py               # Logging configurabile
+│   │   └── exceptions.py           # Eccezioni personalizzate
+│   └── assets/                      # Risorse static del progetto
+│       └── locales/                 # File traduzioni JSON (5 lingue)
 ├── docs/                           # Documentazione completa
 │   ├── teoria_arima.md            # Teoria matematica ARIMA
 │   ├── teoria_sarima.md           # Teoria matematica SARIMA
@@ -541,17 +547,20 @@ docx_report = arima_model.generate_report(
 - **📚 Scalar UI**: Documentazione API moderna e interattiva
 - **Multiple Doc Formats**: Swagger UI, ReDoc, Scalar per ogni esigenza
 
-#### 📊 Dashboard Interattiva
-- **Data Exploration**: Upload CSV, statistiche, visualizzazioni
-- **Model Comparison**: Confronto performance modelli diversi
-- **Interactive Plotting**: Grafici Plotly con zoom, filtering
-- **Export Results**: Download forecast e report in CSV/PDF
+#### 📊 Dashboard Interattiva Multilingue
+- **5 Lingue Supportate**: Italiano, English, Español, Français, 中文 (Cinese)
+- **Data Exploration**: Upload CSV, statistiche, visualizzazioni localizzate
+- **Model Comparison**: Confronto performance modelli con interfaccia tradotta
+- **Interactive Plotting**: Grafici Plotly con zoom, filtering, labels multilingue
+- **Export Results**: Download forecast e report multilingue in CSV/PDF
+- **Smart Filtering**: Filtri "Tutti" per visualizzazioni aggregate
 
-#### 📄 Reporting Dinamico con Quarto
-- **Report Automatici**: Template professionali con analisi integrate
-- **Multi-Formato**: Export HTML, PDF, DOCX con un comando
-- **Analisi Intelligenti**: Interpretazione automatica metriche e risultati
-- **Visualizzazioni Embed**: Grafici integrati nei report
+#### 📄 Reporting Dinamico Multilingue con Quarto
+- **5 Lingue Supportate**: Report automatici in IT, EN, ES, FR, ZH
+- **Report Automatici**: Template professionali con analisi integrate e tradotte
+- **Multi-Formato**: Export HTML, PDF, DOCX con caratteri Unicode corretti
+- **Analisi Intelligenti**: Interpretazione automatica metriche localizzate
+- **Visualizzazioni Embed**: Grafici integrati con titoli e legende tradotti
 - **Report Comparativi**: Confronto automatico tra modelli multipli
 - **Personalizzazione**: Template Quarto modificabili e estendibili
 

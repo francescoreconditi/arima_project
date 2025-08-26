@@ -46,9 +46,22 @@ Quando possibile SEMPRE scrivere commenti nei sorgenti in Italiano.
 
 ### 🔴 Preferisci sempre Pydantic a Dataclass
 
+### 🔴 Sistema Traduzioni Centralizzato
+**Dal 26/08/2024: Sistema traduzioni unificato per tutto il progetto**
+1. **Directory traduzioni**: `src/arima_forecaster/assets/locales/` contiene file JSON per ogni lingua
+2. **5 lingue supportate**: Italiano (it), English (en), Español (es), Français (fr), 中文 (zh)
+3. **Modulo centralizzato**: `src/arima_forecaster/utils/translations.py` gestisce tutto
+4. **Import per nuovi moduli**:
+   ```python
+   from arima_forecaster.utils.translations import translate as _
+   title = _('title', 'en')  # Traduzione rapida
+   ```
+5. **NON duplicare traduzioni**: Usare sempre il sistema centralizzato, mai dizionari locali
+6. **File JSON in Git**: Le traduzioni DEVONO stare nel repository (sono configurazione standard)
+
 ## Panoramica del Progetto
 
-Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva e reporting dinamico con Quarto.
+Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), reporting dinamico con Quarto e sistema traduzioni centralizzato.
 
 ## Comandi di Sviluppo Essenziali
 
@@ -151,9 +164,15 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
 - **ModelTuner**: Tuning avanzato multi-obiettivo
 - Ensemble methods e stacking
 
+#### Utils & Traduzioni (`src/arima_forecaster/utils/`)
+- **TranslationManager** (`translations.py`): Sistema traduzioni centralizzato multilingue
+- **Logger** (`logger.py`): Logging configurabile per debugging e monitoraggio  
+- **Exceptions** (`exceptions.py`): Gestione errori specializzata per forecasting
+- **Preprocessing** (`preprocessing.py`): Utilità preprocessing dati esogeni
+
 #### API & Dashboard
-- **FastAPI REST API** (`src/arima_forecaster/api/`): Endpoints production-ready
-- **Streamlit Dashboard** (`src/arima_forecaster/dashboard/`): UI web interattiva
+- **FastAPI REST API** (`src/arima_forecaster/api/`): Endpoints production-ready multilingue
+- **Streamlit Dashboard** (`src/arima_forecaster/dashboard/`): UI web interattiva (5 lingue)
 
 ### Pipeline Dati Tipica
 
@@ -182,6 +201,9 @@ from arima_forecaster.core import ARIMAModelSelector, VARForecaster
 from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.reporting import QuartoReportGenerator  # Richiede [reports]
 from arima_forecaster.automl import HyperparameterOptimizer  # Richiede [automl]
+
+# Import traduzioni (nuovo!)
+from arima_forecaster.utils.translations import translate as _, get_all_translations
 ```
 
 ### Gestione Errori
@@ -233,7 +255,7 @@ just build       # Build package per distribuzione
 - ✅ VAR con test causalità Granger e impulse response
 - ✅ Auto-ML con Optuna, Hyperopt, Scikit-Optimize
 - ✅ API REST production-ready con FastAPI
-- ✅ Dashboard Streamlit interattiva
+- ✅ Dashboard Streamlit interattiva multilingue (5 lingue: IT, EN, ES, FR, ZH)
 - ✅ Reporting Quarto con export multi-formato
 - ✅ Ensemble methods e model stacking
 
@@ -282,7 +304,7 @@ examples/moretti/
 ├── moretti_simple_example.py         # ✅ Esempio singolo prodotto educativo
 ├── moretti_inventory_management.py   # ✅ Sistema enterprise completo
 ├── moretti_advanced_forecasting.py   # ✅ VAR multi-prodotto avanzato
-├── moretti_dashboard.py             # ✅ Dashboard Streamlit interattiva
+├── moretti_dashboard.py             # ✅ Dashboard Streamlit interattiva multilingue
 ├── moretti_dashboard_demo.py        # ✅ Dashboard HTML standalone
 ├── run_demo.py                      # ✅ Launcher interattivo
 ├── data/                            # ✅ Dati demo realistici
@@ -441,6 +463,21 @@ uv run python moretti_inventory_fast.py  # 30-sec demo ready
 | Automazione | 0% | 90% | -1 FTE procurement |
 
 **Total Business Value**: €325k+ Anno 1
+
+#### **🆕 AGGIORNAMENTI RECENTI - Agosto 2024**
+
+##### **Sistema Traduzioni Multilingue:**
+- ✅ **5 lingue supportate**: Italiano, English, Español, Français, 中文 (Cinese)
+- ✅ **Report multilingue**: Generazione automatica in tutte le lingue
+- ✅ **Dashboard tradotta**: Interfaccia completamente localizzata
+- ✅ **Fix encoding UTF-8**: Risolti problemi caratteri cinesi in report PDF/HTML
+- ✅ **Sistema centralizzato**: Traduzioni unificate per tutto il progetto
+
+##### **Miglioramenti UX Dashboard:**
+- ✅ **Filtro "Tutti" prodotti**: Visualizzazione dati aggregati
+- ✅ **Reset automatico**: Cambio categoria resetta selezione prodotto
+- ✅ **Previsioni aggregate**: Analisi cumulativa multi-prodotto
+- ✅ **Compatibilità Unicode**: Supporto caratteri speciali in Windows
 
 #### **🔧 SETUP COMMANDS**
 

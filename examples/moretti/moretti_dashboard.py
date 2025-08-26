@@ -15,6 +15,11 @@ import subprocess
 import tempfile
 import os
 import time
+import sys
+
+# Aggiungi il modulo arima_forecaster al path
+sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
+from arima_forecaster.utils.translations import get_all_translations, translate
 
 # Configurazione pagina
 st.set_page_config(
@@ -278,255 +283,17 @@ def carica_dati_simulati(lead_time_mod=100, domanda_mod=100):
 
 
 # =====================================================
-# TRADUZIONI
+# TRADUZIONI - Sistema Centralizzato
 # =====================================================
 
-TRANSLATIONS = {
-    'Italiano': {
-        'title': 'Report Gestione Scorte - Moretti S.p.A.',
-        'subtitle': 'Analisi Intelligente con Sistema ARIMA/SARIMA',
-        'author': 'Sistema AI - Powered by ARIMA Forecaster',
-        'executive_summary': 'Executive Summary',
-        'key_metrics': 'KPI Principali',
-        'metrics_title': 'Metriche Chiave al',
-        'warehouse_value': 'Valore Magazzino',
-        'sales_last_month': 'Vendite Ultimo Mese',
-        'products_low_stock': 'Prodotti Sotto Scorta',
-        'service_level': 'Service Level',
-        'units': 'unità',
-        'critical_alerts': 'Alert Critici',
-        'emergency_products': '⚠️ Prodotti in Emergenza',
-        'only_remaining': 'Solo',
-        'units_remaining': 'unità rimanenti',
-        'inventory_analysis': 'Analisi Inventario',
-        'current_stock_status': 'Stato Attuale Scorte',
-        'product': 'Prodotto',
-        'code': 'Codice',
-        'current_stock': 'Scorte Attuali',
-        'min_stock': 'Scorta Minima',
-        'status': 'Stato',
-        'critical': '🔴 Critico',
-        'warning': '🟡 Attenzione',
-        'ok': '🟢 OK',
-        'demand_forecast': 'Previsioni Domanda',
-        'forecast_30_days': 'Forecast 30 Giorni',
-        'forecast_description': 'Le previsioni sono generate utilizzando modelli ARIMA/SARIMA ottimizzati per ogni prodotto.',
-        'sales_analysis_forecast': 'Analisi Vendite e Previsioni per Prodotto',
-        'aggregate_trend_analysis': 'Analisi Trend Aggregato',
-        'total_sales_last_60': 'Vendite Totali - Ultimi 60 Giorni',
-        'date': 'Data',
-        'total_units': 'Unità Totali',
-        'total_forecast_next_30': 'Previsioni Totali - Prossimi 30 Giorni',
-        'expected_units': 'Unità Previste',
-        'forecast_distribution_category': 'Distribuzione Previsioni per Prodotto (30 giorni)',
-        'expected_demand_per_product': 'Domanda Prevista per Prodotto',
-        'daily_average': 'Media Giornaliera',
-        'total_30_days': 'Totale 30gg',
-        'expected_peak': 'Picco Previsto',
-        'supplier_optimization': 'Ottimizzazione Fornitori',
-        'comparative_analysis': 'Analisi Comparativa',
-        'supplier': 'Fornitore',
-        'lead_time': 'Lead Time',
-        'reliability': 'Affidabilità',
-        'volume_price': 'Prezzo Volume',
-        'rating': 'Rating',
-        'days': 'giorni',
-        'recommendations': 'Raccomandazioni',
-        'immediate_actions': 'Azioni Immediate',
-        'urgent_reorders': 'Riordini Urgenti: Procedere con ordini per prodotti sotto scorta sicurezza',
-        'supplier_optimization_action': 'Ottimizzazione Fornitori: Consolidare ordini con MedSupply Italia per migliori condizioni',
-        'min_stock_review': 'Revisione Scorte Minime: Aggiornare parametri basandosi su previsioni SARIMA',
-        'savings_opportunities': 'Opportunità di Risparmio',
-        'order_consolidation': 'Consolidamento Ordini: Risparmio stimato €2,450/mese',
-        'lead_time_reduction': 'Riduzione Lead Time: -3 giorni medi con cambio fornitore',
-        'eoq_optimization': 'Ottimizzazione EOQ: Riduzione costi gestione 15%',
-        'report_footer': 'Report generato automaticamente dal Sistema Intelligente Gestione Scorte v2.0',
-        'powered_by': 'Powered by ARIMA Forecaster - © 2024 Moretti S.p.A.'
-    },
-    'English': {
-        'title': 'Inventory Management Report - Moretti S.p.A.',
-        'subtitle': 'Smart Analysis with ARIMA/SARIMA System',
-        'author': 'AI System - Powered by ARIMA Forecaster',
-        'executive_summary': 'Executive Summary',
-        'key_metrics': 'Key Performance Indicators',
-        'metrics_title': 'Key Metrics as of',
-        'warehouse_value': 'Warehouse Value',
-        'sales_last_month': 'Sales Last Month',
-        'products_low_stock': 'Products Below Minimum Stock',
-        'service_level': 'Service Level',
-        'units': 'units',
-        'critical_alerts': 'Critical Alerts',
-        'emergency_products': '⚠️ Emergency Products',
-        'only_remaining': 'Only',
-        'units_remaining': 'units remaining',
-        'inventory_analysis': 'Inventory Analysis',
-        'current_stock_status': 'Current Stock Status',
-        'product': 'Product',
-        'code': 'Code',
-        'current_stock': 'Current Stock',
-        'min_stock': 'Minimum Stock',
-        'status': 'Status',
-        'critical': '🔴 Critical',
-        'warning': '🟡 Warning',
-        'ok': '🟢 OK',
-        'demand_forecast': 'Demand Forecast',
-        'forecast_30_days': '30-Day Forecast',
-        'forecast_description': 'Forecasts are generated using optimized ARIMA/SARIMA models for each product.',
-        'sales_analysis_forecast': 'Sales Analysis and Forecasts by Product',
-        'aggregate_trend_analysis': 'Aggregate Trend Analysis',
-        'total_sales_last_60': 'Total Sales - Last 60 Days',
-        'date': 'Date',
-        'total_units': 'Total Units',
-        'total_forecast_next_30': 'Total Forecasts - Next 30 Days',
-        'expected_units': 'Expected Units',
-        'forecast_distribution_category': 'Forecast Distribution by Product (30 days)',
-        'expected_demand_per_product': 'Expected Demand by Product',
-        'daily_average': 'Daily Average',
-        'total_30_days': 'Total 30 days',
-        'expected_peak': 'Expected Peak',
-        'supplier_optimization': 'Supplier Optimization',
-        'comparative_analysis': 'Comparative Analysis',
-        'supplier': 'Supplier',
-        'lead_time': 'Lead Time',
-        'reliability': 'Reliability',
-        'volume_price': 'Volume Price',
-        'rating': 'Rating',
-        'days': 'days',
-        'recommendations': 'Recommendations',
-        'immediate_actions': 'Immediate Actions',
-        'urgent_reorders': 'Urgent Reorders: Proceed with orders for products below safety stock',
-        'supplier_optimization_action': 'Supplier Optimization: Consolidate orders with MedSupply Italia for better terms',
-        'min_stock_review': 'Minimum Stock Review: Update parameters based on SARIMA forecasts',
-        'savings_opportunities': 'Savings Opportunities',
-        'order_consolidation': 'Order Consolidation: Estimated savings €2,450/month',
-        'lead_time_reduction': 'Lead Time Reduction: -3 days average with supplier change',
-        'eoq_optimization': 'EOQ Optimization: 15% reduction in management costs',
-        'report_footer': 'Report automatically generated by Smart Inventory Management System v2.0',
-        'powered_by': 'Powered by ARIMA Forecaster - © 2024 Moretti S.p.A.'
-    },
-    'Español': {
-        'title': 'Informe de Gestión de Inventario - Moretti S.p.A.',
-        'subtitle': 'Análisis Inteligente con Sistema ARIMA/SARIMA',
-        'author': 'Sistema IA - Powered by ARIMA Forecaster',
-        'executive_summary': 'Resumen Ejecutivo',
-        'key_metrics': 'Indicadores Clave de Rendimiento',
-        'metrics_title': 'Métricas Clave al',
-        'warehouse_value': 'Valor Almacén',
-        'sales_last_month': 'Ventas Último Mes',
-        'products_low_stock': 'Productos Bajo Stock Mínimo',
-        'service_level': 'Nivel de Servicio',
-        'units': 'unidades',
-        'critical_alerts': 'Alertas Críticas',
-        'emergency_products': '⚠️ Productos de Emergencia',
-        'only_remaining': 'Solo',
-        'units_remaining': 'unidades restantes',
-        'inventory_analysis': 'Análisis de Inventario',
-        'current_stock_status': 'Estado Actual del Stock',
-        'product': 'Producto',
-        'code': 'Código',
-        'current_stock': 'Stock Actual',
-        'min_stock': 'Stock Mínimo',
-        'status': 'Estado',
-        'critical': '🔴 Crítico',
-        'warning': '🟡 Advertencia',
-        'ok': '🟢 OK',
-        'demand_forecast': 'Pronóstico de Demanda',
-        'forecast_30_days': 'Pronóstico 30 Días',
-        'forecast_description': 'Los pronósticos se generan utilizando modelos ARIMA/SARIMA optimizados para cada producto.',
-        'sales_analysis_forecast': 'Análisis de Ventas y Pronósticos por Producto',
-        'aggregate_trend_analysis': 'Análisis de Tendencias Agregadas',
-        'total_sales_last_60': 'Ventas Totales - Últimos 60 Días',
-        'date': 'Fecha',
-        'total_units': 'Unidades Totales',
-        'total_forecast_next_30': 'Pronósticos Totales - Próximos 30 Días',
-        'expected_units': 'Unidades Esperadas',
-        'forecast_distribution_category': 'Distribución de Pronósticos por Producto (30 días)',
-        'expected_demand_per_product': 'Demanda Esperada por Producto',
-        'daily_average': 'Promedio Diario',
-        'total_30_days': 'Total 30 días',
-        'expected_peak': 'Pico Esperado',
-        'supplier_optimization': 'Optimización de Proveedores',
-        'comparative_analysis': 'Análisis Comparativo',
-        'supplier': 'Proveedor',
-        'lead_time': 'Tiempo de Entrega',
-        'reliability': 'Confiabilidad',
-        'volume_price': 'Precio por Volumen',
-        'rating': 'Valoración',
-        'days': 'días',
-        'recommendations': 'Recomendaciones',
-        'immediate_actions': 'Acciones Inmediatas',
-        'urgent_reorders': 'Reórdenes Urgentes: Proceder con pedidos para productos bajo stock de seguridad',
-        'supplier_optimization_action': 'Optimización de Proveedores: Consolidar pedidos con MedSupply Italia para mejores condiciones',
-        'min_stock_review': 'Revisión Stock Mínimo: Actualizar parámetros basándose en pronósticos SARIMA',
-        'savings_opportunities': 'Oportunidades de Ahorro',
-        'order_consolidation': 'Consolidación de Pedidos: Ahorro estimado €2,450/mes',
-        'lead_time_reduction': 'Reducción Tiempo Entrega: -3 días promedio con cambio proveedor',
-        'eoq_optimization': 'Optimización EOQ: Reducción 15% costos de gestión',
-        'report_footer': 'Informe generado automáticamente por el Sistema Inteligente de Gestión de Inventario v2.0',
-        'powered_by': 'Powered by ARIMA Forecaster - © 2024 Moretti S.p.A.'
-    },
-    'Français': {
-        'title': 'Rapport de Gestion des Stocks - Moretti S.p.A.',
-        'subtitle': 'Analyse Intelligente avec Système ARIMA/SARIMA',
-        'author': 'Système IA - Powered by ARIMA Forecaster',
-        'executive_summary': 'Résumé Exécutif',
-        'key_metrics': 'Indicateurs Clés de Performance',
-        'metrics_title': 'Métriques Clés au',
-        'warehouse_value': 'Valeur Entrepôt',
-        'sales_last_month': 'Ventes Mois Dernier',
-        'products_low_stock': 'Produits Sous Stock Minimum',
-        'service_level': 'Niveau de Service',
-        'units': 'unités',
-        'critical_alerts': 'Alertes Critiques',
-        'emergency_products': '⚠️ Produits d\'Urgence',
-        'only_remaining': 'Seulement',
-        'units_remaining': 'unités restantes',
-        'inventory_analysis': 'Analyse des Stocks',
-        'current_stock_status': 'État Actuel des Stocks',
-        'product': 'Produit',
-        'code': 'Code',
-        'current_stock': 'Stock Actuel',
-        'min_stock': 'Stock Minimum',
-        'status': 'Statut',
-        'critical': '🔴 Critique',
-        'warning': '🟡 Attention',
-        'ok': '🟢 OK',
-        'demand_forecast': 'Prévision de la Demande',
-        'forecast_30_days': 'Prévision 30 Jours',
-        'forecast_description': 'Les prévisions sont générées en utilisant des modèles ARIMA/SARIMA optimisés pour chaque produit.',
-        'sales_analysis_forecast': 'Analyse des Ventes et Prévisions par Produit',
-        'aggregate_trend_analysis': 'Analyse des Tendances Agrégées',
-        'total_sales_last_60': 'Ventes Totales - 60 Derniers Jours',
-        'date': 'Date',
-        'total_units': 'Unités Totales',
-        'total_forecast_next_30': 'Prévisions Totales - 30 Prochains Jours',
-        'expected_units': 'Unités Attendues',
-        'forecast_distribution_category': 'Distribution des Prévisions par Produit (30 jours)',
-        'expected_demand_per_product': 'Demande Attendue par Produit',
-        'daily_average': 'Moyenne Journalière',
-        'total_30_days': 'Total 30 jours',
-        'expected_peak': 'Pic Attendu',
-        'supplier_optimization': 'Optimisation des Fournisseurs',
-        'comparative_analysis': 'Analyse Comparative',
-        'supplier': 'Fournisseur',
-        'lead_time': 'Délai de Livraison',
-        'reliability': 'Fiabilité',
-        'volume_price': 'Prix de Volume',
-        'rating': 'Évaluation',
-        'days': 'jours',
-        'recommendations': 'Recommandations',
-        'immediate_actions': 'Actions Immédiates',
-        'urgent_reorders': 'Réapprovisionnements Urgents: Procéder aux commandes pour produits sous stock de sécurité',
-        'supplier_optimization_action': 'Optimisation Fournisseurs: Consolider commandes avec MedSupply Italia pour meilleures conditions',
-        'min_stock_review': 'Révision Stock Minimum: Mettre à jour paramètres basés sur prévisions SARIMA',
-        'savings_opportunities': 'Opportunités d\'Économies',
-        'order_consolidation': 'Consolidation Commandes: Économies estimées €2,450/mois',
-        'lead_time_reduction': 'Réduction Délai Livraison: -3 jours moyenne avec changement fournisseur',
-        'eoq_optimization': 'Optimisation EOQ: Réduction 15% coûts de gestion',
-        'report_footer': 'Rapport généré automatiquement par le Système Intelligent de Gestion des Stocks v2.0',
-        'powered_by': 'Powered by ARIMA Forecaster - © 2024 Moretti S.p.A.'
-    }
-}
+# NOTA: Traduzioni ora gestite dal sistema centralizzato in src/arima_forecaster/utils/translations.py
+# Le traduzioni sono caricate dinamicamente dai file JSON in assets/locales/
+
+def get_translations_dict(language: str) -> dict:
+    """Ottieni traduzioni usando il sistema centralizzato per compatibilità."""
+    return get_all_translations(language)
+
+# Sistema centralizzato attivo - traduzioni caricate dinamicamente
 
 
 # =====================================================
@@ -797,7 +564,7 @@ def genera_report_quarto(prodotti, vendite, previsioni, ordini, **kwargs):
         language = kwargs.get('language', 'Italiano')
         
         # Ottieni traduzioni per la lingua selezionata
-        translations = TRANSLATIONS.get(language, TRANSLATIONS['Italiano'])
+        translations = get_all_translations(language)
         
         # Mappa formati
         format_map = {
@@ -1098,11 +865,17 @@ plt.show()
         
         # Genera report con Quarto
         try:
+            # Configura ambiente per UTF-8
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+            
             # Verifica se Quarto è installato
             result = subprocess.run(
                 ["quarto", "--version"],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                env=env,
                 timeout=5
             )
             
@@ -1112,6 +885,8 @@ plt.show()
                     ["quarto", "render", str(qmd_file), "--to", output_ext],
                     capture_output=True,
                     text=True,
+                    encoding='utf-8',
+                    env=env,
                     cwd=temp_dir,
                     timeout=30
                 )
@@ -1147,7 +922,7 @@ def genera_report_html_fallback(prodotti, vendite, previsioni, ordini, temp_dir,
     """Genera report HTML semplice come fallback se Quarto non è disponibile"""
     
     # Ottieni traduzioni
-    translations = TRANSLATIONS.get(language, TRANSLATIONS['Italiano'])
+    translations = get_all_translations(language)
     
     # Calcola KPI
     valore_magazzino = (prodotti['scorte_attuali'] * prodotti['prezzo_medio']).sum()
@@ -1843,7 +1618,7 @@ def main():
             
             language = st.selectbox(
                 "Lingua Report:",
-                ["Italiano", "English", "Español", "Français"]
+                ["Italiano", "English", "Español", "Français", "中文"]
             )
         
         st.markdown("---")

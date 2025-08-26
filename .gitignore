@@ -139,7 +139,6 @@ dmypy.json
 data/raw/
 data/external/
 *.csv
-*.json
 *.xlsx
 *.xls
 

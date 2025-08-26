@@ -7,6 +7,13 @@ from .exceptions import (
     ModelTrainingError,
     ForecastError
 )
+from .translations import (
+    TranslationManager,
+    get_translator,
+    translate,
+    get_all_translations,
+    get_translations_dict
+)
 
 try:
     from .preprocessing import ExogenousPreprocessor, validate_exog_data, suggest_preprocessing_method
@@ -20,7 +27,12 @@ __all__ = [
     "ARIMAForecasterError",
     "DataProcessingError",
     "ModelTrainingError", 
-    "ForecastError"
+    "ForecastError",
+    "TranslationManager",
+    "get_translator",
+    "translate", 
+    "get_all_translations",
+    "get_translations_dict"
 ]
 
 if _preprocessing_available:

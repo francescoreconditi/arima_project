@@ -33,12 +33,15 @@ Caso pratico completo per l'applicazione della libreria ARIMA Forecaster alla ge
 - **Status**: ⚠️ Sperimentale
 
 #### `moretti_dashboard.py`
-**Dashboard web interattivo**
-- Interfaccia Streamlit per monitoraggio real-time
-- KPI e metriche chiave
-- Visualizzazioni scorte e previsioni
-- Suggerimenti riordino automatici
-- **Status**: 🚧 Demo (dati simulati)
+**Dashboard web interattivo multilingue** ⭐ **AGGIORNATO**
+- Interfaccia Streamlit per monitoraggio real-time in 5 lingue
+- **Lingue supportate**: Italiano, English, Español, Français, 中文 (Cinese)
+- KPI e metriche chiave localizzate
+- Visualizzazioni scorte e previsioni con titoli tradotti
+- Report multilingue (HTML/PDF) con encoding UTF-8 corretto
+- Filtro "Tutti" per visualizzazioni aggregate multi-prodotto
+- Reset automatico selezioni quando cambiano i filtri
+- **Status**: ✅ Production-ready (dati simulati + sistema traduzioni)
 
 #### `test_moretti_minimal.py`
 **Test diagnostico libreria**
@@ -71,10 +74,15 @@ uv run python examples/moretti/moretti_inventory_fast.py
 uv run python examples/moretti/moretti_simple_example.py
 ```
 
-#### 3. Dashboard Interattivo  
+#### 3. Dashboard Interattivo Multilingue ⭐ **AGGIORNATO**
 ```bash
 uv run streamlit run examples/moretti/moretti_dashboard.py
 ```
+**Nuove funzionalità:**
+- 🌍 Selettore lingua: IT, EN, ES, FR, ZH (中文)
+- 📊 Filtro "Tutti" per vista aggregata
+- 📄 Report multilingue con UTF-8 corretto
+- 🎨 Reset automatico UI quando cambia categoria
 
 #### 4. Sistema Enterprise Completo
 ```bash
@@ -142,6 +150,26 @@ uv run python examples/moretti/moretti_inventory_management.py
 - **Promotions impact**: Effetto sconti/campagne
 - **Supply chain risk**: Gestione disruption fornitori
 - **Seasonal adjustment**: Calibrazione stagionale automatica
+
+## 🆕 Aggiornamenti Agosto 2024
+
+### ✨ Sistema Traduzioni Multilingue
+- **5 lingue supportate**: Dashboard e report completamente tradotti
+- **Encoding UTF-8**: Risolti problemi caratteri cinesi e speciali 
+- **Sistema centralizzato**: Traduzioni unificate per tutto il progetto
+
+### 🎛️ Miglioramenti UX Dashboard  
+- **Filtro "Tutti"**: Visualizzazione aggregata di tutti i prodotti
+- **Reset intelligente**: Selezione prodotto si resetta automaticamente quando cambi categoria
+- **Previsioni cumulative**: Analisi trend complessivi multi-prodotto
+- **Compatibilità Windows**: Fix problemi Unicode in console
+
+### 🌍 Nuove Lingue Supportate
+- **Italiano** (lingua default)
+- **English** per mercato internazionale
+- **Español** per espansione Spagna/Latam  
+- **Français** per mercato francofono
+- **中文** (Cinese) per espansione Asia-Pacific
 
 ## 📞 Supporto Tecnico
 
