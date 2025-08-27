@@ -40,7 +40,13 @@
       "Bash(timeout 8 uv run streamlit run:*)",
       "Read(/C:\\temp/**)",
       "Read(/C:\\temp/**)",
-      "Read(/c:\\temp/**)"
+      "Read(/c:\\temp/**)",
+      "Bash(timeout 30 uv run python test_plotter_multilang.py)",
+      "Bash(for file in *.json)",
+      "Bash(do echo \"Checking $file:\")",
+      "Bash(done)",
+      "Read(/c:\\temp/**)",
+      "Bash(dir)"
     ],
     "deny": [],
     "additionalDirectories": [

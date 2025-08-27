@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Optional, Tuple, Dict, Any, Union, List
 from ..utils.logger import get_logger
+from ..utils.translations import translate as _
 
 
 class ForecastPlotter:
@@ -15,16 +16,18 @@ class ForecastPlotter:
     Utility di plotting avanzate per analisi serie temporali e previsioni.
     """
     
-    def __init__(self, style: str = 'seaborn-v0_8', figsize: Tuple[int, int] = (12, 8)):
+    def __init__(self, style: str = 'seaborn-v0_8', figsize: Tuple[int, int] = (12, 8), language: str = 'it'):
         """
         Inizializza plotter con impostazioni di stile.
         
         Args:
             style: Stile matplotlib da usare
             figsize: Dimensione figura predefinita
+            language: Lingua per le label dei grafici ('it', 'en', 'es', 'fr', 'zh')
         """
         self.logger = get_logger(__name__)
         self.default_figsize = figsize
+        self.language = language
         
         # Imposta stile
         try:
@@ -46,7 +49,7 @@ class ForecastPlotter:
         actual: pd.Series,
         forecast: pd.Series,
         confidence_intervals: Optional[pd.DataFrame] = None,
-        title: str = "Time Series Forecast",
+        title: Optional[str] = None,
         figsize: Optional[Tuple[int, int]] = None,
         show_legend: bool = True,
         save_path: Optional[str] = None
@@ -71,12 +74,12 @@ class ForecastPlotter:
         
         # Traccia dati storici
         ax.plot(actual.index, actual.values, 
-               color=self.colors['actual'], linewidth=2, label='Dati Storici')
+               color=self.colors['actual'], linewidth=2, label=_('historical_data', self.language))
         
         # Traccia previsione
         ax.plot(forecast.index, forecast.values,
                color=self.colors['forecast'], linewidth=2, 
-               linestyle='--', label='Previsione')
+               linestyle='--', label=_('forecast', self.language))
         
         # Traccia intervalli di confidenza se forniti
         if confidence_intervals is not None:
@@ -84,12 +87,14 @@ class ForecastPlotter:
                           confidence_intervals.iloc[:, 0],
                           confidence_intervals.iloc[:, 1],
                           color=self.colors['confidence'], alpha=0.3,
-                          label='Intervallo di Confidenza')
+                          label=_('confidence_interval', self.language))
         
         # Formatting
+        if title is None:
+            title = _('time_series_forecast', self.language)
         ax.set_title(title, fontsize=14, fontweight='bold')
-        ax.set_xlabel('Time', fontsize=12)
-        ax.set_ylabel('Value', fontsize=12)
+        ax.set_xlabel(_('time', self.language), fontsize=12)
+        ax.set_ylabel(_('value', self.language), fontsize=12)
         ax.grid(True, alpha=0.3)
         
         if show_legend:
@@ -112,7 +117,7 @@ class ForecastPlotter:
         self,
         residuals: pd.Series,
         fitted_values: Optional[pd.Series] = None,
-        title: str = "Residual Analysis",
+        title: Optional[str] = None,
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
@@ -136,42 +141,42 @@ class ForecastPlotter:
         ax1 = plt.subplot(2, 3, 1)
         ax1.plot(residuals.index, residuals.values, color=self.colors['residuals'])
         ax1.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-        ax1.set_title('Residuals Over Time')
-        ax1.set_xlabel('Time')
-        ax1.set_ylabel('Residuals')
+        ax1.set_title(_('residuals_over_time', self.language))
+        ax1.set_xlabel(_('time', self.language))
+        ax1.set_ylabel(_('residuals', self.language))
         ax1.grid(True, alpha=0.3)
         
         # Histogram of residuals
         ax2 = plt.subplot(2, 3, 2)
         ax2.hist(residuals.dropna(), bins=30, color=self.colors['residuals'], alpha=0.7, edgecolor='black')
-        ax2.set_title('Distribution of Residuals')
-        ax2.set_xlabel('Residual Value')
-        ax2.set_ylabel('Frequency')
+        ax2.set_title(_('distribution_of_residuals', self.language))
+        ax2.set_xlabel(_('residual_value', self.language))
+        ax2.set_ylabel(_('frequency', self.language))
         ax2.grid(True, alpha=0.3)
         
         # Q-Q plot
         ax3 = plt.subplot(2, 3, 3)
         from scipy.stats import probplot
         probplot(residuals.dropna(), dist="norm", plot=ax3)
-        ax3.set_title('Q-Q Plot (Normal)')
+        ax3.set_title(_('qq_plot', self.language))
         ax3.grid(True, alpha=0.3)
         
         # ACF plot
         ax4 = plt.subplot(2, 3, 4)
-        self._plot_acf(residuals.dropna(), ax=ax4, title='Residuals ACF')
+        self._plot_acf(residuals.dropna(), ax=ax4, title=_('residuals_acf', self.language))
         
         # Residuals vs Fitted (if fitted values provided)
         ax5 = plt.subplot(2, 3, 5)
         if fitted_values is not None:
             ax5.scatter(fitted_values, residuals, alpha=0.6, color=self.colors['residuals'])
             ax5.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-            ax5.set_xlabel('Fitted Values')
-            ax5.set_ylabel('Residuals')
-            ax5.set_title('Residuals vs Fitted')
+            ax5.set_xlabel(_('fitted_values', self.language))
+            ax5.set_ylabel(_('residuals', self.language))
+            ax5.set_title(_('residuals_vs_fitted', self.language))
         else:
             ax5.text(0.5, 0.5, 'Fitted values\nnot provided', 
                     ha='center', va='center', transform=ax5.transAxes)
-            ax5.set_title('Residuals vs Fitted')
+            ax5.set_title(_('residuals_vs_fitted', self.language))
         ax5.grid(True, alpha=0.3)
         
         # Scale-Location plot
@@ -179,15 +184,17 @@ class ForecastPlotter:
         if fitted_values is not None:
             sqrt_abs_resid = np.sqrt(np.abs(residuals))
             ax6.scatter(fitted_values, sqrt_abs_resid, alpha=0.6, color=self.colors['residuals'])
-            ax6.set_xlabel('Fitted Values')
-            ax6.set_ylabel('√|Residuals|')
-            ax6.set_title('Scale-Location Plot')
+            ax6.set_xlabel(_('fitted_values', self.language))
+            ax6.set_ylabel('√|' + _('residuals', self.language) + '|')
+            ax6.set_title(_('scale_location_plot', self.language))
         else:
             ax6.text(0.5, 0.5, 'Fitted values\nnot provided',
                     ha='center', va='center', transform=ax6.transAxes)
-            ax6.set_title('Scale-Location Plot')
+            ax6.set_title(_('scale_location_plot', self.language))
         ax6.grid(True, alpha=0.3)
         
+        if title is None:
+            title = _('residual_analysis', self.language)
         plt.suptitle(title, fontsize=16, fontweight='bold')
         plt.tight_layout()
         
@@ -202,7 +209,7 @@ class ForecastPlotter:
         series: pd.Series,
         model: str = 'additive',
         period: Optional[int] = None,
-        title: str = "Time Series Decomposition",
+        title: Optional[str] = None,
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
@@ -232,28 +239,30 @@ class ForecastPlotter:
             
             # Original series
             axes[0].plot(series.index, series.values, color=self.colors['actual'])
-            axes[0].set_title('Original Time Series')
+            axes[0].set_title(_('original_time_series', self.language))
             axes[0].grid(True, alpha=0.3)
             
             # Trend
             axes[1].plot(decomposition.trend.index, decomposition.trend.values, 
                         color=self.colors['fit'])
-            axes[1].set_title('Trend Component')
+            axes[1].set_title(_('trend_component', self.language))
             axes[1].grid(True, alpha=0.3)
             
             # Seasonal
             axes[2].plot(decomposition.seasonal.index, decomposition.seasonal.values,
                         color=self.colors['forecast'])
-            axes[2].set_title('Seasonal Component')
+            axes[2].set_title(_('seasonal_component', self.language))
             axes[2].grid(True, alpha=0.3)
             
             # Residual
             axes[3].plot(decomposition.resid.index, decomposition.resid.values,
                         color=self.colors['residuals'])
-            axes[3].set_title('Residual Component')
-            axes[3].set_xlabel('Time')
+            axes[3].set_title(_('residual_component', self.language))
+            axes[3].set_xlabel(_('time', self.language))
             axes[3].grid(True, alpha=0.3)
             
+            if title is None:
+                title = _('time_series_decomposition', self.language)
             plt.suptitle(title, fontsize=16, fontweight='bold')
             plt.tight_layout()
             
@@ -271,7 +280,7 @@ class ForecastPlotter:
         self,
         series: pd.Series,
         lags: int = 20,
-        title: str = "ACF and PACF Plots",
+        title: Optional[str] = None,
         figsize: Optional[Tuple[int, int]] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
@@ -292,11 +301,13 @@ class ForecastPlotter:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
         
         # ACF plot
-        self._plot_acf(series, ax=ax1, lags=lags, title='Autocorrelation Function (ACF)')
+        self._plot_acf(series, ax=ax1, lags=lags, title=_('autocorrelation_function', self.language))
         
         # PACF plot
-        self._plot_pacf(series, ax=ax2, lags=lags, title='Partial Autocorrelation Function (PACF)')
+        self._plot_pacf(series, ax=ax2, lags=lags, title=_('partial_autocorrelation_function', self.language))
         
+        if title is None:
+            title = _('acf_pacf_plots', self.language)
         plt.suptitle(title, fontsize=16, fontweight='bold')
         plt.tight_layout()
         
@@ -342,9 +353,10 @@ class ForecastPlotter:
         bars[best_idx].set_color(self.colors['actual'])
         
         # Formatting
-        title = title or f'Model Comparison - {metric.upper()}'
+        if title is None:
+            title = f'{_("model_comparison", self.language)} - {metric.upper()}'
         ax.set_title(title, fontsize=14, fontweight='bold')
-        ax.set_xlabel('Model', fontsize=12)
+        ax.set_xlabel(_('model', self.language), fontsize=12)
         ax.set_ylabel(metric.upper(), fontsize=12)
         ax.grid(True, alpha=0.3, axis='y')
         
@@ -401,8 +413,8 @@ class ForecastPlotter:
             ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
             
             ax.set_title(title)
-            ax.set_xlabel('Lag')
-            ax.set_ylabel('ACF')
+            ax.set_xlabel(_('lag', self.language))
+            ax.set_ylabel(_('acf', self.language))
             ax.grid(True, alpha=0.3)
             
         except ImportError:
@@ -444,8 +456,8 @@ class ForecastPlotter:
             ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
             
             ax.set_title(title)
-            ax.set_xlabel('Lag')
-            ax.set_ylabel('PACF')
+            ax.set_xlabel(_('lag', self.language))
+            ax.set_ylabel(_('pacf', self.language))
             ax.grid(True, alpha=0.3)
             
         except ImportError:
@@ -460,7 +472,7 @@ class ForecastPlotter:
         residuals: Optional[pd.Series] = None,
         confidence_intervals: Optional[pd.DataFrame] = None,
         metrics: Optional[Dict[str, float]] = None,
-        title: str = "Forecasting Dashboard",
+        title: Optional[str] = None,
         save_path: Optional[str] = None
     ) -> plt.Figure:
         """
@@ -483,22 +495,22 @@ class ForecastPlotter:
         # Main forecast plot (top half)
         ax1 = plt.subplot(2, 3, (1, 2))
         ax1.plot(actual.index, actual.values, color=self.colors['actual'], 
-                linewidth=2, label='Historical')
+                linewidth=2, label=_('historical_data', self.language))
         ax1.plot(forecast.index, forecast.values, color=self.colors['forecast'], 
-                linewidth=2, linestyle='--', label='Forecast')
+                linewidth=2, linestyle='--', label=_('forecast', self.language))
         
         if confidence_intervals is not None:
             ax1.fill_between(forecast.index,
                            confidence_intervals.iloc[:, 0],
                            confidence_intervals.iloc[:, 1],
                            color=self.colors['confidence'], alpha=0.3,
-                           label='Intervallo di Confidenza')
+                           label=_('confidence_interval', self.language))
         
         # Aggiunge linea verticale all'inizio previsione
         if len(forecast) > 0:
             ax1.axvline(x=forecast.index[0], color='gray', linestyle=':', alpha=0.5)
         
-        ax1.set_title('Time Series Forecast', fontsize=12, fontweight='bold')
+        ax1.set_title(_('time_series_forecast', self.language), fontsize=12, fontweight='bold')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
         
@@ -513,7 +525,7 @@ class ForecastPlotter:
                 else:
                     metrics_text.append(f"{key.upper()}: {value}")
             
-            ax2.text(0.1, 0.9, 'Performance Metrics:', fontsize=12, fontweight='bold',
+            ax2.text(0.1, 0.9, _('performance_metrics', self.language) + ':', fontsize=12, fontweight='bold',
                     transform=ax2.transAxes, verticalalignment='top')
             ax2.text(0.1, 0.8, '\n'.join(metrics_text), fontsize=10,
                     transform=ax2.transAxes, verticalalignment='top',
@@ -528,19 +540,19 @@ class ForecastPlotter:
             ax3 = plt.subplot(2, 3, 4)
             ax3.plot(residuals.index, residuals.values, color=self.colors['residuals'])
             ax3.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-            ax3.set_title('Residuals Over Time', fontsize=10)
+            ax3.set_title(_('residuals_over_time', self.language), fontsize=10)
             ax3.grid(True, alpha=0.3)
             
             # Residuals histogram
             ax4 = plt.subplot(2, 3, 5)
             ax4.hist(residuals.dropna(), bins=20, color=self.colors['residuals'], 
                     alpha=0.7, edgecolor='black')
-            ax4.set_title('Residuals Distribution', fontsize=10)
+            ax4.set_title(_('distribution_of_residuals', self.language), fontsize=10)
             ax4.grid(True, alpha=0.3)
             
             # ACF of residuals
             ax5 = plt.subplot(2, 3, 6)
-            self._plot_acf(residuals, ax=ax5, lags=15, title='Residuals ACF')
+            self._plot_acf(residuals, ax=ax5, lags=15, title=_('residuals_acf', self.language))
         else:
             # Placeholder plots if no residuals
             for i, subplot_num in enumerate([4, 5, 6]):
@@ -549,6 +561,8 @@ class ForecastPlotter:
                        transform=ax.transAxes)
                 ax.set_title(f'Residuals Plot {i+1}', fontsize=10)
         
+        if title is None:
+            title = _('forecasting_dashboard', self.language)
         plt.suptitle(title, fontsize=16, fontweight='bold')
         plt.tight_layout()
         
@@ -601,9 +615,9 @@ class ForecastPlotter:
             ax1.plot(exog_data.index, exog_data[col], 
                     color=colors_cycle[i], alpha=0.8, label=col)
         
-        ax1.set_title('Variabili Esogene nel Tempo', fontweight='bold')
-        ax1.set_xlabel('Tempo')
-        ax1.set_ylabel('Valore')
+        ax1.set_title(_('exog_variables_over_time', self.language), fontweight='bold')
+        ax1.set_xlabel(_('time', self.language))
+        ax1.set_ylabel(_('value', self.language))
         if n_vars <= 5:
             ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         ax1.grid(True, alpha=0.3)
@@ -620,9 +634,9 @@ class ForecastPlotter:
             bars = ax2.bar(range(len(importance_sorted)), 
                           importance_sorted['coefficient'], color=colors, alpha=0.7)
             
-            ax2.set_title('Coefficienti Variabili Esogene', fontweight='bold')
-            ax2.set_xlabel('Variabili')
-            ax2.set_ylabel('Coefficiente')
+            ax2.set_title(_('exog_coefficients', self.language), fontweight='bold')
+            ax2.set_xlabel(_('variables', self.language))
+            ax2.set_ylabel(_('coefficient', self.language))
             ax2.set_xticks(range(len(importance_sorted)))
             ax2.set_xticklabels(importance_sorted['variable'], rotation=45, ha='right')
             ax2.grid(True, alpha=0.3)
@@ -631,14 +645,14 @@ class ForecastPlotter:
             # Legenda
             from matplotlib.patches import Patch
             legend_elements = [
-                Patch(facecolor='green', alpha=0.7, label='Significativo (p<0.05)'),
-                Patch(facecolor='red', alpha=0.7, label='Non significativo')
+                Patch(facecolor='green', alpha=0.7, label=_('significant_p005', self.language)),
+                Patch(facecolor='red', alpha=0.7, label=_('not_significant', self.language))
             ]
             ax2.legend(handles=legend_elements)
         else:
             ax2.text(0.5, 0.5, 'Importanza variabili\nnon disponibile', 
                     ha='center', va='center', transform=ax2.transAxes)
-            ax2.set_title('Importanza Variabili', fontweight='bold')
+            ax2.set_title(_('variable_importance', self.language), fontweight='bold')
         
         # 3. Correlazioni tra variabili esogene
         ax3 = plt.subplot(rows, cols, 3)
@@ -657,15 +671,15 @@ class ForecastPlotter:
             ax3.set_yticks(range(len(corr_matrix)))
             ax3.set_xticklabels(corr_matrix.columns, rotation=45, ha='right')
             ax3.set_yticklabels(corr_matrix.index)
-            ax3.set_title('Correlazioni tra Variabili', fontweight='bold')
+            ax3.set_title(_('variable_correlations', self.language), fontweight='bold')
             
             # Colorbar
             cbar = plt.colorbar(im, ax=ax3, fraction=0.046, pad=0.04)
-            cbar.set_label('Correlazione')
+            cbar.set_label(_('correlation', self.language))
         else:
             ax3.text(0.5, 0.5, 'Correlazioni\nnon calcolabili\n(< 2 variabili numeriche)', 
                     ha='center', va='center', transform=ax3.transAxes)
-            ax3.set_title('Correlazioni tra Variabili', fontweight='bold')
+            ax3.set_title(_('variable_correlations', self.language), fontweight='bold')
         
         # 4. Distribuzione delle variabili (solo prime 4)
         if rows >= 3:
@@ -674,7 +688,7 @@ class ForecastPlotter:
                 ax.hist(exog_data[col].dropna(), bins=20, alpha=0.7, 
                        color=colors_cycle[i % len(colors_cycle)], edgecolor='black')
                 ax.set_title(f'Distribuzione {col}', fontsize=10)
-                ax.set_ylabel('Frequenza')
+                ax.set_ylabel(_('frequency', self.language))
                 ax.grid(True, alpha=0.3)
         
         # 5. Correlazione con serie target (se disponibile)
@@ -696,9 +710,9 @@ class ForecastPlotter:
                 bars = ax_target.bar(range(len(target_corr)), target_corr, 
                                    color=colors_corr, alpha=0.7)
                 
-                ax_target.set_title('Correlazione con Serie Target', fontweight='bold')
-                ax_target.set_xlabel('Variabili Esogene')
-                ax_target.set_ylabel('Correlazione')
+                ax_target.set_title(_('target_correlation', self.language), fontweight='bold')
+                ax_target.set_xlabel(_('exogenous_variables_axis', self.language))
+                ax_target.set_ylabel(_('correlation', self.language))
                 ax_target.set_xticks(range(len(var_names)))
                 ax_target.set_xticklabels(var_names, rotation=45, ha='right')
                 ax_target.grid(True, alpha=0.3)
@@ -715,7 +729,7 @@ class ForecastPlotter:
             else:
                 ax_target.text(0.5, 0.5, 'Correlazioni con target\nnon calcolabili', 
                              ha='center', va='center', transform=ax_target.transAxes)
-                ax_target.set_title('Correlazione con Serie Target', fontweight='bold')
+                ax_target.set_title(_('target_correlation', self.language), fontweight='bold')
         
         plt.suptitle(title, fontsize=16, fontweight='bold')
         plt.tight_layout()
@@ -777,13 +791,13 @@ class ForecastPlotter:
                 ax.plot(contribution.index, contribution.values, 
                        color=colors[i], linewidth=1.5, label=var_name, alpha=0.8)
             
-            ax.set_title('Contributi Variabili Esogene', fontsize=12, fontweight='bold')
+            ax.set_title(_('exog_contributions', self.language), fontsize=12, fontweight='bold')
             ax.grid(True, alpha=0.3)
             ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
         
         # Formattazione comune
-        axes[-1].set_xlabel('Tempo', fontsize=11)
+        axes[-1].set_xlabel(_('time', self.language), fontsize=11)
         plt.suptitle(title, fontsize=16, fontweight='bold')
         plt.tight_layout()
         
@@ -827,21 +841,21 @@ class ForecastPlotter:
         # 1. Main forecast plot (top left, spans 2 columns)
         ax1 = plt.subplot(3, 4, (1, 2))
         ax1.plot(actual.index, actual.values, color=self.colors['actual'], 
-                linewidth=2, label='Storico')
+                linewidth=2, label=_('historical', self.language))
         ax1.plot(forecast.index, forecast.values, color=self.colors['forecast'], 
-                linewidth=2, linestyle='--', label='Previsione')
+                linewidth=2, linestyle='--', label=_('forecast', self.language))
         
         if confidence_intervals is not None:
             ax1.fill_between(forecast.index,
                            confidence_intervals.iloc[:, 0],
                            confidence_intervals.iloc[:, 1],
                            color=self.colors['confidence'], alpha=0.3,
-                           label='Intervallo di Confidenza')
+                           label=_('confidence_interval', self.language))
         
         if len(forecast) > 0:
             ax1.axvline(x=forecast.index[0], color='gray', linestyle=':', alpha=0.5)
         
-        ax1.set_title('Previsione SARIMAX', fontsize=14, fontweight='bold')
+        ax1.set_title(_('sarimax_forecast', self.language), fontsize=14, fontweight='bold')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
         
@@ -856,7 +870,7 @@ class ForecastPlotter:
             bars = ax2.bar(range(len(importance_sorted)), 
                           importance_sorted['coefficient'], color=colors, alpha=0.7)
             
-            ax2.set_title('Coefficienti Variabili Esogene', fontweight='bold')
+            ax2.set_title(_('exog_coefficients', self.language), fontweight='bold')
             ax2.set_xticks(range(len(importance_sorted)))
             ax2.set_xticklabels(importance_sorted['variable'], rotation=45, ha='right')
             ax2.axhline(y=0, color='black', linestyle='-', alpha=0.5)
@@ -872,7 +886,7 @@ class ForecastPlotter:
         else:
             ax2.text(0.5, 0.5, 'Importanza variabili\nnon disponibile', 
                     ha='center', va='center', transform=ax2.transAxes)
-            ax2.set_title('Coefficienti Variabili Esogene', fontweight='bold')
+            ax2.set_title(_('exog_coefficients', self.language), fontweight='bold')
         
         # 3. Exog variables time series (middle left)
         ax3 = plt.subplot(3, 4, 5)
@@ -882,7 +896,7 @@ class ForecastPlotter:
             ax3.plot(exog_data.index, exog_data[col], 
                     color=colors_cycle[i], alpha=0.8, label=col, linewidth=1)
         
-        ax3.set_title('Variabili Esogene', fontsize=12, fontweight='bold')
+        ax3.set_title(_('exogenous_variables', self.language), fontsize=12, fontweight='bold')
         if len(exog_data.columns) <= 4:
             ax3.legend(fontsize=8)
         ax3.grid(True, alpha=0.3)
@@ -892,12 +906,12 @@ class ForecastPlotter:
         if residuals is not None:
             ax4.plot(residuals.index, residuals.values, color=self.colors['residuals'])
             ax4.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-            ax4.set_title('Residui nel Tempo', fontsize=12, fontweight='bold')
+            ax4.set_title(_('residuals_over_time_title', self.language), fontsize=12, fontweight='bold')
             ax4.grid(True, alpha=0.3)
         else:
             ax4.text(0.5, 0.5, 'Residui\nnon disponibili', 
                     ha='center', va='center', transform=ax4.transAxes)
-            ax4.set_title('Residui nel Tempo', fontsize=12, fontweight='bold')
+            ax4.set_title(_('residuals_over_time_title', self.language), fontsize=12, fontweight='bold')
         
         # 5. Metrics table (middle right)
         ax5 = plt.subplot(3, 4, 7)
@@ -952,32 +966,32 @@ class ForecastPlotter:
             ax6.set_yticks(range(len(corr_matrix)))
             ax6.set_xticklabels(corr_matrix.columns, rotation=45, ha='right', fontsize=8)
             ax6.set_yticklabels(corr_matrix.index, fontsize=8)
-            ax6.set_title('Correlazioni Variabili', fontsize=12, fontweight='bold')
+            ax6.set_title(_('variable_correlations', self.language), fontsize=12, fontweight='bold')
         else:
             ax6.text(0.5, 0.5, 'Correlazioni\nnon disponibili', 
                     ha='center', va='center', transform=ax6.transAxes)
-            ax6.set_title('Correlazioni Variabili', fontsize=12, fontweight='bold')
+            ax6.set_title(_('variable_correlations', self.language), fontsize=12, fontweight='bold')
         
         # 7. Residuals histogram (bottom left)
         ax7 = plt.subplot(3, 4, 9)
         if residuals is not None:
             ax7.hist(residuals.dropna(), bins=20, color=self.colors['residuals'], 
                     alpha=0.7, edgecolor='black')
-            ax7.set_title('Distribuzione Residui', fontsize=12, fontweight='bold')
+            ax7.set_title(_('residuals_distribution', self.language), fontsize=12, fontweight='bold')
             ax7.grid(True, alpha=0.3)
         else:
             ax7.text(0.5, 0.5, 'Distribuzione\nresidue\nnon disponibile', 
                     ha='center', va='center', transform=ax7.transAxes)
-            ax7.set_title('Distribuzione Residui', fontsize=12, fontweight='bold')
+            ax7.set_title(_('residuals_distribution', self.language), fontsize=12, fontweight='bold')
         
         # 8. ACF of residuals (bottom center)
         ax8 = plt.subplot(3, 4, 10)
         if residuals is not None:
-            self._plot_acf(residuals, ax=ax8, lags=12, title='ACF Residui')
+            self._plot_acf(residuals, ax=ax8, lags=12, title=_('residuals_acf_title', self.language))
         else:
             ax8.text(0.5, 0.5, 'ACF\nresidue\nnon disponibile', 
                     ha='center', va='center', transform=ax8.transAxes)
-            ax8.set_title('ACF Residui', fontsize=12, fontweight='bold')
+            ax8.set_title(_('residuals_acf_title', self.language), fontsize=12, fontweight='bold')
         
         # 9. Significatività variabili (bottom right, spans 2)
         ax9 = plt.subplot(3, 4, (11, 12))
@@ -989,13 +1003,13 @@ class ForecastPlotter:
             colors_pval = ['green' if p < 0.05 else 'orange' if p < 0.1 else 'red' for p in pvalues]
             bars = ax9.bar(range(len(pvalues)), pvalues, color=colors_pval, alpha=0.7)
             
-            ax9.set_title('Significatività Variabili Esogene (p-values)', fontweight='bold')
-            ax9.set_xlabel('Variabili')
-            ax9.set_ylabel('p-value')
+            ax9.set_title(_('variable_significance_pvalues', self.language), fontweight='bold')
+            ax9.set_xlabel(_('variables', self.language))
+            ax9.set_ylabel(_('p_value', self.language))
             ax9.set_xticks(range(len(var_names)))
             ax9.set_xticklabels(var_names, rotation=45, ha='right')
-            ax9.axhline(y=0.05, color='red', linestyle='--', alpha=0.7, label='α=0.05')
-            ax9.axhline(y=0.1, color='orange', linestyle='--', alpha=0.7, label='α=0.10')
+            ax9.axhline(y=0.05, color='red', linestyle='--', alpha=0.7, label=_('alpha_005', self.language))
+            ax9.axhline(y=0.1, color='orange', linestyle='--', alpha=0.7, label=_('alpha_010', self.language))
             ax9.set_yscale('log')
             ax9.grid(True, alpha=0.3)
             ax9.legend(fontsize=8)
@@ -1008,7 +1022,7 @@ class ForecastPlotter:
         else:
             ax9.text(0.5, 0.5, 'Significatività\nnon disponibile', 
                     ha='center', va='center', transform=ax9.transAxes)
-            ax9.set_title('Significatività Variabili Esogene', fontweight='bold')
+            ax9.set_title(_('variable_significance', self.language), fontweight='bold')
         
         plt.suptitle(title, fontsize=18, fontweight='bold')
         plt.tight_layout()

@@ -512,8 +512,10 @@ def grafico_trend_vendite(vendite, prodotto_selezionato):
     return fig
 
 
-def grafico_previsioni(previsioni, prodotto_selezionato):
+def grafico_previsioni(previsioni, prodotto_selezionato, translations=None):
     """Grafico previsioni con intervalli confidenza"""
+    if translations is None:
+        translations = get_all_translations('Italiano')
     
     fig = go.Figure()
     
@@ -522,7 +524,7 @@ def grafico_previsioni(previsioni, prodotto_selezionato):
         x=previsioni.index,
         y=previsioni[prodotto_selezionato],
         mode='lines',
-        name='Previsione',
+        name=translations.get('forecast', 'Previsione'),
         line=dict(color='green')
     ))
     
@@ -531,7 +533,7 @@ def grafico_previsioni(previsioni, prodotto_selezionato):
         x=previsioni.index,
         y=previsioni[f'{prodotto_selezionato}_upper'],
         mode='lines',
-        name='Limite Superiore',
+        name=translations.get('upper_limit', 'Limite Superiore'),
         line=dict(color='lightgreen', dash='dot'),
         showlegend=False
     ))
@@ -540,7 +542,7 @@ def grafico_previsioni(previsioni, prodotto_selezionato):
         x=previsioni.index,
         y=previsioni[f'{prodotto_selezionato}_lower'],
         mode='lines',
-        name='Limite Inferiore',
+        name=translations.get('lower_limit', 'Limite Inferiore'),
         fill='tonexty',
         fillcolor='rgba(0,255,0,0.1)',
         line=dict(color='lightgreen', dash='dot')
@@ -726,6 +728,9 @@ from datetime import datetime, timedelta
 vendite = pd.read_csv('{vendite_csv.as_posix()}', index_col=0, parse_dates=True)
 previsioni = pd.read_csv('{previsioni_csv.as_posix()}', index_col=0, parse_dates=True)
 
+# Traduzioni per grafici
+translations = {translations}
+
 # Crea una griglia di grafici per i prodotti principali
 fig, axes = plt.subplots(2, 3, figsize=(15, 8))
 axes = axes.flatten()
@@ -737,23 +742,23 @@ for idx, prodotto in enumerate(prodotti_da_mostrare):
     
     # Grafico vendite storiche
     ax.plot(vendite.index[-30:], vendite[prodotto].tail(30), 
-            label='Storico', color='blue', linewidth=2)
+            label=translations.get('historical', 'Storico'), color='blue', linewidth=2)
     
     # Grafico previsioni
     if prodotto in previsioni.columns:
         ax.plot(previsioni.index, previsioni[prodotto], 
-                label='Previsione', color='green', linewidth=2, linestyle='--')
+                label=translations.get('forecast', 'Previsione'), color='green', linewidth=2, linestyle='--')
         
         # Aggiungi intervalli di confidenza se esistono
         if f'{{prodotto}}_lower' in previsioni.columns:
             ax.fill_between(previsioni.index, 
                            previsioni[f'{{prodotto}}_lower'],
                            previsioni[f'{{prodotto}}_upper'],
-                           alpha=0.3, color='green', label='Intervallo 95%')
+                           alpha=0.3, color='green', label=f"{{translations.get('confidence_interval', 'Intervallo 95%')}}")
     
     ax.set_title(f'{{prodotto}}', fontsize=10, fontweight='bold')
-    ax.set_xlabel('Data', fontsize=8)
-    ax.set_ylabel('Unità', fontsize=8)
+    ax.set_xlabel(translations.get('date', 'Data'), fontsize=8)
+    ax.set_ylabel(translations.get('units', 'Unità'), fontsize=8)
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8, loc='upper right')
     
@@ -1114,6 +1119,24 @@ def calcola_suggerimenti_riordino(prodotti, previsioni, domanda_mod=100):
 # =====================================================
 
 def main():
+    # Inizializza lingua di default in session state se non presente
+    if 'dashboard_language' not in st.session_state:
+        st.session_state.dashboard_language = 'Italiano'
+    
+    # Selettore lingua nella sidebar
+    with st.sidebar:
+        st.markdown("### 🌍 Impostazioni Lingua")
+        dashboard_language = st.selectbox(
+            "Lingua Dashboard:",
+            ["Italiano", "English", "Español", "Français", "中文"],
+            index=["Italiano", "English", "Español", "Français", "中文"].index(st.session_state.dashboard_language),
+            key='lang_selector'
+        )
+        st.session_state.dashboard_language = dashboard_language
+    
+    # Ottieni traduzioni per la dashboard
+    dashboard_translations = get_all_translations(dashboard_language)
+    
     # Header
     st.title("🏥 Moretti S.p.A. - Sistema Gestione Scorte Intelligente")
     
@@ -1438,7 +1461,7 @@ def main():
                     x=previsioni_aggregate.index,
                     y=previsioni_aggregate.values,
                     mode='lines',
-                    name='Previsione Totale',
+                    name=dashboard_translations.get('total_forecast', 'Previsione Totale'),
                     line=dict(color='green', width=3)
                 ))
                 
@@ -1447,7 +1470,7 @@ def main():
                     x=previsioni_upper.index,
                     y=previsioni_upper.values,
                     mode='lines',
-                    name='Limite Superiore',
+                    name=dashboard_translations.get('upper_limit', 'Limite Superiore'),
                     line=dict(color='lightgreen', width=1, dash='dash'),
                     showlegend=False
                 ))
@@ -1456,7 +1479,7 @@ def main():
                     x=previsioni_lower.index,
                     y=previsioni_lower.values,
                     mode='lines',
-                    name='Limite Inferiore',
+                    name=dashboard_translations.get('lower_limit', 'Limite Inferiore'),
                     line=dict(color='lightgreen', width=1, dash='dash'),
                     fill='tonexty',
                     fillcolor='rgba(0, 255, 0, 0.1)',
@@ -1505,7 +1528,7 @@ def main():
             # Caso prodotto singolo (codice esistente)
             with col1:
                 st.plotly_chart(
-                    grafico_previsioni(previsioni, prodotto_sel),
+                    grafico_previsioni(previsioni, prodotto_sel, dashboard_translations),
                     use_container_width=True
                 )
             
