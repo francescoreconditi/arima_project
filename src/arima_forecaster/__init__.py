@@ -1,12 +1,12 @@
 """
 ARIMA Forecaster Package
 
-Libreria completa per il forecasting di serie temporali usando modelli ARIMA, SARIMA e VAR.
+Libreria completa per il forecasting di serie temporali usando modelli ARIMA, SARIMA, Prophet e VAR.
 Fornisce strumenti per preprocessing dati, addestramento modelli, valutazione, visualizzazione,
 API REST, dashboard interattiva e ottimizzazione automatica dei parametri.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Il Tuo Nome"
 
 # Core models
@@ -20,6 +20,8 @@ from .core.sarima_selection import SARIMAModelSelector
 from .core.sarimax_model import SARIMAXForecaster
 from .core.sarimax_selection import SARIMAXModelSelector
 from .core.var_model import VARForecaster
+from .core.prophet_model import ProphetForecaster
+from .core.prophet_selection import ProphetModelSelector
 from .data.loader import DataLoader
 
 # Data handling
@@ -43,9 +45,11 @@ __all__ = [
     "SARIMAForecaster",
     "SARIMAXForecaster",
     "VARForecaster",
+    "ProphetForecaster",
     "ARIMAModelSelector",
     "SARIMAModelSelector",
     "SARIMAXModelSelector",
+    "ProphetModelSelector",
     # Data handling
     "TimeSeriesPreprocessor",
     "DataLoader",

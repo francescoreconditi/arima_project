@@ -28,6 +28,8 @@ from arima_forecaster.core import (
     SARIMAXForecaster,
     SARIMAXModelSelector,
     VARForecaster,
+    ProphetForecaster,
+    ProphetModelSelector,
 )
 from arima_forecaster.data import DataLoader, TimeSeriesPreprocessor
 from arima_forecaster.evaluation import ModelEvaluator
@@ -404,9 +406,11 @@ class ARIMADashboard:
                     "SARIMA",
                     "SARIMAX",
                     "Advanced SARIMAX",
+                    "Prophet",
                     "Auto-ARIMA",
                     "Auto-SARIMA",
                     "Auto-SARIMAX",
+                    "Auto-Prophet",
                 ],
             )
 
@@ -513,6 +517,96 @@ class ARIMADashboard:
                         )
                         exog_variables = []
 
+            elif model_type == "Prophet":
+                st.subheader("📊 Prophet Parameters")
+                st.info(
+                    "Facebook Prophet automatically handles trends, seasonality, and holidays"
+                )
+                
+                # Growth type
+                growth_type = st.selectbox(
+                    "Growth type",
+                    ["linear", "logistic", "flat"],
+                    index=0,
+                    help="Type of trend growth: linear for continuous growth, logistic for saturating growth, flat for no trend"
+                )
+                
+                # Seasonality settings
+                st.write("**Seasonality Settings**")
+                yearly_seasonality = st.selectbox(
+                    "Yearly seasonality",
+                    ["auto", True, False],
+                    index=0,
+                    help="Whether to include yearly seasonal effects"
+                )
+                
+                weekly_seasonality = st.selectbox(
+                    "Weekly seasonality", 
+                    ["auto", True, False],
+                    index=0,
+                    help="Whether to include weekly seasonal effects"
+                )
+                
+                daily_seasonality = st.selectbox(
+                    "Daily seasonality",
+                    ["auto", True, False],
+                    index=0,
+                    help="Whether to include daily seasonal effects"
+                )
+                
+                # Holiday settings
+                st.write("**Holiday Settings**")
+                include_holidays = st.checkbox(
+                    "Include holidays",
+                    value=True,
+                    help="Whether to include country-specific holidays"
+                )
+                
+                country_holidays = None
+                if include_holidays:
+                    country_holidays = st.selectbox(
+                        "Country for holidays",
+                        ["IT", "US", "UK", "DE", "FR", "ES"],
+                        index=0,
+                        help="Country code for holiday calendar"
+                    )
+                
+                # Advanced settings
+                with st.expander("Advanced Prophet Settings"):
+                    seasonality_mode = st.selectbox(
+                        "Seasonality mode",
+                        ["additive", "multiplicative"],
+                        index=0,
+                        help="Whether seasonality is additive or multiplicative"
+                    )
+                    
+                    changepoint_prior_scale = st.slider(
+                        "Changepoint prior scale",
+                        min_value=0.001,
+                        max_value=0.5,
+                        value=0.05,
+                        step=0.001,
+                        help="Flexibility of the trend (higher = more flexible)"
+                    )
+                    
+                    seasonality_prior_scale = st.slider(
+                        "Seasonality prior scale",
+                        min_value=0.01,
+                        max_value=50.0,
+                        value=10.0,
+                        step=0.1,
+                        help="Flexibility of the seasonality (higher = more flexible)"
+                    )
+                    
+                    holidays_prior_scale = st.slider(
+                        "Holidays prior scale",
+                        min_value=0.01,
+                        max_value=50.0,
+                        value=10.0,
+                        step=0.1,
+                        help="Flexibility of holiday effects (higher = more flexible)"
+                    )
+
         with col2:
             if model_type.startswith("Auto"):
                 st.subheader("Parametri Auto-selezione")
@@ -559,6 +653,30 @@ class ARIMADashboard:
                             "No additional columns found for exogenous variables. Please upload data with extra columns."
                         )
                         auto_exog_variables = []
+
+                if model_type == "Auto-Prophet":
+                    st.write("**Prophet Auto Settings**")
+                    st.info("Auto-Prophet will test multiple parameter combinations automatically.")
+                    
+                    # Prophet specific auto parameters
+                    test_growth_types = st.multiselect(
+                        "Growth types to test",
+                        ["linear", "logistic", "flat"],
+                        default=["linear", "logistic"]
+                    )
+                    
+                    test_seasonality_modes = st.multiselect(
+                        "Seasonality modes to test",
+                        ["additive", "multiplicative"],
+                        default=["additive"]
+                    )
+                    
+                    test_countries = st.multiselect(
+                        "Countries for holidays to test",
+                        ["IT", "US", "UK", "DE", "FR", "ES", "None"],
+                        default=["IT", "None"],
+                        help="Test different holiday calendars, including no holidays"
+                    )
 
                 ic = st.selectbox("Information Criterion", ["aic", "bic", "hqic"])
                 max_models = st.number_input(
@@ -885,23 +1003,121 @@ class ARIMADashboard:
                         st.session_state.exog_variables = auto_exog_variables
                         st.session_state.exog_data = exog_data
 
+                    elif model_type == "Prophet":
+                        # Check if Prophet is available
+                        try:
+                            # Prepare Prophet parameters
+                            prophet_params = {
+                                'growth': growth_type,
+                                'yearly_seasonality': yearly_seasonality,
+                                'weekly_seasonality': weekly_seasonality,
+                                'daily_seasonality': daily_seasonality,
+                                'seasonality_mode': seasonality_mode,
+                                'changepoint_prior_scale': changepoint_prior_scale,
+                                'seasonality_prior_scale': seasonality_prior_scale,
+                                'holidays_prior_scale': holidays_prior_scale,
+                            }
+                            
+                            if include_holidays and country_holidays:
+                                prophet_params['country_holidays'] = country_holidays
+
+                            model = ProphetForecaster(**prophet_params)
+                            model.fit(data)
+
+                            st.success("✅ Modello Prophet addestrato con successo!")
+                            
+                            # Prophet specific info
+                            st.subheader("Prophet Model Info")
+                            st.write(f"**Growth**: {growth_type}")
+                            st.write(f"**Seasonality Mode**: {seasonality_mode}")
+                            st.write(f"**Yearly Seasonality**: {yearly_seasonality}")
+                            st.write(f"**Weekly Seasonality**: {weekly_seasonality}")
+                            st.write(f"**Daily Seasonality**: {daily_seasonality}")
+                            if include_holidays and country_holidays:
+                                st.write(f"**Holidays**: {country_holidays}")
+
+                        except ImportError:
+                            st.error(
+                                "Facebook Prophet non disponibile. Installa con: pip install prophet"
+                            )
+                            return
+                        except Exception as e:
+                            st.error(f"Errore nell'addestramento Prophet: {e}")
+                            return
+
+                    elif model_type == "Auto-Prophet":
+                        # Check if Prophet is available
+                        try:
+                            # Prepare search parameters
+                            search_params = {
+                                'growth_types': test_growth_types,
+                                'seasonality_modes': test_seasonality_modes,
+                                'country_holidays': [c if c != "None" else None for c in test_countries],
+                                'max_models': max_models
+                            }
+
+                            selector = ProphetModelSelector(**search_params)
+                            
+                            with st.spinner(f"Testando {max_models} combinazioni di modelli Prophet..."):
+                                selector.search(data, verbose=False)
+                                model = selector.get_best_model()
+
+                            # Verifica che il modello sia stato trovato
+                            if model is None:
+                                st.error(
+                                    "Nessun modello Prophet valido trovato. Prova a modificare i parametri di ricerca."
+                                )
+                                return
+
+                            # Show selection results
+                            st.subheader("Selezione Miglior Modello Prophet")
+                            best_params = selector.get_best_params()
+                            st.write("**Best Parameters:**")
+                            for param, value in best_params.items():
+                                st.write(f"- **{param}**: {value}")
+                            
+                            # Show results summary if available
+                            try:
+                                results_df = selector.get_results_summary(10)
+                                if not results_df.empty:
+                                    st.subheader("Top 10 Models")
+                                    st.dataframe(results_df)
+                            except:
+                                pass
+
+                        except ImportError:
+                            st.error(
+                                "Facebook Prophet non disponibile. Installa con: pip install prophet"
+                            )
+                            return
+                        except Exception as e:
+                            st.error(f"Errore nell'auto-selezione Prophet: {e}")
+                            return
+
                     # Store model in session state
                     st.session_state.model = model
                     st.session_state.model_trained = True
 
-                    # Show model information
-                    st.success("Modello addestrato con successo!")
+                    # Show model information (skip for Prophet as it was already shown)
+                    if model_type not in ["Prophet", "Auto-Prophet"]:
+                        st.success("Modello addestrato con successo!")
 
-                    model_info = model.get_model_info()
-                    st.subheader("Informazioni Modello")
+                        model_info = model.get_model_info()
+                        st.subheader("Informazioni Modello")
 
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("AIC", f"{model_info.get('aic', 0):.2f}")
-                    with col2:
-                        st.metric("BIC", f"{model_info.get('bic', 0):.2f}")
-                    with col3:
-                        st.metric("HQIC", f"{model_info.get('hqic', 0):.2f}")
+                        # Check if model has traditional metrics (ARIMA/SARIMA models)
+                        if 'aic' in model_info:
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("AIC", f"{model_info.get('aic', 0):.2f}")
+                            with col2:
+                                st.metric("BIC", f"{model_info.get('bic', 0):.2f}")
+                            with col3:
+                                st.metric("HQIC", f"{model_info.get('hqic', 0):.2f}")
+                        else:
+                            # For models without traditional metrics, show available info
+                            for key, value in model_info.items():
+                                st.write(f"**{key}**: {value}")
 
                     # Show fitted values vs actual
                     st.subheader("Adattamento Modello")

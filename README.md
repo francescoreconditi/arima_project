@@ -1,20 +1,21 @@
 # ARIMA Forecaster 🚀
 
-## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX e VAR
+## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX, VAR e Prophet
 
-Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene) e VAR (Vector Autoregression). Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
+Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene), VAR (Vector Autoregression) e **Facebook Prophet**. Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
 
 ---
 
 ### 🌟 **Nuove Funzionalità Avanzate**
 
+- **📈 Facebook Prophet**: Modelli avanzati per serie con stagionalità complessa e festività
 - **🌊 Modelli SARIMA**: Gestione completa della stagionalità con parametri (P,D,Q,s)
 - **🌐 Modelli SARIMAX**: Modelli con variabili esogene per incorporare fattori esterni
 - **⭐ Advanced Exog Handling**: Selezione automatica feature, preprocessing intelligente, diagnostica
-- **📈 Modelli VAR**: Forecasting multivariato con analisi di causalità e impulse response
+- **📊 Modelli VAR**: Forecasting multivariato con analisi di causalità e impulse response
 - **🤖 Auto-ML**: Ottimizzazione automatica con Optuna, Hyperopt e Scikit-Optimize  
 - **🌐 API REST**: Servizi di forecasting production-ready con FastAPI multilingue
-- **📊 Dashboard Streamlit**: Interfaccia web interattiva multilingue (IT, EN, ES, FR, ZH)
+- **💻 Dashboard Streamlit**: Interfaccia web interattiva multilingue (IT, EN, ES, FR, ZH)
 - **🌍 Sistema Traduzioni**: Gestione centralizzata traduzioni per 5 lingue
 - **📄 Report Quarto**: Generazione report dinamici multilingue con analisi automatiche
 - **🎯 Ensemble Methods**: Combinazione intelligente di modelli diversi
@@ -36,12 +37,14 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 
 ```
 ├── src/arima_forecaster/           # Package principale
-│   ├── core/                       # Modelli ARIMA, SARIMA, SARIMAX, VAR e selezione automatica
+│   ├── core/                       # Modelli ARIMA, SARIMA, SARIMAX, VAR, Prophet e selezione automatica
 │   │   ├── arima_model.py         # Implementazione ARIMA base
 │   │   ├── sarima_model.py        # Modelli SARIMA con stagionalità
 │   │   ├── sarimax_model.py       # Modelli SARIMAX con variabili esogene
 │   │   ├── sarimax_auto_selector.py  # ⭐ Advanced Exog Handling con auto feature selection
 │   │   ├── var_model.py           # Vector Autoregression multivariato
+│   │   ├── prophet_model.py       # 📈 Facebook Prophet per serie con trend complessi
+│   │   ├── prophet_selection.py   # 📈 Selezione automatica Prophet
 │   │   ├── model_selection.py     # Selezione automatica ARIMA
 │   │   ├── sarima_selection.py    # Selezione automatica SARIMA
 │   │   └── sarimax_selection.py   # Selezione automatica SARIMAX
@@ -71,8 +74,11 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── teoria_arima.md            # Teoria matematica ARIMA
 │   ├── teoria_sarima.md           # Teoria matematica SARIMA
 │   ├── teoria_sarimax.md          # Teoria matematica SARIMAX
+│   ├── teoria_prophet.md          # 📈 Teoria matematica Facebook Prophet
+│   ├── guida_prophet.md           # 📈 Guida pratica uso Prophet
 │   ├── arima_vs_sarima.md         # Confronto dettagliato modelli
-│   └── sarima_vs_sarimax.md       # Confronto SARIMA vs SARIMAX
+│   ├── sarima_vs_sarimax.md       # Confronto SARIMA vs SARIMAX
+│   └── prophet_vs_arima.md        # 📈 Confronto Prophet vs ARIMA
 ├── examples/                       # Script esempio pratici
 │   ├── advanced_forecasting_showcase.py  # Demo funzionalità avanzate
 │   ├── sarimax_example.py         # Esempio completo modelli SARIMAX
@@ -190,6 +196,45 @@ curl http://localhost:8000/redoc       # ReDoc
 uv run python scripts/run_dashboard.py
 ```
 
+#### 📈 Installazione Facebook Prophet
+
+Per utilizzare i modelli Prophet, installa la dipendenza aggiuntiva:
+
+```bash
+# Installazione Prophet con UV (raccomandato)
+uv add prophet
+
+# Oppure con pip
+pip install prophet
+
+# Verifica installazione Prophet
+python -c "from arima_forecaster.core import ProphetForecaster; print('✅ Prophet OK!')"
+
+# Test Prophet con esempio rapido
+uv run python -c "
+from arima_forecaster.core import ProphetForecaster
+import pandas as pd
+import numpy as np
+
+# Crea dati di test
+dates = pd.date_range('2023-01-01', periods=100, freq='D')
+values = 100 + np.cumsum(np.random.randn(100) * 0.1) + 10 * np.sin(2 * np.pi * np.arange(100) / 7)
+series = pd.Series(values, index=dates)
+
+# Test Prophet
+model = ProphetForecaster(country_holidays='IT')
+model.fit(series)
+forecast = model.forecast(steps=7)
+print(f'📈 Prophet Forecast OK: {forecast.mean():.2f}')
+"
+```
+
+**Note:**
+- Prophet è una dipendenza opzionale per mantenere il package leggero
+- Se Prophet non è installato, i modelli sono disabilitati automaticamente con graceful fallback
+- Supporto per festività integrate: IT, US, UK, DE, FR, ES
+- Performance ottimali su Python 3.8+ con numpy/pandas recenti
+
 ---
 
 ### 💡 **Esempi di Utilizzo**
@@ -240,7 +285,44 @@ print("Componenti:", decomposizione.keys())
 forecast_sarima = sarima_model.forecast(steps=24)  # 2 anni
 ```
 
-#### 3. ⭐ Advanced Exogenous Handling (NUOVO)
+#### 3. 📈 Forecasting Avanzato con Facebook Prophet (NUOVO)
+
+```python
+from arima_forecaster.core import ProphetForecaster, ProphetModelSelector
+
+# Modello Prophet con festività italiane
+prophet_model = ProphetForecaster(
+    growth='linear',              # Crescita lineare
+    yearly_seasonality=True,      # Stagionalità annuale automatica
+    weekly_seasonality=True,      # Stagionalità settimanale automatica
+    country_holidays='IT',        # Festività italiane
+    seasonality_mode='additive'   # Stagionalità additiva
+)
+
+prophet_model.fit(serie_pulita)
+
+# Previsioni Prophet con intervalli confidenza
+forecast_prophet = prophet_model.forecast(steps=30, confidence_level=0.95)
+print(f"Forecast Prophet: {forecast_prophet.mean():.2f}")
+
+# Selezione automatica parametri Prophet
+prophet_selector = ProphetModelSelector(
+    growth_types=['linear', 'logistic'],
+    seasonality_modes=['additive', 'multiplicative'],
+    country_holidays=['IT', 'US', None],
+    max_models=20
+)
+
+prophet_selector.search(serie_pulita)
+best_prophet = prophet_selector.get_best_model()
+print(f"Migliori parametri Prophet: {prophet_selector.get_best_params()}")
+
+# Analisi componenti Prophet
+componenti = best_prophet.predict_components(serie_pulita)
+print("Componenti Prophet:", componenti.columns.tolist())
+```
+
+#### 4. ⭐ Advanced Exogenous Handling (NUOVO)
 
 ```python
 from arima_forecaster.core import SARIMAXAutoSelector

@@ -1,13 +1,14 @@
 """
-Applicazione FastAPI per i servizi di forecasting ARIMA/SARIMA/VAR.
+Applicazione FastAPI per i servizi di forecasting ARIMA/SARIMA/VAR/Prophet.
 
 Questo modulo fornisce un'API REST completa per:
-- Addestramento di modelli ARIMA, SARIMA, SARIMAX e VAR
+- Addestramento di modelli ARIMA, SARIMA, SARIMAX, VAR e Prophet
 - Generazione di previsioni e intervalli di confidenza
 - Selezione automatica dei parametri ottimali
 - Diagnostica avanzata dei modelli
 - Generazione di report completi
 - Gestione del ciclo di vita dei modelli
+- Forecasting avanzato con Facebook Prophet
 """
 
 from pathlib import Path

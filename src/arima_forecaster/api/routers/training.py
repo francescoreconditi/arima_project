@@ -15,6 +15,8 @@ from arima_forecaster.api.models import (
     ModelTrainingRequest,
     VARTrainingRequest,
     AutoSelectionRequest,
+    ProphetTrainingRequest,
+    ProphetAutoSelectionRequest,
     ModelInfo
 )
 from arima_forecaster.api.models_extra import (
@@ -96,6 +98,25 @@ async def _train_model_background(
                 order=order_tuple,
                 seasonal_order=seasonal_order_tuple
             )
+        elif request.model_type == "prophet":
+            try:
+                from arima_forecaster.core import ProphetForecaster
+                model = ProphetForecaster(
+                    growth=request.growth,
+                    yearly_seasonality=request.yearly_seasonality,
+                    weekly_seasonality=request.weekly_seasonality,
+                    daily_seasonality=request.daily_seasonality,
+                    seasonality_mode=request.seasonality_mode,
+                    country_holidays=request.country_holidays,
+                    changepoint_prior_scale=request.changepoint_prior_scale,
+                    seasonality_prior_scale=request.seasonality_prior_scale,
+                    holidays_prior_scale=request.holidays_prior_scale
+                )
+            except ImportError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Facebook Prophet non disponibile. Installa con: pip install prophet"
+                )
         else:
             raise ValueError(f"Unknown model type: {request.model_type}")
         
@@ -426,4 +447,408 @@ async def auto_select_model(
         
     except Exception as e:
         logger.error(f"Auto-selection failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _train_prophet_background(
+    model_manager: ModelManager,
+    model_id: str,
+    series: pd.Series,
+    request: ProphetTrainingRequest
+):
+    """
+    Funzione helper per addestrare modelli Prophet in background.
+    """
+    try:
+        from arima_forecaster.core import ProphetForecaster
+        
+        # Crea il modello Prophet con i parametri specificati
+        model = ProphetForecaster(
+            growth=request.growth,
+            yearly_seasonality=request.yearly_seasonality,
+            weekly_seasonality=request.weekly_seasonality,
+            daily_seasonality=request.daily_seasonality,
+            seasonality_mode=request.seasonality_mode,
+            country_holidays=request.country_holidays,
+            changepoint_prior_scale=request.changepoint_prior_scale,
+            seasonality_prior_scale=request.seasonality_prior_scale,
+            holidays_prior_scale=request.holidays_prior_scale
+        )
+        
+        # Addestra il modello
+        model.fit(series)
+        
+        # Calcola metriche di performance
+        from arima_forecaster.evaluation import ModelEvaluator
+        evaluator = ModelEvaluator()
+        
+        # Per Prophet, generiamo previsioni in-sample
+        in_sample_forecast = model.predict(steps=len(series))
+        if len(in_sample_forecast) == len(series):
+            metrics = evaluator.calculate_metrics(series, in_sample_forecast)
+        else:
+            # Fallback se le dimensioni non combaciano
+            metrics = {"mae": None, "rmse": None, "mape": None}
+        
+        # Salva il modello
+        model_manager.save_model(model, model_id)
+        
+        # Aggiorna lo stato nel model manager
+        model_manager.update_model_status(model_id, "completed", {
+            "metrics": metrics,
+            "model_params": {
+                "growth": request.growth,
+                "seasonality_mode": request.seasonality_mode,
+                "yearly_seasonality": request.yearly_seasonality,
+                "weekly_seasonality": request.weekly_seasonality,
+                "daily_seasonality": request.daily_seasonality,
+                "country_holidays": request.country_holidays
+            },
+            "completed_at": datetime.now().isoformat()
+        })
+        
+        logger.info(f"Prophet model {model_id} training completed successfully")
+        
+    except Exception as e:
+        model_manager.update_model_status(model_id, "failed", {"error": str(e)})
+        logger.error(f"Prophet model {model_id} training failed: {e}")
+
+
+@router.post("/train/prophet", response_model=Dict[str, Any])
+async def train_prophet_model(
+    request: ProphetTrainingRequest,
+    background_tasks: BackgroundTasks,
+    services = Depends(get_services)
+):
+    """
+    Addestra un modello Facebook Prophet per forecasting avanzato.
+    
+    Facebook Prophet è un modello di forecasting robusto sviluppato da Meta che gestisce:
+    
+    <h4>🎯 Caratteristiche Principali:</h4>
+    - **Trend automatico**: Rileva automaticamente cambiamenti di trend
+    - **Stagionalità multipla**: Giornaliera, settimanale, annuale
+    - **Gestione festività**: Integrazione calendario festività per paese
+    - **Robusto agli outlier**: Gestisce automaticamente valori anomali
+    - **Valori mancanti**: Non richiede preprocessing per gap nei dati
+    
+    <h4>🔧 Parametri Chiave:</h4>
+    - **growth**: Tipo di crescita (linear, logistic, flat)
+    - **seasonality_mode**: Modalità stagionalità (additive, multiplicative)
+    - **country_holidays**: Codice paese per festività (IT, US, UK, DE, FR, ES)
+    - **prior_scale**: Parametri di regolarizzazione per flessibilità
+    
+    <h4>📊 Esempio Richiesta:</h4>
+    <pre><code>
+    POST /models/train/prophet
+    {
+        "data": {
+            "timestamps": ["2023-01-01", "2023-01-02", "2023-01-03"],
+            "values": [100.5, 102.3, 98.7]
+        },
+        "growth": "linear",
+        "yearly_seasonality": "auto",
+        "seasonality_mode": "additive",
+        "country_holidays": "IT"
+    }
+    </code></pre>
+    
+    <h4>✅ Vantaggi Prophet:</h4>
+    - Interpretabile e comprensibile
+    - Gestisce automaticamente trend complessi
+    - Eccellente per serie con forte stagionalità
+    - Robusto con dati rumorosi
+    - Non richiede preprocessing elaborato
+    """
+    try:
+        model_manager, forecast_service = services
+        
+        # Genera un ID univoco per il modello
+        model_id = str(uuid.uuid4())
+        
+        # Converte i dati in pandas Series
+        timestamps = pd.to_datetime(request.data.timestamps)
+        series = pd.Series(request.data.values, index=timestamps)
+        
+        # Valida la serie temporale
+        if series.empty or series.isnull().all():
+            raise HTTPException(
+                status_code=400,
+                detail="La serie temporale non può essere vuota o contenere solo valori nulli"
+            )
+        
+        # Registra il modello come "in training"
+        model_manager.register_model(model_id, "prophet", "training", {
+            "created_at": datetime.now().isoformat(),
+            "parameters": {
+                "growth": request.growth,
+                "seasonality_mode": request.seasonality_mode,
+                "country_holidays": request.country_holidays
+            }
+        })
+        
+        # Avvia il training in background
+        background_tasks.add_task(
+            _train_prophet_background,
+            model_manager,
+            model_id,
+            series,
+            request
+        )
+        
+        logger.info(f"Started Prophet model training with ID: {model_id}")
+        
+        return {
+            "model_id": model_id,
+            "status": "training",
+            "message": "Addestramento modello Prophet avviato in background",
+            "estimated_time_seconds": 60,  # Prophet è generalmente veloce
+            "endpoint_check": f"/models/{model_id}/status"
+        }
+        
+    except Exception as e:
+        logger.error(f"Prophet training request failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/train/prophet/auto-select")
+async def train_prophet_auto_select(
+    request: ProphetAutoSelectionRequest,
+    background_tasks: BackgroundTasks,
+    services = Depends(get_services)
+):
+    """
+    Selezione automatica di parametri ottimali per modelli Prophet.
+    
+    Esegue una ricerca sistematica sui parametri Prophet per trovare la migliore
+    configurazione che minimizza l'errore di cross-validazione su dati storici.
+    
+    <h4>🔍 Processo di Ottimizzazione:</h4>
+    1. **Grid Search**: Testa tutte le combinazioni di parametri specificati
+    2. **Cross-Validation**: Valuta ogni modello con rolling forecast origin
+    3. **Metric Selection**: Sceglie il modello con miglior MAPE/MAE
+    4. **Final Training**: Riaddestra il modello migliore su tutti i dati
+    
+    <h4>⚙️ Parametri Testati:</h4>
+    - **Growth Types**: linear, logistic, flat
+    - **Seasonality Modes**: additive, multiplicative  
+    - **Holiday Calendars**: IT, US, UK, DE, FR, ES, None
+    - **Prior Scales**: Range automatico basato sui dati
+    
+    <h4>📈 Metriche di Valutazione:</h4>
+    - **MAPE**: Mean Absolute Percentage Error
+    - **MAE**: Mean Absolute Error
+    - **RMSE**: Root Mean Square Error
+    - **Coverage**: Copertura intervalli confidenza
+    
+    <h4>🎯 Esempio Richiesta:</h4>
+    <pre><code>
+    POST /models/train/prophet/auto-select
+    {
+        "data": {
+            "timestamps": ["2023-01-01", "2023-02-01", "2023-03-01"],
+            "values": [100, 105, 98]
+        },
+        "growth_types": ["linear", "logistic"],
+        "seasonality_modes": ["additive", "multiplicative"],
+        "country_holidays": ["IT", "US", null],
+        "max_models": 30,
+        "cv_horizon": "30 days"
+    }
+    </code></pre>
+    
+    <h4>⚡ Performance:</h4>
+    - Tempo tipico: 2-5 minuti per 20-50 modelli
+    - Memoria: Ottimizzato per gestire serie lunghe
+    - Parallelizzazione: Utilizza tutti i core disponibili
+    """
+    try:
+        model_manager, forecast_service = services
+        
+        # Genera un ID univoco per il modello
+        model_id = str(uuid.uuid4())
+        
+        # Converte i dati in pandas Series
+        timestamps = pd.to_datetime(request.data.timestamps)
+        series = pd.Series(request.data.values, index=timestamps)
+        
+        # Valida la serie temporale
+        if series.empty or len(series) < 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Prophet auto-selection richiede almeno 10 osservazioni"
+            )
+        
+        # Registra il modello come "auto-selecting"
+        model_manager.register_model(model_id, "prophet-auto", "auto_selecting", {
+            "created_at": datetime.now().isoformat(),
+            "search_parameters": {
+                "growth_types": request.growth_types,
+                "seasonality_modes": request.seasonality_modes,
+                "country_holidays": request.country_holidays,
+                "max_models": request.max_models,
+                "cv_horizon": request.cv_horizon
+            }
+        })
+        
+        # Avvia la selezione automatica in background
+        background_tasks.add_task(
+            _auto_select_prophet_background,
+            model_manager,
+            model_id, 
+            series,
+            request
+        )
+        
+        logger.info(f"Started Prophet auto-selection with ID: {model_id}")
+        
+        estimated_time = max(60, request.max_models * 2)  # Stima 2 secondi per modello
+        
+        return {
+            "model_id": model_id,
+            "status": "auto_selecting", 
+            "message": f"Selezione automatica Prophet avviata (testando fino a {request.max_models} modelli)",
+            "estimated_time_seconds": estimated_time,
+            "endpoint_check": f"/models/{model_id}/status",
+            "search_space": {
+                "total_combinations": len(request.growth_types) * len(request.seasonality_modes) * len(request.country_holidays),
+                "max_models_tested": request.max_models
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Prophet auto-selection request failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _auto_select_prophet_background(
+    model_manager: ModelManager,
+    model_id: str,
+    series: pd.Series,
+    request: ProphetAutoSelectionRequest
+):
+    """
+    Funzione helper per selezione automatica Prophet in background.
+    """
+    try:
+        from arima_forecaster.core import ProphetModelSelector
+        
+        # Crea il selector con i parametri di ricerca
+        selector = ProphetModelSelector(
+            growth_types=request.growth_types,
+            seasonality_modes=request.seasonality_modes,
+            country_holidays=request.country_holidays,
+            max_models=request.max_models,
+            cv_horizon=request.cv_horizon
+        )
+        
+        # Esegue la ricerca
+        import time
+        start_time = time.time()
+        
+        selector.search(series, verbose=False)
+        best_model = selector.get_best_model()
+        
+        search_time = time.time() - start_time
+        
+        if best_model is None:
+            raise Exception("Nessun modello Prophet valido trovato durante la ricerca")
+        
+        # Salva il modello migliore
+        model_manager.save_model(best_model, model_id)
+        
+        # Prepara i risultati
+        best_params = selector.get_best_params()
+        results_summary = selector.get_results_summary(10)
+        
+        # Aggiorna lo stato
+        model_manager.update_model_status(model_id, "completed", {
+            "best_model": best_params,
+            "search_results": results_summary.to_dict("records") if not results_summary.empty else [],
+            "search_time_seconds": search_time,
+            "total_models_tested": selector.models_tested,
+            "completed_at": datetime.now().isoformat()
+        })
+        
+        logger.info(f"Prophet auto-selection {model_id} completed in {search_time:.2f}s")
+        
+    except Exception as e:
+        model_manager.update_model_status(model_id, "failed", {"error": str(e)})
+        logger.error(f"Prophet auto-selection {model_id} failed: {e}")
+
+
+@router.get("/train/prophet/models", response_model=Dict[str, Any])
+async def list_prophet_models(services = Depends(get_services)):
+    """
+    Lista tutti i modelli Prophet disponibili nel sistema.
+    
+    Restituisce informazioni su tutti i modelli Prophet addestrati,
+    inclusi parametri, performance e stato corrente.
+    
+    <h4>📋 Informazioni Restituite:</h4>
+    - **ID e Nome**: Identificatori univoci del modello
+    - **Parametri**: Configurazione Prophet utilizzata
+    - **Performance**: Metriche di accuratezza
+    - **Stato**: training, completed, failed
+    - **Timestamp**: Date di creazione e completamento
+    
+    <h4>🎯 Esempio Risposta:</h4>
+    <pre><code>
+    {
+        "models": [
+            {
+                "model_id": "prophet-abc123",
+                "model_type": "prophet",
+                "status": "completed",
+                "parameters": {
+                    "growth": "linear",
+                    "seasonality_mode": "additive",
+                    "country_holidays": "IT"
+                },
+                "metrics": {
+                    "mape": 8.5,
+                    "mae": 12.3,
+                    "rmse": 15.7
+                },
+                "created_at": "2024-01-15T10:30:00",
+                "completed_at": "2024-01-15T10:31:30"
+            }
+        ],
+        "total_count": 1,
+        "by_status": {
+            "completed": 1,
+            "training": 0,
+            "failed": 0
+        }
+    }
+    </code></pre>
+    """
+    try:
+        model_manager, _ = services
+        
+        # Ottiene tutti i modelli Prophet
+        all_models = model_manager.list_models()
+        prophet_models = [
+            model for model in all_models 
+            if model.get("model_type", "").startswith("prophet")
+        ]
+        
+        # Calcola statistiche
+        status_counts = {}
+        for model in prophet_models:
+            status = model.get("status", "unknown")
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        return {
+            "models": prophet_models,
+            "total_count": len(prophet_models),
+            "by_status": status_counts,
+            "model_types": {
+                "prophet": len([m for m in prophet_models if m.get("model_type") == "prophet"]),
+                "prophet-auto": len([m for m in prophet_models if m.get("model_type") == "prophet-auto"])
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"List Prophet models failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

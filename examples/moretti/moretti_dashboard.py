@@ -24,10 +24,17 @@ from arima_forecaster.core import SARIMAXAutoSelector
 from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, analyze_feature_relationships
 from arima_forecaster.utils.exog_diagnostics import ExogDiagnostics
 try:
-    from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster
+    from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster, ProphetForecaster, ProphetModelSelector
     FORECASTING_AVAILABLE = True
+    PROPHET_AVAILABLE = True
 except ImportError:
-    FORECASTING_AVAILABLE = False
+    try:
+        from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster
+        FORECASTING_AVAILABLE = True
+        PROPHET_AVAILABLE = False
+    except ImportError:
+        FORECASTING_AVAILABLE = False
+        PROPHET_AVAILABLE = False
 
 # Configurazione pagina
 st.set_page_config(
@@ -111,12 +118,13 @@ st.markdown("""
 # SIMULAZIONE DATI (in produzione: connessione DB)
 # =====================================================
 
-def carica_dati_da_csv(lead_time_mod=100, domanda_mod=100):
+def carica_dati_da_csv(lead_time_mod=100, domanda_mod=100, language='Italiano'):
     """Carica dati da file CSV con modificatori
     
     Args:
         lead_time_mod: Modificatore lead time in percentuale (100 = normale)
         domanda_mod: Modificatore domanda in percentuale (100 = normale)
+        language: Lingua per le traduzioni
     """
     
     # Path to data directory
@@ -160,33 +168,175 @@ def carica_dati_da_csv(lead_time_mod=100, domanda_mod=100):
     future_dates = pd.date_range(start=datetime.now()+timedelta(days=1), periods=30, freq='D')
     previsioni = pd.DataFrame()
     
+    # Selezione algoritmo di forecasting nel sidebar
+    if FORECASTING_AVAILABLE:
+        with st.sidebar:
+            st.markdown("---")
+            st.subheader(translate("forecasting_model", language))
+            
+            forecasting_options = ["ARIMA (Veloce)"]
+            if PROPHET_AVAILABLE:
+                forecasting_options.extend([
+                    "Prophet (Automatico)", 
+                    "Prophet + Holidays IT",
+                    "Confronto ARIMA vs Prophet"
+                ])
+            
+            forecasting_method = st.selectbox(
+                translate("select_model", language),
+                forecasting_options,
+                key="forecasting_method_moretti"
+            )
+
     # Utilizza forecasting avanzato se disponibile
     if FORECASTING_AVAILABLE and len(vendite) >= 30:
-        # Usa ARIMA per previsioni più accurate
         for codice in vendite.columns:
             if codice in prodotti['codice'].values:
                 try:
-                    # Prepara dati per ARIMA
+                    # Prepara dati per forecasting
                     serie_temp = vendite[codice].asfreq('D').fillna(0)
                     
-                    # Usa ARIMA per previsioni
-                    model = ARIMAForecaster(order=(1,1,1))
-                    model.fit(serie_temp)
-                    predictions = model.predict(steps=30)
+                    if "Prophet" in forecasting_method and PROPHET_AVAILABLE:
+                        # 🆕 USA PROPHET
+                        if "Holidays" in forecasting_method:
+                            model = ProphetForecaster(
+                                yearly_seasonality=True,
+                                weekly_seasonality=True,
+                                country_holidays='IT'  # Festività italiane
+                            )
+                        elif "Confronto" in forecasting_method:
+                            # Confronta ARIMA vs Prophet
+                            arima_model = ARIMAForecaster(order=(1,1,1))
+                            arima_model.fit(serie_temp)
+                            arima_result = arima_model.forecast(steps=30, confidence_intervals=True)
+                            
+                            # Extract ARIMA forecast values properly
+                            if isinstance(arima_result, dict):
+                                arima_pred = arima_result.get('forecast', arima_result.get('mean', serie_temp.mean() * np.ones(30)))
+                                arima_lower = arima_result.get('confidence_intervals', {}).get('lower', arima_pred * 0.8)
+                                arima_upper = arima_result.get('confidence_intervals', {}).get('upper', arima_pred * 1.2)
+                            elif isinstance(arima_result, tuple):
+                                arima_pred, arima_intervals = arima_result
+                                if isinstance(arima_intervals, dict):
+                                    arima_lower = arima_intervals.get('lower', arima_pred * 0.8)
+                                    arima_upper = arima_intervals.get('upper', arima_pred * 1.2)
+                                else:
+                                    arima_lower = arima_pred * 0.8
+                                    arima_upper = arima_pred * 1.2
+                            else:
+                                arima_pred = arima_result
+                                arima_lower = arima_pred * 0.8
+                                arima_upper = arima_pred * 1.2
+                            
+                            prophet_model = ProphetForecaster(yearly_seasonality=True, weekly_seasonality=True)
+                            prophet_model.fit(serie_temp)
+                            prophet_result = prophet_model.forecast(steps=30, confidence_intervals=True)
+                            
+                            # Extract Prophet forecast values properly
+                            if isinstance(prophet_result, tuple):
+                                prophet_forecast, prophet_intervals = prophet_result
+                                if isinstance(prophet_intervals, dict):
+                                    prophet_lower = prophet_intervals.get('lower', prophet_forecast * 0.8)
+                                    prophet_upper = prophet_intervals.get('upper', prophet_forecast * 1.2)
+                                elif hasattr(prophet_intervals, 'iloc'):
+                                    prophet_lower = prophet_intervals.iloc[:, 0] if prophet_intervals.shape[1] > 0 else prophet_forecast * 0.8
+                                    prophet_upper = prophet_intervals.iloc[:, 1] if prophet_intervals.shape[1] > 1 else prophet_forecast * 1.2
+                                else:
+                                    prophet_lower = prophet_forecast * 0.8
+                                    prophet_upper = prophet_forecast * 1.2
+                            else:
+                                prophet_forecast = prophet_result
+                                prophet_lower = prophet_forecast * 0.8
+                                prophet_upper = prophet_forecast * 1.2
+                            
+                            # Media pesata (60% Prophet, 40% ARIMA) - now with proper array operations
+                            try:
+                                predictions = 0.6 * prophet_forecast + 0.4 * arima_pred
+                                previsioni[f'{codice}_lower'] = 0.6 * prophet_lower + 0.4 * arima_lower
+                                previsioni[f'{codice}_upper'] = 0.6 * prophet_upper + 0.4 * arima_upper
+                            except Exception as e:
+                                # Emergency fallback if there are still type issues
+                                predictions = (prophet_forecast + arima_pred) / 2  # Simple average
+                                previsioni[f'{codice}_lower'] = predictions * 0.8
+                                previsioni[f'{codice}_upper'] = predictions * 1.2
+                        else:
+                            # Prophet standard
+                            model = ProphetForecaster(
+                                yearly_seasonality='auto',
+                                weekly_seasonality='auto'
+                            )
+                            
+                        if "Confronto" not in forecasting_method:
+                            model.fit(serie_temp)
+                            forecast_result = model.forecast(steps=30, confidence_intervals=True)
+                            
+                            if isinstance(forecast_result, tuple):
+                                predictions, confidence_intervals = forecast_result
+                                if isinstance(confidence_intervals, dict):
+                                    previsioni[f'{codice}_lower'] = confidence_intervals.get('lower', predictions * 0.8)
+                                    previsioni[f'{codice}_upper'] = confidence_intervals.get('upper', predictions * 1.2)
+                                elif hasattr(confidence_intervals, 'iloc'):
+                                    # DataFrame format
+                                    previsioni[f'{codice}_lower'] = confidence_intervals.iloc[:, 0] if confidence_intervals.shape[1] > 0 else predictions * 0.8
+                                    previsioni[f'{codice}_upper'] = confidence_intervals.iloc[:, 1] if confidence_intervals.shape[1] > 1 else predictions * 1.2
+                                else:
+                                    # Fallback
+                                    previsioni[f'{codice}_lower'] = predictions * 0.8
+                                    previsioni[f'{codice}_upper'] = predictions * 1.2
+                            elif isinstance(forecast_result, dict):
+                                # Handle dict format (some models might return this)
+                                predictions = forecast_result.get('forecast', forecast_result.get('mean', serie_temp.mean() * np.ones(30)))
+                                previsioni[f'{codice}_lower'] = forecast_result.get('lower', predictions * 0.8)
+                                previsioni[f'{codice}_upper'] = forecast_result.get('upper', predictions * 1.2)
+                            else:
+                                predictions = forecast_result
+                                # Fallback per intervalli di confidenza
+                                if hasattr(predictions, '__len__') and len(predictions) > 0:
+                                    std_err = serie_temp.std()
+                                    previsioni[f'{codice}_lower'] = predictions * 0.8  # Safe fallback
+                                    previsioni[f'{codice}_upper'] = predictions * 1.2  # Safe fallback
+                                else:
+                                    predictions = np.array([serie_temp.mean()] * 30)
+                                    previsioni[f'{codice}_lower'] = predictions * 0.8
+                                    previsioni[f'{codice}_upper'] = predictions * 1.2
+                    else:
+                        # 🔄 USA ARIMA (Default)
+                        model = ARIMAForecaster(order=(1,1,1))
+                        model.fit(serie_temp)
+                        forecast_result = model.forecast(steps=30, confidence_intervals=True)
+                        
+                        # Handle ARIMA forecast result
+                        if isinstance(forecast_result, tuple):
+                            predictions, confidence_intervals = forecast_result
+                            if isinstance(confidence_intervals, dict):
+                                previsioni[f'{codice}_lower'] = confidence_intervals.get('lower', predictions * 0.8)
+                                previsioni[f'{codice}_upper'] = confidence_intervals.get('upper', predictions * 1.2)
+                            elif hasattr(confidence_intervals, 'iloc'):
+                                previsioni[f'{codice}_lower'] = confidence_intervals.iloc[:, 0] if confidence_intervals.shape[1] > 0 else predictions * 0.8
+                                previsioni[f'{codice}_upper'] = confidence_intervals.iloc[:, 1] if confidence_intervals.shape[1] > 1 else predictions * 1.2
+                            else:
+                                previsioni[f'{codice}_lower'] = predictions * 0.8
+                                previsioni[f'{codice}_upper'] = predictions * 1.2
+                        elif isinstance(forecast_result, dict):
+                            predictions = forecast_result.get('forecast', forecast_result.get('mean', serie_temp.mean() * np.ones(30)))
+                            previsioni[f'{codice}_lower'] = forecast_result.get('lower', predictions * 0.8)
+                            previsioni[f'{codice}_upper'] = forecast_result.get('upper', predictions * 1.2)
+                        else:
+                            predictions = forecast_result
+                            previsioni[f'{codice}_lower'] = predictions * 0.8
+                            previsioni[f'{codice}_upper'] = predictions * 1.2
                     
-                    # Calcola intervalli di confidenza (approssimazione semplice)
-                    std_err = serie_temp.std()
+                    # Salva previsioni principali
                     previsioni[codice] = predictions
-                    previsioni[f'{codice}_lower'] = predictions - 1.96 * std_err
-                    previsioni[f'{codice}_upper'] = predictions + 1.96 * std_err
                     
                     # Applica modificatore domanda
                     previsioni[codice] *= (domanda_mod / 100)
                     previsioni[f'{codice}_lower'] *= (domanda_mod / 100)
                     previsioni[f'{codice}_upper'] *= (domanda_mod / 100)
                     
-                except Exception:
+                except Exception as e:
                     # Fallback su metodo semplice
+                    st.warning(f"Errore forecasting per {codice}: {str(e)[:50]}... Uso metodo semplice.")
                     base = vendite[codice].mean()
                     previsioni[codice] = np.random.poisson(max(base, 0.1), 30) * (1 + 0.1*np.random.randn(30)) * (domanda_mod / 100)
                     previsioni[f'{codice}_lower'] = previsioni[codice] * 0.8
@@ -318,9 +468,9 @@ def carica_scenari_whatif():
         })
 
 
-def carica_dati_simulati(lead_time_mod=100, domanda_mod=100):
+def carica_dati_simulati(lead_time_mod=100, domanda_mod=100, language='Italiano'):
     """Alias per compatibilità - ora carica da CSV"""
-    return carica_dati_da_csv(lead_time_mod, domanda_mod)
+    return carica_dati_da_csv(lead_time_mod, domanda_mod, language)
 
 
 # =====================================================
@@ -1162,7 +1312,7 @@ def main():
     domanda_mod = st.session_state.get('domanda_mod', 100)
     
     # Carica dati con modificatori
-    prodotti, vendite, previsioni, ordini = carica_dati_simulati(lead_time_mod, domanda_mod)
+    prodotti, vendite, previsioni, ordini = carica_dati_simulati(lead_time_mod, domanda_mod, dashboard_language)
     
     # Sidebar
     with st.sidebar:

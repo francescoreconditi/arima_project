@@ -115,5 +115,14 @@
   "p_value": "p-value",
   "upper_limit": "Upper Limit",
   "lower_limit": "Lower Limit",
-  "total_forecast": "Total Forecast"
+  "total_forecast": "Total Forecast",
+  "forecasting_model": "Forecasting Model",
+  "select_model": "Select Model",
+  "prophet_model": "Prophet (Facebook)",
+  "arima_model": "ARIMA Classical",
+  "hybrid_model": "Hybrid Model",
+  "model_performance": "Model Performance",
+  "prophet_automatic": "Prophet Automatic",
+  "prophet_holidays": "Prophet + Holidays",
+  "arima_vs_prophet": "ARIMA vs Prophet Comparison"
 }

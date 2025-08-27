@@ -8,6 +8,8 @@ from .sarimax_model import SARIMAXForecaster
 from .sarimax_selection import SARIMAXModelSelector
 from .var_model import VARForecaster
 from .sarimax_auto_selector import SARIMAXAutoSelector
+from .prophet_model import ProphetForecaster
+from .prophet_selection import ProphetModelSelector
 
 __all__ = [
     "ARIMAForecaster", 
@@ -17,5 +19,7 @@ __all__ = [
     "SARIMAXForecaster",
     "SARIMAXModelSelector",
     "SARIMAXAutoSelector",  # Advanced Exog Handling
-    "VARForecaster"
+    "VARForecaster",
+    "ProphetForecaster",     # Facebook Prophet
+    "ProphetModelSelector"   # Prophet Auto-Selection
 ]

@@ -585,6 +585,225 @@ class VARTrainingRequest(BaseModel):
         return v.lower()
 
 
+class ProphetTrainingRequest(BaseModel):
+    """
+    Richiesta per l'addestramento di un modello Prophet (Facebook Prophet).
+    
+    Facebook Prophet è un modello di forecasting robusto che gestisce automaticamente:
+    - Trend non lineari con punti di cambio
+    - Stagionalità multiple (giornaliera, settimanale, annuale)
+    - Effetti delle festività
+    - Valori mancanti e outliers
+    
+    <h4>Parametri:</h4>
+    <table class="table table-striped">
+        <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th><th>Opzioni</th></tr>
+        <tr><td>data</td><td>TimeSeriesData</td><td>Dati della serie temporale</td><td>Richiesto</td></tr>
+        <tr><td>growth</td><td>str</td><td>Tipo di crescita del trend</td><td>linear, logistic, flat</td></tr>
+        <tr><td>yearly_seasonality</td><td>str|bool</td><td>Stagionalità annuale</td><td>auto, true, false</td></tr>
+        <tr><td>weekly_seasonality</td><td>str|bool</td><td>Stagionalità settimanale</td><td>auto, true, false</td></tr>
+        <tr><td>daily_seasonality</td><td>str|bool</td><td>Stagionalità giornaliera</td><td>auto, true, false</td></tr>
+        <tr><td>seasonality_mode</td><td>str</td><td>Modalità stagionalità</td><td>additive, multiplicative</td></tr>
+        <tr><td>country_holidays</td><td>str</td><td>Codice paese festività</td><td>IT, US, UK, DE, FR, ES</td></tr>
+    </table>
+    
+    <h4>Esempio Base:</h4>
+    <pre><code>
+    {
+        "data": {
+            "timestamps": ["2023-01-01", "2023-01-02", "2023-01-03"],
+            "values": [100.5, 102.3, 98.7]
+        },
+        "growth": "linear",
+        "yearly_seasonality": "auto",
+        "weekly_seasonality": "auto",
+        "daily_seasonality": false,
+        "seasonality_mode": "additive",
+        "country_holidays": "IT"
+    }
+    </code></pre>
+    
+    <h4>Parametri Avanzati (Opzionali):</h4>
+    - changepoint_prior_scale: Flessibilità trend (default: 0.05)
+    - seasonality_prior_scale: Flessibilità stagionalità (default: 10.0)
+    - holidays_prior_scale: Flessibilità festività (default: 10.0)
+    """
+    
+    data: TimeSeriesData = Field(..., description="Dati della serie temporale per l'addestramento")
+    
+    # Core Prophet parameters
+    growth: str = Field(
+        default="linear",
+        description="Tipo di crescita del trend: linear (lineare), logistic (logistico), flat (piatto)"
+    )
+    
+    yearly_seasonality: Union[str, bool] = Field(
+        default="auto",
+        description="Stagionalità annuale: auto (automatica), true, false"
+    )
+    
+    weekly_seasonality: Union[str, bool] = Field(
+        default="auto", 
+        description="Stagionalità settimanale: auto (automatica), true, false"
+    )
+    
+    daily_seasonality: Union[str, bool] = Field(
+        default="auto",
+        description="Stagionalità giornaliera: auto (automatica), true, false"
+    )
+    
+    seasonality_mode: str = Field(
+        default="additive",
+        description="Modalità stagionalità: additive (additiva), multiplicative (moltiplicativa)"
+    )
+    
+    country_holidays: Optional[str] = Field(
+        default=None,
+        description="Codice paese per festività (IT, US, UK, DE, FR, ES)"
+    )
+    
+    # Advanced parameters
+    changepoint_prior_scale: float = Field(
+        default=0.05,
+        gt=0.0,
+        le=0.5,
+        description="Flessibilità del trend (maggiore = più flessibile)"
+    )
+    
+    seasonality_prior_scale: float = Field(
+        default=10.0,
+        gt=0.0,
+        le=50.0, 
+        description="Flessibilità della stagionalità (maggiore = più flessibile)"
+    )
+    
+    holidays_prior_scale: float = Field(
+        default=10.0,
+        gt=0.0,
+        le=50.0,
+        description="Flessibilità degli effetti festività (maggiore = più flessibile)"
+    )
+    
+    @validator('growth')
+    def validate_growth(cls, v):
+        """Valida il tipo di crescita."""
+        valid_growth = ['linear', 'logistic', 'flat']
+        if v not in valid_growth:
+            raise ValueError(f"growth deve essere uno tra: {', '.join(valid_growth)}")
+        return v
+    
+    @validator('seasonality_mode')
+    def validate_seasonality_mode(cls, v):
+        """Valida la modalità di stagionalità."""
+        valid_modes = ['additive', 'multiplicative']
+        if v not in valid_modes:
+            raise ValueError(f"seasonality_mode deve essere uno tra: {', '.join(valid_modes)}")
+        return v
+    
+    @validator('country_holidays')
+    def validate_country_holidays(cls, v):
+        """Valida il codice paese per le festività."""
+        if v is None:
+            return v
+        valid_countries = ['IT', 'US', 'UK', 'DE', 'FR', 'ES']
+        if v not in valid_countries:
+            raise ValueError(f"country_holidays deve essere uno tra: {', '.join(valid_countries)}")
+        return v
+
+
+class ProphetAutoSelectionRequest(BaseModel):
+    """
+    Richiesta per selezione automatica di parametri ottimali per modelli Prophet.
+    
+    Esegue una ricerca su griglia o casuale per trovare la migliore combinazione
+    di parametri Prophet che minimizza l'errore di cross-validazione.
+    
+    <h4>Parametri:</h4>
+    <table class="table table-striped">
+        <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th><th>Default</th></tr>
+        <tr><td>data</td><td>TimeSeriesData</td><td>Dati serie temporale</td><td>Richiesto</td></tr>
+        <tr><td>growth_types</td><td>List[str]</td><td>Tipi crescita da testare</td><td>["linear", "logistic"]</td></tr>
+        <tr><td>seasonality_modes</td><td>List[str]</td><td>Modalità stagionalità</td><td>["additive"]</td></tr>
+        <tr><td>country_holidays</td><td>List[str]</td><td>Paesi festività da testare</td><td>["IT", None]</td></tr>
+        <tr><td>max_models</td><td>int</td><td>Numero max modelli</td><td>50</td></tr>
+        <tr><td>cv_horizon</td><td>str</td><td>Orizzonte cross-validation</td><td>"30 days"</td></tr>
+    </table>
+    
+    <h4>Esempio:</h4>
+    <pre><code>
+    {
+        "data": {...},
+        "growth_types": ["linear", "logistic"],
+        "seasonality_modes": ["additive", "multiplicative"],
+        "country_holidays": ["IT", "US", null],
+        "max_models": 30,
+        "cv_horizon": "30 days"
+    }
+    </code></pre>
+    
+    <h4>Cross-Validation:</h4>
+    - Valuta performance con dati storici
+    - Utilizza rolling forecast origin
+    - Restituisce metriche MAE, RMSE, MAPE
+    """
+    
+    data: TimeSeriesData = Field(..., description="Dati della serie temporale per l'addestramento")
+    
+    growth_types: List[str] = Field(
+        default=["linear", "logistic"],
+        description="Lista di tipi di crescita da testare"
+    )
+    
+    seasonality_modes: List[str] = Field(
+        default=["additive"],
+        description="Lista di modalità di stagionalità da testare"
+    )
+    
+    country_holidays: List[Optional[str]] = Field(
+        default=["IT", None],
+        description="Lista di codici paese per festività da testare (None = no festività)"
+    )
+    
+    max_models: int = Field(
+        default=50,
+        ge=5,
+        le=200,
+        description="Numero massimo di combinazioni di modelli da testare"
+    )
+    
+    cv_horizon: str = Field(
+        default="30 days",
+        description="Orizzonte temporale per cross-validation (es: '30 days', '7 days')"
+    )
+    
+    @validator('growth_types')
+    def validate_growth_types(cls, v):
+        """Valida i tipi di crescita."""
+        valid_growth = ['linear', 'logistic', 'flat']
+        for growth in v:
+            if growth not in valid_growth:
+                raise ValueError(f"Ogni growth_type deve essere uno tra: {', '.join(valid_growth)}")
+        return v
+    
+    @validator('seasonality_modes')
+    def validate_seasonality_modes(cls, v):
+        """Valida le modalità di stagionalità."""
+        valid_modes = ['additive', 'multiplicative']
+        for mode in v:
+            if mode not in valid_modes:
+                raise ValueError(f"Ogni seasonality_mode deve essere uno tra: {', '.join(valid_modes)}")
+        return v
+    
+    @validator('country_holidays')
+    def validate_country_holidays(cls, v):
+        """Valida i codici paese."""
+        valid_countries = ['IT', 'US', 'UK', 'DE', 'FR', 'ES']
+        for country in v:
+            if country is not None and country not in valid_countries:
+                raise ValueError(f"Ogni country_holiday deve essere uno tra: {', '.join(valid_countries + ['null'])}")
+        return v
+
+
 class ForecastRequest(BaseModel):
     """
     Richiesta per la generazione di previsioni da un modello addestrato.
