@@ -48,7 +48,8 @@
       "Read(/c:\\temp/**)",
       "Bash(dir)",
       "Read(/c:\\temp/**)",
-      "Read(/c:\\temp/**)"
+      "Read(/c:\\temp/**)",
+      "Bash(timeout 30 uv run:*)"
     ],
     "deny": [],
     "additionalDirectories": [

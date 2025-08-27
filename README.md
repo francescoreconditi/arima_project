@@ -9,6 +9,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 ### 🌟 **Nuove Funzionalità Avanzate**
 
 - **📈 Facebook Prophet**: Modelli avanzati per serie con stagionalità complessa e festività
+- **🚀 Cold Start Problem**: Transfer Learning per forecasting di nuovi prodotti senza dati storici
 - **🌊 Modelli SARIMA**: Gestione completa della stagionalità con parametri (P,D,Q,s)
 - **🌐 Modelli SARIMAX**: Modelli con variabili esogene per incorporare fattori esterni
 - **⭐ Advanced Exog Handling**: Selezione automatica feature, preprocessing intelligente, diagnostica
@@ -45,6 +46,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   ├── var_model.py           # Vector Autoregression multivariato
 │   │   ├── prophet_model.py       # 📈 Facebook Prophet per serie con trend complessi
 │   │   ├── prophet_selection.py   # 📈 Selezione automatica Prophet
+│   │   ├── cold_start.py          # 🚀 Cold Start Problem - Transfer Learning per nuovi prodotti
 │   │   ├── model_selection.py     # Selezione automatica ARIMA
 │   │   ├── sarima_selection.py    # Selezione automatica SARIMA
 │   │   └── sarimax_selection.py   # Selezione automatica SARIMAX

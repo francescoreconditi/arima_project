@@ -25,16 +25,27 @@ from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, analyze_
 from arima_forecaster.utils.exog_diagnostics import ExogDiagnostics
 try:
     from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster, ProphetForecaster, ProphetModelSelector
+    from arima_forecaster.core.cold_start import ColdStartForecaster
     FORECASTING_AVAILABLE = True
     PROPHET_AVAILABLE = True
+    COLD_START_AVAILABLE = True
 except ImportError:
     try:
         from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster
+        from arima_forecaster.core.cold_start import ColdStartForecaster
         FORECASTING_AVAILABLE = True
         PROPHET_AVAILABLE = False
+        COLD_START_AVAILABLE = True
     except ImportError:
-        FORECASTING_AVAILABLE = False
-        PROPHET_AVAILABLE = False
+        try:
+            from arima_forecaster.core.cold_start import ColdStartForecaster
+            FORECASTING_AVAILABLE = False
+            PROPHET_AVAILABLE = False
+            COLD_START_AVAILABLE = True
+        except ImportError:
+            FORECASTING_AVAILABLE = False
+            PROPHET_AVAILABLE = False
+            COLD_START_AVAILABLE = False
 
 # Configurazione pagina
 st.set_page_config(
@@ -1461,14 +1472,15 @@ def main():
     st.markdown("---")
     
     # Grafici Analisi
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📈 Trend Vendite",
         "🔮 Previsioni", 
         "📋 Ordini",
         "💡 Suggerimenti",
         "📄 Report",
         "🗃️ Dati CSV",
-        "🔬 Advanced Exog"
+        "🔬 Advanced Exog",
+        "🚀 Cold Start"
     ])
     
     with tab1:
@@ -2146,6 +2158,247 @@ def main():
                             st.error(f"Demo error: {e}")
             else:
                 st.info("Seleziona un prodotto specifico per testare Advanced Exog Analysis.")
+    
+    with tab8:
+        st.subheader("🚀 Cold Start Problem - Nuovo Prodotto")
+        
+        if not COLD_START_AVAILABLE:
+            st.warning("⚠️ Cold Start modules not available. Check arima_forecaster installation.")
+        else:
+            st.info("""
+            **Cold Start Problem Solution** - Genera previsioni per prodotti nuovi senza dati storici,
+            utilizzando pattern e caratteristiche di prodotti simili esistenti. Perfetto per 
+            lanci di nuovi prodotti o estensioni di gamma.
+            """)
+            
+            # Configurazione nuovo prodotto
+            st.markdown("### 📝 Configurazione Nuovo Prodotto")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Caratteristiche Prodotto:**")
+                new_product_code = st.text_input("Codice Prodotto", "NUOVO001", help="Codice del nuovo prodotto")
+                new_product_name = st.text_input("Nome Prodotto", "Nuovo Dispositivo Medicale")
+                new_product_category = st.selectbox(
+                    "Categoria", 
+                    ["Carrozzine", "Materassi Antidecubito", "Elettromedicali", "Altri"],
+                    help="Categoria del nuovo prodotto"
+                )
+                new_product_price = st.number_input("Prezzo (€)", min_value=10.0, max_value=5000.0, value=150.0, step=10.0)
+                
+            with col2:
+                st.markdown("**Parametri Forecasting:**")
+                forecast_method = st.selectbox(
+                    "Metodo Cold Start",
+                    ["hybrid", "pattern", "analogical"],
+                    help="Metodo per generare previsioni"
+                )
+                forecast_days_cs = st.slider("Giorni da prevedere", 7, 90, 30)
+                similarity_threshold = st.slider("Soglia Similarità", 0.1, 0.9, 0.7, 0.1)
+                
+                # Caratteristiche opzionali aggiuntive
+                with st.expander("Caratteristiche Aggiuntive"):
+                    new_product_weight = st.number_input("Peso (kg)", min_value=0.1, max_value=100.0, value=2.0)
+                    new_product_volume = st.number_input("Volume (L)", min_value=0.1, max_value=1000.0, value=10.0)
+                    new_expected_demand = st.number_input("Domanda Attesa (unità/giorno)", min_value=0.1, max_value=100.0, value=5.0)
+            
+            st.markdown("---")
+            
+            # Genera forecast
+            if st.button("🎯 Genera Forecast Cold Start", type="primary"):
+                with st.spinner("Analizzando prodotti simili e generando previsioni..."):
+                    try:
+                        # Prepara dati del nuovo prodotto
+                        target_product_info = {
+                            'codice': new_product_code,
+                            'nome': new_product_name,
+                            'categoria': new_product_category,
+                            'prezzo': new_product_price,
+                            'peso': new_product_weight,
+                            'volume': new_product_volume,
+                            'expected_demand': new_expected_demand,
+                            'features': {}
+                        }
+                        
+                        # Estrai features del prodotto target (simulato)
+                        target_features = {
+                            'price': new_product_price,
+                            'category_encoded': hash(new_product_category) % 1000,
+                            'weight': new_product_weight,
+                            'volume': new_product_volume,
+                            'expected_demand_level': new_expected_demand
+                        }
+                        target_product_info['features'] = target_features
+                        
+                        # Prepara database prodotti esistenti
+                        products_database = {}
+                        
+                        for codice in vendite.columns:
+                            if codice in prodotti_info.index:
+                                # Dati vendite
+                                product_sales = vendite[codice].dropna()
+                                if len(product_sales) < 30:  # Skip prodotti con pochi dati
+                                    continue
+                                
+                                # Info prodotto
+                                product_info = prodotti_info.loc[codice].to_dict()
+                                
+                                # Estrai features per similarità
+                                cold_start_forecaster = ColdStartForecaster(
+                                    similarity_threshold=similarity_threshold
+                                )
+                                
+                                product_features = cold_start_forecaster.extract_product_features(
+                                    product_sales, product_info
+                                )
+                                
+                                products_database[codice] = {
+                                    'vendite': product_sales,
+                                    'info': product_info,
+                                    'features': product_features
+                                }
+                        
+                        if not products_database:
+                            st.error("❌ Nessun prodotto con dati sufficienti per l'analisi")
+                        else:
+                            # Inizializza Cold Start Forecaster
+                            cold_start_forecaster = ColdStartForecaster(
+                                similarity_threshold=similarity_threshold
+                            )
+                            
+                            # Genera forecast
+                            forecast_series, metadata = cold_start_forecaster.cold_start_forecast(
+                                target_product_info=target_product_info,
+                                products_database=products_database,
+                                forecast_days=forecast_days_cs,
+                                method=forecast_method
+                            )
+                            
+                            st.success(f"✅ Forecast generato con metodo: {metadata.get('method', 'unknown')}")
+                            
+                            # Risultati
+                            st.markdown("### 📊 Risultati Cold Start")
+                            
+                            # Metriche riepilogo
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            with col1:
+                                avg_demand = forecast_series.mean()
+                                st.metric("Domanda Media", f"{avg_demand:.1f}", help="Unità al giorno previste")
+                            
+                            with col2:
+                                total_demand = forecast_series.sum()
+                                st.metric("Domanda Totale", f"{total_demand:.0f}", help=f"Unità totali in {forecast_days_cs} giorni")
+                            
+                            with col3:
+                                max_demand = forecast_series.max()
+                                st.metric("Picco Domanda", f"{max_demand:.1f}", help="Giorno con maggiore domanda")
+                            
+                            with col4:
+                                confidence = metadata.get('confidence', 'medium')
+                                confidence_color = {"high": "🟢", "medium": "🟡", "low": "🔴"}
+                                st.metric("Affidabilità", f"{confidence_color.get(confidence, '⚪')} {confidence.title()}")
+                            
+                            # Grafico forecast
+                            st.markdown("### 📈 Previsioni Giornaliere")
+                            
+                            fig_cs = go.Figure()
+                            fig_cs.add_trace(go.Scatter(
+                                x=forecast_series.index,
+                                y=forecast_series.values,
+                                mode='lines+markers',
+                                name=f'{new_product_name}',
+                                line=dict(color='#1f77b4', width=3),
+                                marker=dict(size=6)
+                            ))
+                            
+                            fig_cs.update_layout(
+                                title=f'Cold Start Forecast - {new_product_name} ({forecast_days_cs} giorni)',
+                                xaxis_title='Data',
+                                yaxis_title='Unità Previste',
+                                hovermode='x unified',
+                                height=400
+                            )
+                            
+                            st.plotly_chart(fig_cs, use_container_width=True)
+                            
+                            # Prodotti simili utilizzati
+                            if 'source_products' in metadata:
+                                st.markdown("### 🔍 Prodotti Simili Utilizzati")
+                                
+                                similar_products_data = []
+                                source_products = metadata.get('source_products', [])
+                                similarity_scores = metadata.get('similarity_scores', [])
+                                
+                                for i, source_product in enumerate(source_products):
+                                    if source_product in prodotti_info.index:
+                                        product_name = prodotti_info.loc[source_product, 'nome']
+                                        similarity_score = similarity_scores[i] if i < len(similarity_scores) else 0
+                                        
+                                        similar_products_data.append({
+                                            'Codice': source_product,
+                                            'Nome': product_name,
+                                            'Similarità': f"{similarity_score:.3f}",
+                                            'Categoria': prodotti_info.loc[source_product, 'categoria']
+                                        })
+                                
+                                if similar_products_data:
+                                    similar_df = pd.DataFrame(similar_products_data)
+                                    st.dataframe(similar_df, use_container_width=True)
+                                else:
+                                    st.info("Nessun prodotto simile identificato nel database")
+                            
+                            # Download forecast CSV
+                            st.markdown("### 📁 Export Risultati")
+                            
+                            # Prepara CSV export
+                            forecast_export = forecast_series.reset_index()
+                            forecast_export.columns = ['Data', 'Domanda_Prevista']
+                            forecast_export['Prodotto_Codice'] = new_product_code
+                            forecast_export['Prodotto_Nome'] = new_product_name
+                            forecast_export['Metodo'] = metadata.get('method', 'unknown')
+                            forecast_export['Affidabilità'] = metadata.get('confidence', 'medium')
+                            
+                            csv_export = forecast_export.to_csv(index=False)
+                            
+                            st.download_button(
+                                "📥 Download Forecast CSV",
+                                data=csv_export,
+                                file_name=f"cold_start_forecast_{new_product_code}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                                mime="text/csv"
+                            )
+                            
+                            # Metadata tecnico (espandibile)
+                            with st.expander("🔧 Dettagli Tecnici"):
+                                st.json(metadata)
+                    
+                    except Exception as e:
+                        st.error(f"❌ Errore durante generazione forecast: {str(e)}")
+                        st.exception(e)
+                        
+            # Esempio pratico
+            st.markdown("---")
+            st.markdown("### 💡 Esempio Scenario")
+            
+            with st.expander("📖 Caso d'Uso: Lancio Carrozzina Ultra-Light"):
+                st.markdown("""
+                **Scenario**: Moretti vuole lanciare una nuova carrozzina ultra-leggera "CRZ-ULTRA-001"
+                
+                **Parametri**:
+                - **Prezzo**: €1,200 (premium rispetto a CRZ001 standard)
+                - **Categoria**: Carrozzine 
+                - **Peso**: 8kg (vs 12kg della standard)
+                - **Target**: Clienti mobility-conscious
+                
+                **Il sistema**:
+                1. Analizza CRZ001 (carrozzina standard) come prodotto più simile
+                2. Applica scaling per prezzo premium (-20% domanda stimata)
+                3. Considera stagionalità e trend da prodotti simili
+                4. Genera forecast 30-90 giorni per pianificazione scorte iniziali
+                
+                **Output**: Domanda stimata 15-18 unità/giorno primi 30 giorni
+                """)
     
     # Footer
     st.markdown("---")
