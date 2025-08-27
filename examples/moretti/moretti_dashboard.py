@@ -1765,25 +1765,31 @@ def main():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric(
-                "Risparmio Mensile Stimato",
-                "€2,450",
-                "+12%"
-            )
+            st.markdown(f"""
+            <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
+                <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">💰 Risparmio Mensile Stimato</div>
+                <div style="color: white; font-size: 28px; font-weight: bold;">€2,450</div>
+                <div style="color: #4CAF50; font-size: 14px; margin-top: 5px;">▲ +12%</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
-            st.metric(
-                "Riduzione Lead Time Medio",
-                "-3 giorni",
-                "-18%"
-            )
+            st.markdown(f"""
+            <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
+                <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">⏱️ Riduzione Lead Time Medio</div>
+                <div style="color: white; font-size: 28px; font-weight: bold;">-3 giorni</div>
+                <div style="color: #f44336; font-size: 14px; margin-top: 5px;">▼ -18%</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col3:
-            st.metric(
-                "Miglioramento Service Level",
-                "+5.2%",
-                None
-            )
+            st.markdown(f"""
+            <div style="border: 2px solid #444; border-radius: 10px; padding: 20px; background-color: #1e1e1e; height: 120px; text-align: center;">
+                <div style="color: #aaa; font-size: 14px; margin-bottom: 5px;">📈 Miglioramento Service Level</div>
+                <div style="color: white; font-size: 28px; font-weight: bold;">+5.2%</div>
+                <div style="color: #4CAF50; font-size: 14px; margin-top: 5px;">▲ Miglioramento</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     with tab5:
         st.subheader("📄 Generazione Report Automatico")
