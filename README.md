@@ -307,21 +307,34 @@ prophet_model.fit(serie_pulita)
 forecast_prophet = prophet_model.forecast(steps=30, confidence_level=0.95)
 print(f"Forecast Prophet: {forecast_prophet.mean():.2f}")
 
-# Selezione automatica parametri Prophet
+# Selezione automatica parametri Prophet con 3 metodi
 prophet_selector = ProphetModelSelector(
-    growth_types=['linear', 'logistic'],
+    changepoint_prior_scales=[0.001, 0.01, 0.05, 0.1, 0.5],
     seasonality_modes=['additive', 'multiplicative'],
-    country_holidays=['IT', 'US', None],
-    max_models=20
+    scoring='mape',
+    max_models=50,
+    verbose=True
 )
 
-prophet_selector.search(serie_pulita)
-best_prophet = prophet_selector.get_best_model()
-print(f"Migliori parametri Prophet: {prophet_selector.get_best_params()}")
+# Metodo 1: Grid Search (esaustivo)
+best_model, results = prophet_selector.search(serie_pulita, method='grid_search')
+
+# Metodo 2: Bayesian Optimization (intelligente, richiede Optuna)
+# best_model, results = prophet_selector.search(serie_pulita, method='bayesian')
+
+# Metodo 3: Random Search (veloce)
+# best_model, results = prophet_selector.search(serie_pulita, method='random_search')
+
+print(f"Migliori parametri: {prophet_selector.get_best_params()}")
+print(f"Miglior score MAPE: {prophet_selector.get_best_score():.3f}%")
+print(f"Modelli testati: {len(results)}")
 
 # Analisi componenti Prophet
-componenti = best_prophet.predict_components(serie_pulita)
+componenti = best_model.predict_components(serie_pulita)
 print("Componenti Prophet:", componenti.columns.tolist())
+
+# Summary completo della ricerca
+print(prophet_selector.summary())
 ```
 
 #### 4. ⭐ Advanced Exogenous Handling (NUOVO)
@@ -1054,16 +1067,22 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 #### ✅ Implementato (v0.4.1)
 - [x] **Advanced Exog Handling**: Selezione automatica feature, preprocessing avanzato, diagnostica per SARIMAX
 
-#### 🚧 In Sviluppo (v0.5.0)
+#### ✅ Implementato (v0.5.0 - Agosto 2024)
+- [x] **Prophet Integration**: Facebook Prophet models con supporto completo stagionalità e holidays ✅
+- [x] **Prophet Auto-Selection**: Ottimizzazione automatica parametri Prophet (Grid, Random, Bayesian) ✅
+- [x] **Sistema Multilingue**: Dashboard e report in 5 lingue (IT, EN, ES, FR, ZH) ✅
+- [x] **Cold Start Problem**: Forecasting per nuovi prodotti senza dati storici ✅
+- [x] **Anomaly Detection**: Rilevamento outlier integrato (IQR, z-score, isolation forest) ✅
+
+#### 🚧 In Sviluppo (v0.6.0)
 - [ ] **LSTM Integration**: Hybrid ARIMA-Deep Learning
 - [ ] **Real-time Streaming**: Apache Kafka integration
 - [ ] **Cloud Native**: Kubernetes operators
 
 #### 🔮 Future Releases
-- [ ] **Prophet Integration**: Facebook Prophet models
-- [ ] **Anomaly Detection**: Integrated outlier detection
 - [ ] **MLOps Pipeline**: MLflow, DVC, Airflow integration  
 - [ ] **Multi-tenancy**: Enterprise deployment features
+- [ ] **GPU Acceleration**: CUDA support per training veloce
 
 ---
 

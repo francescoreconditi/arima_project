@@ -49,7 +49,10 @@
       "Bash(dir)",
       "Read(/c:\\temp/**)",
       "Read(/c:\\temp/**)",
-      "Bash(timeout 30 uv run:*)"
+      "Bash(timeout 30 uv run:*)",
+      "Bash(sed:*)",
+      "Bash(timeout 45 uv run python prophet_auto_selection_demo.py)",
+      "Bash(timeout 45 uv run:*)"
     ],
     "deny": [],
     "additionalDirectories": [

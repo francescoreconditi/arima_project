@@ -113,7 +113,15 @@ def create_app(
         
         📊 **Capacità Complete End-to-End**
         
-        Dalla preparazione dati al deployment in produzione, con supporto per modelli ARIMA, SARIMA, VAR e tecniche Auto-ML avanzate.
+        Dalla preparazione dati al deployment in produzione, con supporto per modelli ARIMA, SARIMA, VAR, **Facebook Prophet** e tecniche Auto-ML avanzate.
+        
+        🆕 **Prophet Integration Completa**
+        
+        - Training Prophet con parametri customizzati
+        - Auto-selection ottimizzazione Bayesian/Grid Search  
+        - Forecasting con decomposizione trend/seasonality/holidays
+        - Comparazione intelligente Prophet vs ARIMA/SARIMA
+        - Gestione festività per 6+ paesi (IT, US, UK, DE, FR, ES)
         """,
         version="1.1.0",
         openapi_tags=tags_metadata,

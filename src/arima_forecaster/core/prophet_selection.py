@@ -149,8 +149,10 @@ class ProphetModelSelector:
                 results = self._grid_search(series, exog, country_holidays, custom_holidays)
             elif method == 'random_search':
                 results = self._random_search(series, exog, country_holidays, custom_holidays)
+            elif method == 'bayesian':
+                results = self._bayesian_search(series, exog, country_holidays, custom_holidays)
             else:
-                raise ValueError(f"Unknown search method: {method}")
+                raise ValueError(f"Unknown search method: {method}. Use: 'grid_search', 'random_search', 'bayesian'")
             
             if not results:
                 raise ModelTrainingError("No valid models found during search")
@@ -267,6 +269,84 @@ class ProphetModelSelector:
             
             if self.verbose and (i + 1) % 20 == 0:
                 logger.info(f"Random search: {i + 1}/{n_trials} trials")
+        
+        return results
+    
+    def _bayesian_search(
+        self,
+        series: pd.Series,
+        exog: Optional[pd.DataFrame],
+        country_holidays: Optional[str],
+        custom_holidays: Optional[pd.DataFrame]
+    ) -> List[Dict[str, Any]]:
+        """Esegue Bayesian optimization con Optuna."""
+        try:
+            import optuna
+            from optuna.samplers import TPESampler
+            
+            # Sopprimi log Optuna se non verbose
+            if not self.verbose:
+                optuna.logging.set_verbosity(optuna.logging.WARNING)
+                
+        except ImportError:
+            if self.verbose:
+                logger.warning("Optuna non installato, fallback a random search")
+            return self._random_search(series, exog, country_holidays, custom_holidays)
+        
+        results = []
+        best_score = float('inf')
+        
+        def objective(trial):
+            nonlocal results, best_score
+            
+            # Suggerisci parametri da Optuna
+            params = (
+                trial.suggest_categorical('changepoint_prior_scale', self.changepoint_prior_scales),
+                trial.suggest_categorical('seasonality_prior_scale', self.seasonality_prior_scales),
+                trial.suggest_categorical('holidays_prior_scale', self.holidays_prior_scales),
+                trial.suggest_categorical('seasonality_mode', self.seasonality_modes),
+                trial.suggest_categorical('growth', self.growth_modes),
+                trial.suggest_categorical('yearly_seasonality', self.yearly_seasonalities),
+                trial.suggest_categorical('weekly_seasonality', self.weekly_seasonalities),
+                trial.suggest_categorical('daily_seasonality', self.daily_seasonalities),
+                trial.suggest_categorical('n_changepoints', self.n_changepoints_range)
+            )
+            
+            # Valuta parametri
+            result = self._evaluate_params(params, series, exog, country_holidays, custom_holidays)
+            
+            if result is not None:
+                results.append(result)
+                score = result['score']
+                
+                # Aggiorna migliore
+                if score < best_score:
+                    best_score = score
+                    
+                return score
+            else:
+                # Penalizza parametri che causano errori
+                return float('inf')
+        
+        # Crea studio Optuna
+        study = optuna.create_study(
+            direction='minimize',
+            sampler=TPESampler(seed=42, n_startup_trials=min(10, self.max_models // 4))
+        )
+        
+        # Ottimizzazione
+        if self.verbose:
+            logger.info(f"Bayesian optimization with Optuna TPE: {self.max_models} trials")
+        
+        study.optimize(
+            objective,
+            n_trials=self.max_models,
+            timeout=self.timeout_minutes * 60 if self.timeout_minutes else None,
+            show_progress_bar=self.verbose
+        )
+        
+        if self.verbose:
+            logger.info(f"Bayesian search completed: {len(study.trials)} trials, best score: {best_score:.4f}")
         
         return results
     
@@ -461,6 +541,36 @@ class ProphetModelSelector:
         
         sorted_results = sorted(self.search_results_, key=lambda x: x['score'])
         return sorted_results[:n]
+    
+    def get_best_params(self) -> Dict[str, Any]:
+        """
+        Restituisce i migliori parametri trovati.
+        
+        Returns:
+            Dizionario con migliori parametri
+            
+        Raises:
+            ModelTrainingError: Se ricerca non completata
+        """
+        if not self._search_completed:
+            raise ModelTrainingError("Must run search() before getting best params")
+        
+        return self.best_params_.copy()
+    
+    def get_best_score(self) -> float:
+        """
+        Restituisce il miglior score trovato.
+        
+        Returns:
+            Miglior score della ricerca
+            
+        Raises:
+            ModelTrainingError: Se ricerca non completata
+        """
+        if not self._search_completed:
+            raise ModelTrainingError("Must run search() before getting best score")
+        
+        return self.best_score_
     
     def summary(self) -> str:
         """
