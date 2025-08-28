@@ -373,7 +373,9 @@ class ProphetForecaster:
         steps: int,
         exog_future: Optional[pd.DataFrame] = None,
         confidence_intervals: bool = True,
-        confidence_level: float = 0.95
+        confidence_level: float = 0.95,
+        alpha: Optional[float] = None,  # Supporto per compatibilità con ARIMA/SARIMA
+        return_conf_int: bool = False  # Supporto per compatibilità con ARIMA/SARIMA
     ) -> Union[pd.Series, Tuple[pd.Series, pd.DataFrame]]:
         """
         Genera previsioni future.
@@ -383,14 +385,24 @@ class ProphetForecaster:
             exog_future: Variabili esogene future (richieste se usati regressori)
             confidence_intervals: Se restituire intervalli di confidenza
             confidence_level: Livello di confidenza (0.8-0.99)
+            alpha: Parametro alpha alternativo (1-confidence_level) per compatibilità
+            return_conf_int: Se restituire gli intervalli (alias per confidence_intervals per compatibilità)
             
         Returns:
             Se confidence_intervals=False: Serie con previsioni
-            Se confidence_intervals=True: Tupla (previsioni, intervalli_confidenza)
+            Se confidence_intervals=True o return_conf_int=True: Tupla (previsioni, intervalli_confidenza)
         """
         if not self.is_fitted:
             raise ForecastError("Model must be fitted before forecasting")
         
+        # Gestione compatibilità parametro alpha (come in ARIMA/SARIMA)
+        if alpha is not None:
+            confidence_level = 1 - alpha
+        
+        # Gestione compatibilità return_conf_int (come in ARIMA/SARIMA)
+        if return_conf_int:
+            confidence_intervals = True
+            
         try:
             # Crea future dataframe
             future = self._make_future_dataframe(steps, exog_future)
@@ -681,3 +693,155 @@ class ProphetForecaster:
         n_obs = len(self.last_series) if self.last_series is not None else 0
         
         return f"ProphetForecaster({params_str}, n_obs={n_obs})"
+    
+    def generate_report(
+        self,
+        plots_data: Optional[Dict[str, str]] = None,
+        report_title: str = None,
+        output_filename: str = None,
+        format_type: str = "html",
+        include_diagnostics: bool = True,
+        include_forecast: bool = True,
+        forecast_steps: int = 12,
+        include_seasonal_decomposition: bool = True
+    ) -> Any:
+        """
+        Genera report Quarto completo per l'analisi del modello Prophet.
+        
+        Args:
+            plots_data: Dizionario con percorsi dei file di plot {'nome_plot': 'percorso/plot.png'}
+            report_title: Titolo personalizzato per il report
+            output_filename: Nome file personalizzato per il report
+            format_type: Formato di output ('html', 'pdf', 'docx')
+            include_diagnostics: Se includere i diagnostici del modello
+            include_forecast: Se includere l'analisi delle previsioni
+            forecast_steps: Numero di passi da prevedere per il report
+            include_seasonal_decomposition: Se includere decomposizione stagionale
+            
+        Returns:
+            Percorso del report generato
+            
+        Raises:
+            ModelTrainingError: Se il modello non è addestrato
+            ForecastError: Se la generazione del report fallisce
+        """
+        try:
+            from pathlib import Path
+            from ..reporting import QuartoReportGenerator
+            from ..evaluation.metrics import ModelEvaluator
+            
+            if not self.is_fitted:
+                raise ForecastError("Il modello deve essere addestrato prima di generare il report")
+            
+            # Imposta titolo di default
+            if report_title is None:
+                report_title = f"Analisi Modello Prophet"
+            
+            # Raccoglie i risultati del modello
+            model_results = {
+                'model_type': 'Prophet',
+                'model_info': self.get_model_info(),
+                'parameters': {
+                    'growth': self.growth,
+                    'seasonality_mode': self.seasonality_mode,
+                    'yearly_seasonality': str(self.yearly_seasonality),
+                    'weekly_seasonality': str(self.weekly_seasonality),
+                    'daily_seasonality': str(self.daily_seasonality),
+                    'changepoint_prior_scale': self.changepoint_prior_scale,
+                    'seasonality_prior_scale': self.seasonality_prior_scale,
+                    'holidays_prior_scale': self.holidays_prior_scale,
+                    'country_holidays': self.country_holidays or 'None'
+                }
+            }
+            
+            # Aggiungi informazioni training data se disponibili
+            if self.last_series is not None and len(self.last_series) > 0:
+                model_results['training_data'] = {
+                    'start_date': str(self.last_series.index[0]),
+                    'end_date': str(self.last_series.index[-1]),
+                    'observations': len(self.last_series)
+                }
+                
+                # Aggiungi metriche se possibile
+                if hasattr(self, 'forecast_result') and self.forecast_result is not None:
+                    evaluator = ModelEvaluator()
+                    
+                    # Prophet genera fitted values durante fit
+                    fitted_df = self.model.predict(self.model.history)
+                    fitted_values = fitted_df.set_index('ds')['yhat']
+                    fitted_values = fitted_values[self.last_series.index]
+                    
+                    try:
+                        metrics = evaluator.calculate_forecast_metrics(
+                            actual=self.last_series,
+                            predicted=fitted_values
+                        )
+                        model_results['metrics'] = metrics
+                    except Exception as e:
+                        logger.warning(f"Non è stato possibile calcolare le metriche: {e}")
+                
+                # Aggiungi diagnostici se richiesto
+                if include_diagnostics:
+                    try:
+                        # Prophet non ha residui diretti come ARIMA
+                        fitted_df = self.model.predict(self.model.history)
+                        fitted_values = fitted_df.set_index('ds')['yhat']
+                        fitted_values = fitted_values[self.last_series.index]
+                        residuals = self.last_series - fitted_values
+                        
+                        evaluator = ModelEvaluator()
+                        diagnostics = evaluator.evaluate_residuals(residuals=residuals)
+                        model_results['diagnostics'] = diagnostics
+                    except Exception as e:
+                        logger.warning(f"Non è stato possibile calcolare i diagnostici: {e}")
+            
+            # Aggiungi previsione se richiesto
+            if include_forecast:
+                try:
+                    forecast_result = self.forecast(
+                        steps=forecast_steps,
+                        confidence_intervals=True
+                    )
+                    
+                    if isinstance(forecast_result, tuple):
+                        forecast_series, conf_int = forecast_result
+                        model_results['forecast'] = {
+                            'steps': forecast_steps,
+                            'values': forecast_series.tolist(),
+                            'confidence_intervals': {
+                                'lower': conf_int['lower'].tolist(),
+                                'upper': conf_int['upper'].tolist()
+                            },
+                            'index': forecast_series.index.astype(str).tolist()
+                        }
+                    else:
+                        model_results['forecast'] = {
+                            'steps': forecast_steps,
+                            'values': forecast_result.tolist(),
+                            'index': forecast_result.index.astype(str).tolist()
+                        }
+                except Exception as e:
+                    logger.warning(f"Non è stato possibile generare la previsione per il report: {e}")
+            
+            # Inizializza il generatore di report
+            generator = QuartoReportGenerator()
+            
+            # Genera il report
+            report_path = generator.generate_model_report(
+                model_results=model_results,
+                report_title=report_title,
+                output_filename=output_filename,
+                format_type=format_type,
+                plots_data=plots_data
+            )
+            
+            logger.info(f"Report generato: {report_path}")
+            return Path(report_path)
+            
+        except ImportError as e:
+            raise ImportError(
+                "Le dipendenze per la generazione report non sono installate. "
+                "Installa con: pip install arima-forecaster[reports]"
+            ) from e
+        except Exception as e:
+            raise ForecastError(f"Errore nella generazione del report: {str(e)}") from e
