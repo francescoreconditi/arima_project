@@ -2234,8 +2234,12 @@ def main():
                         # Prepara database prodotti esistenti
                         products_database = {}
                         
+                        # Usa i dati prodotti già caricati all'avvio
+                        # Convertiamo prodotti (che è un DataFrame) in formato con indice sui codici
+                        prodotti_info = prodotti.set_index('codice') if 'codice' in prodotti.columns else pd.DataFrame()
+                        
                         for codice in vendite.columns:
-                            if codice in prodotti_info.index:
+                            if not prodotti_info.empty and codice in prodotti_info.index:
                                 # Dati vendite
                                 product_sales = vendite[codice].dropna()
                                 if len(product_sales) < 30:  # Skip prodotti con pochi dati

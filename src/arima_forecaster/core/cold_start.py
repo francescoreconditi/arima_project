@@ -104,8 +104,12 @@ class ColdStartForecaster:
                     features['monthly_seasonality'] = monthly_pattern
             
             # Features da informazioni prodotto
+            # Supporta sia 'prezzo' che 'prezzo_medio' per compatibilità
             if 'prezzo' in product_info:
                 features['price'] = float(product_info['prezzo'])
+            elif 'prezzo_medio' in product_info:
+                features['price'] = float(product_info['prezzo_medio'])
+            
             if 'categoria' in product_info:
                 features['category_encoded'] = hash(product_info['categoria']) % 1000
             if 'peso' in product_info:
