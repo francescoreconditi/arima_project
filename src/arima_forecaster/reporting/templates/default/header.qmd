@@ -1,0 +1,44 @@
+---
+title: "{{title}}"
+subtitle: "Analisi Completa del Modello {{model_type}}"
+author: "ARIMA Forecaster Library"
+date: "{{date}}"
+{{format_yaml}}
+execute:
+  echo: false
+  warning: false
+  message: false
+jupyter: python3
+---
+
+```{python}
+#| include: false
+import json
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime
+from pathlib import Path
+
+# Carica i risultati del modello (using Path for cross-platform compatibility)
+results_file = Path('{{results_path}}')
+with open(results_file, 'r') as f:
+    model_results = json.load(f)
+
+# Configura stile grafici
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for report generation
+plt.style.use('default')
+sns.set_palette("husl")
+plt.rcParams['figure.dpi'] = 100
+plt.rcParams['figure.figsize'] = (8, 5)
+```
+
+## Executive Summary {#sec-summary}
+
+### Panoramica del Modello
+
+**Tipo di Modello:** {{model_type}}  
+**Ordine:** {{order}}  
+**Data Analisi:** {{date}}

@@ -1,0 +1,63 @@
+{
+  "name": "default",
+  "version": "1.0.0",
+  "description": "Template predefinito per report ARIMA Forecaster",
+  "author": "ARIMA Forecaster Library",
+  "created": "2024-08-29",
+  "files": {
+    "header": "header.qmd",
+    "body": "body.qmd",
+    "footer": "footer.qmd",
+    "styles": "styles.css",
+    "config_section": "config_section.qmd",
+    "format_configs": "format_configs.json"
+  },
+  "supported_formats": ["html", "pdf", "docx"],
+  "placeholders": {
+    "{{title}}": "Titolo del report",
+    "{{model_type}}": "Tipo di modello (ARIMA, SARIMA, SARIMAX)",
+    "{{date}}": "Data di generazione del report",
+    "{{order}}": "Ordine del modello",
+    "{{format_yaml}}": "Configurazione formato Quarto",
+    "{{results_path}}": "Percorso al file JSON con i risultati",
+    "{{plots_section}}": "Sezione per inserire i grafici",
+    "{{config_section}}": "Sezione configurazione completa"
+  },
+  "sections": [
+    {
+      "id": "sec-summary",
+      "title": "Executive Summary",
+      "description": "Panoramica del modello e risultati chiave"
+    },
+    {
+      "id": "sec-methodology",
+      "title": "Metodologia e Approccio",
+      "description": "Processo di selezione e parametri del modello"
+    },
+    {
+      "id": "sec-results",
+      "title": "Analisi dei Risultati",
+      "description": "Performance e diagnostica del modello"
+    },
+    {
+      "id": "sec-plots",
+      "title": "Visualizzazioni",
+      "description": "Grafici e visualizzazioni dei risultati"
+    },
+    {
+      "id": "sec-recommendations",
+      "title": "Previsioni e Raccomandazioni",
+      "description": "Interpretazione e raccomandazioni operative"
+    },
+    {
+      "id": "sec-technical",
+      "title": "Dettagli Tecnici",
+      "description": "Informazioni tecniche e configurazione"
+    },
+    {
+      "id": "sec-forecast",
+      "title": "Forecast",
+      "description": "Previsioni del modello e variabili esogene"
+    }
+  ]
+}

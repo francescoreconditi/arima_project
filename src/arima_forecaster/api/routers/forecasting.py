@@ -206,64 +206,45 @@ async def prophet_forecast_with_components(
     """
     Genera previsioni Prophet con decomposizione completa delle componenti.
     
-    Questo endpoint è specifico per modelli Prophet e fornisce informazioni dettagliate
-    sui componenti di trend, stagionalità e holiday effects che compongono la previsione.
+    Questo endpoint è specifico per modelli Prophet e fornisce decomposizione dettagliata
+    di trend, stagionalità e holiday effects che compongono la previsione finale.
     
-    <h4>🔮 Funzionalità Prophet Avanzate:</h4>
-    - **Trend Decomposition**: Componente di trend lineare/logistico
-    - **Seasonality Components**: Stagionalità weekly/yearly separate
-    - **Holiday Effects**: Impatto delle festività sui valori previsti
-    - **Changepoints**: Punti di cambio trend identificati automaticamente
-    - **Uncertainty Analysis**: Intervalli confidenza per ogni componente
+    <h3>Parametri Request Body:</h3>
+    <table>
+    <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
+    <tr><td>steps</td><td>int</td><td>Numero di periodi da prevedere</td></tr>
+    <tr><td>confidence_level</td><td>float</td><td>Livello di confidenza (default: 0.95)</td></tr>
+    <tr><td>return_intervals</td><td>bool</td><td>Se restituire intervalli di confidenza (default: true)</td></tr>
+    <tr><td>frequency</td><td>str</td><td>Frequenza temporale: "D", "W", "M" (opzionale)</td></tr>
+    </table>
     
-    <h4>📊 Output Aggiuntivo Prophet:</h4>
-    - **forecast**: Previsioni finali come nell'endpoint standard
-    - **trend**: Componente di trend puro
-    - **seasonal**: Effetti stagionali combinati  
-    - **weekly**: Stagionalità settimanale specifica
-    - **yearly**: Stagionalità annuale specifica (se presente)
-    - **holidays**: Effetti festività (se configurate)
-    - **changepoints**: Date e intensità dei cambio trend
+    <h3>Componenti Prophet nella Risposta:</h3>
+    <table>
+    <tr><th>Componente</th><th>Tipo</th><th>Descrizione</th></tr>
+    <tr><td>forecast</td><td>List[float]</td><td>Previsioni finali complete</td></tr>
+    <tr><td>trend</td><td>List[float]</td><td>Componente di trend puro</td></tr>
+    <tr><td>seasonal</td><td>List[float]</td><td>Effetti stagionali combinati</td></tr>
+    <tr><td>weekly</td><td>List[float]</td><td>Stagionalità settimanale (se presente)</td></tr>
+    <tr><td>yearly</td><td>List[float]</td><td>Stagionalità annuale (se presente)</td></tr>
+    <tr><td>holidays</td><td>List[float]</td><td>Effetti festività (se configurate)</td></tr>
+    <tr><td>changepoints</td><td>Dict</td><td>Date e intensità dei cambio trend</td></tr>
+    </table>
     
-    <h4>🎯 Esempio Richiesta:</h4>
-    <pre><code>
-    POST /models/prophet-abc123/forecast/prophet
-    {
-        "steps": 30,
-        "confidence_level": 0.95,
-        "return_intervals": true
-    }
-    </code></pre>
+    <h3>Funzionalità Avanzate:</h3>
+    <ul>
+    <li><b>Trend Decomposition:</b> Componente di trend lineare/logistico isolato</li>
+    <li><b>Seasonality Analysis:</b> Stagionalità weekly/yearly separate</li>
+    <li><b>Holiday Effects:</b> Impatto quantificato delle festività</li>
+    <li><b>Changepoints:</b> Punti di cambio trend identificati automaticamente</li>
+    <li><b>Uncertainty Intervals:</b> Intervalli di confidenza per ogni componente</li>
+    </ul>
     
-    <h4>📈 Esempio Risposta:</h4>
-    <pre><code>
-    {
-        "forecast": [105.2, 107.8, 103.5, ...],
-        "timestamps": ["2024-09-01", "2024-09-02", ...],
-        "confidence_intervals": {
-            "lower": [100.1, 102.3, ...],
-            "upper": [110.3, 113.3, ...]
-        },
-        "prophet_components": {
-            "trend": [102.1, 102.2, 102.3, ...],
-            "weekly": [2.1, 4.6, 0.2, ...],
-            "yearly": [1.0, 1.0, 1.0, ...],
-            "holidays": [0.0, 0.0, 0.0, ...]
-        },
-        "changepoints": {
-            "dates": ["2024-03-15", "2024-06-20"],
-            "trend_changes": [-0.5, 1.2]
-        },
-        "model_id": "prophet-abc123",
-        "forecast_steps": 30,
-        "model_type": "prophet"
-    }
-    </code></pre>
-    
-    <h4>⚠️ Requisiti:</h4>
-    - Il modello deve essere di tipo "prophet" o "prophet-auto"
-    - Il modello deve essere stato addestrato con successo (status: completed)
-    - Per holiday effects: modello addestrato con country_holidays specificato
+    <h3>Requisiti:</h3>
+    <ul>
+    <li>Il modello deve essere di tipo "prophet" o "prophet-auto"</li>
+    <li>Il modello deve avere status: completed</li>
+    <li>Per holiday effects: richiede country_holidays configurato nel training</li>
+    </ul>
     """
     model_manager, forecast_service = services
     

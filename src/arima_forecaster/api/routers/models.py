@@ -271,91 +271,56 @@ async def compare_models(
     """
     Confronta le performance di più modelli su metriche chiave.
     
-    Questo endpoint è particolarmente utile per confrontare modelli diversi
-    (es. Prophet vs ARIMA vs SARIMA) sugli stessi dati di validazione.
+    Effettua un'analisi comparativa dettagliata tra diversi modelli di forecasting
+    per identificare il più adatto alle specifiche esigenze di business.
     
-    <h4>🔬 Metriche di Confronto:</h4>
-    - **Accuratezza**: MAE, RMSE, MAPE per tutti i modelli
-    - **Velocità**: Tempo di training e inferenza
-    - **Complessità**: Numero parametri e interpretabilità  
-    - **Robustezza**: Stabilità rispetto a outlier e dati mancanti
-    - **Uso Memoria**: Footprint in RAM per modelli caricati
+    <h3>Parametri Request Body:</h3>
+    <table>
+    <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
+    <tr><td>model_ids</td><td>List[str]</td><td>Lista di ID modelli da confrontare (min 2, max 10)</td></tr>
+    </table>
     
-    <h4>📊 Analisi Prophet vs ARIMA:</h4>
-    - **Stagionalità**: Confronto gestione pattern stagionali
-    - **Trend**: Capacità di catturare cambiamenti di trend
-    - **Holiday Effects**: Solo Prophet supporta nativamente festività
-    - **Preprocessing**: ARIMA richiede più preparazione dati
+    <h3>Metriche di Confronto:</h3>
+    <table>
+    <tr><th>Categoria</th><th>Metriche</th><th>Descrizione</th></tr>
+    <tr><td>Accuratezza</td><td>MAE, RMSE, MAPE, R²</td><td>Precisione delle previsioni</td></tr>
+    <tr><td>Performance</td><td>Training time, Prediction speed</td><td>Efficienza computazionale</td></tr>
+    <tr><td>Complessità</td><td>Parametri, Interpretabilità</td><td>Semplicità del modello</td></tr>
+    <tr><td>Robustezza</td><td>Outlier handling, Missing data</td><td>Stabilità su dati reali</td></tr>
+    <tr><td>Risorse</td><td>Memory usage, CPU usage</td><td>Footprint computazionale</td></tr>
+    </table>
     
-    <h4>🎯 Esempio Richiesta:</h4>
-    <pre><code>
-    POST /models/compare
-    {
-        "model_ids": [
-            "prophet-abc123", 
-            "arima-def456", 
-            "sarima-ghi789"
-        ]
-    }
-    </code></pre>
+    <h3>Struttura Risposta:</h3>
+    <table>
+    <tr><th>Sezione</th><th>Contenuto</th><th>Scopo</th></tr>
+    <tr><td>comparison_summary</td><td>Migliore modello overall</td><td>Decisione rapida</td></tr>
+    <tr><td>detailed_comparison</td><td>Analisi per singolo modello</td><td>Confronto dettagliato</td></tr>
+    <tr><td>recommendations</td><td>Migliori per categoria</td><td>Scelta per use case</td></tr>
+    </table>
     
-    <h4>📈 Esempio Risposta:</h4>
-    <pre><code>
-    {
-        "comparison_summary": {
-            "best_model": {
-                "model_id": "prophet-abc123",
-                "model_type": "prophet", 
-                "overall_score": 0.85,
-                "reason": "Miglior MAPE e gestione stagionalità"
-            },
-            "total_models": 3
-        },
-        "detailed_comparison": {
-            "prophet-abc123": {
-                "model_type": "prophet",
-                "metrics": {
-                    "mape": 8.5,
-                    "mae": 12.3,
-                    "rmse": 15.7
-                },
-                "performance": {
-                    "training_time_seconds": 45.2,
-                    "prediction_speed_ms": 120,
-                    "memory_mb": 25.4
-                },
-                "strengths": ["Ottima stagionalità", "Holiday effects"],
-                "weaknesses": ["Più lento", "Maggior memoria"]
-            },
-            "arima-def456": {
-                "model_type": "arima",
-                "metrics": {
-                    "mape": 12.1,
-                    "mae": 15.8,
-                    "rmse": 18.9
-                },
-                "performance": {
-                    "training_time_seconds": 12.8,
-                    "prediction_speed_ms": 45,
-                    "memory_mb": 8.2
-                },
-                "strengths": ["Veloce", "Memoria ridotta"],
-                "weaknesses": ["Stagionalità limitata", "Preprocessing"]
-            }
-        },
-        "recommendations": {
-            "best_for_accuracy": "prophet-abc123",
-            "best_for_speed": "arima-def456",
-            "best_for_interpretability": "arima-def456",
-            "best_for_seasonality": "prophet-abc123"
-        }
-    }
-    </code></pre>
+    <h3>Analisi Specializzate:</h3>
+    <ul>
+    <li><b>Prophet vs ARIMA:</b> Confronto gestione stagionalità e trend</li>
+    <li><b>Velocità vs Accuratezza:</b> Trade-off performance/precision</li>
+    <li><b>Interpretabilità:</b> Analisi comprensibilità business</li>
+    <li><b>Scalabilità:</b> Valutazione su dataset grandi</li>
+    </ul>
     
-    <h4>⚡ Performance:</h4>
-    - Confronta fino a 10 modelli simultaneamente
-    - Analisi completa in <5 secondi per modelli già addestrati
-    - Ranking automatico basato su weighted scoring
+    <h3>Raccomandazioni Automatiche:</h3>
+    <ul>
+    <li><b>best_for_accuracy:</b> Modello con miglior MAPE</li>
+    <li><b>best_for_speed:</b> Modello più veloce in training/prediction</li>
+    <li><b>best_for_interpretability:</b> Modello più comprensibile</li>
+    <li><b>best_for_seasonality:</b> Migliore gestione pattern stagionali</li>
+    </ul>
+    
+    <h3>Caratteristiche Performance:</h3>
+    <ul>
+    <li>Confronta fino a 10 modelli simultaneamente</li>
+    <li>Analisi completa in meno di 5 secondi per modelli addestrati</li>
+    <li>Ranking automatico basato su weighted scoring multi-criterio</li>
+    <li>Suggerimenti contestuali per caso d'uso specifico</li>
+    </ul>
     """
     model_manager, forecast_service = services
     

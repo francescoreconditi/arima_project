@@ -1,0 +1,272 @@
+### Risultati Chiave
+
+```{python}
+#| label: tbl-key-metrics
+#| tbl-cap: "Metriche Principali del Modello"
+
+metrics = model_results.get('metrics', {})
+if metrics:
+    metrics_df = pd.DataFrame([
+        ['MAE (Mean Absolute Error)', f"{metrics.get('mae', 'N/A'):.4f}" if isinstance(metrics.get('mae'), (int, float)) else 'N/A'],
+        ['RMSE (Root Mean Square Error)', f"{metrics.get('rmse', 'N/A'):.4f}" if isinstance(metrics.get('rmse'), (int, float)) else 'N/A'],
+        ['MAPE (Mean Absolute Percentage Error)', f"{metrics.get('mape', 'N/A'):.2f}%" if isinstance(metrics.get('mape'), (int, float)) else 'N/A'],
+        ['R² Score', f"{metrics.get('r2_score', 'N/A'):.4f}" if isinstance(metrics.get('r2_score'), (int, float)) else 'N/A'],
+        ['AIC (Akaike Information Criterion)', f"{metrics.get('aic', 'N/A'):.2f}" if isinstance(metrics.get('aic'), (int, float)) else 'N/A'],
+        ['BIC (Bayesian Information Criterion)', f"{metrics.get('bic', 'N/A'):.2f}" if isinstance(metrics.get('bic'), (int, float)) else 'N/A'],
+    ], columns=['Metrica', 'Valore'])
+    
+    # Display as rendered HTML table
+    from IPython.display import HTML, display
+    html_table = metrics_df.to_html(index=False, classes='table table-striped', escape=False, table_id='metrics-table')
+    display(HTML(html_table))
+else:
+    display(HTML("<p>Nessuna metrica disponibile</p>"))
+```
+
+## Metodologia e Approccio {#sec-methodology}
+
+### Processo di Selezione del Modello
+
+Il modello è stato selezionato attraverso un processo sistematico che include:
+
+1. **Analisi Esplorativa dei Dati**
+   - Verifica della stazionarietà della serie temporale
+   - Identificazione di trend e stagionalità
+   - Analisi di autocorrelazione (ACF) e autocorrelazione parziale (PACF)
+
+2. **Preprocessing dei Dati**
+   - Gestione dei valori mancanti
+   - Rimozione di outlier se necessario
+   - Trasformazioni per raggiungere la stazionarietà
+
+3. **Selezione dei Parametri**
+   - Grid search sui parametri (p, d, q)
+   - Ottimizzazione basata su criteri informativi (AIC, BIC)
+   - Validazione incrociata temporale
+
+### Parametri del Modello
+
+```{python}
+#| label: tbl-model-params
+#| tbl-cap: "Parametri del Modello Selezionato"
+
+model_info = model_results.get('model_info', {})
+if model_info:
+    params_data = []
+    
+    # Parametri base
+    if 'order' in model_results:
+        order = model_results['order']
+        if isinstance(order, (list, tuple)) and len(order) >= 3:
+            params_data.extend([
+                ['p (Ordine Autoregressivo)', str(order[0])],
+                ['d (Ordine di Differenziazione)', str(order[1])],
+                ['q (Ordine Media Mobile)', str(order[2])]
+            ])
+    
+    # Parametri stagionali se presenti
+    if 'seasonal_order' in model_results:
+        seasonal_order = model_results['seasonal_order']
+        if isinstance(seasonal_order, (list, tuple)) and len(seasonal_order) >= 4:
+            params_data.extend([
+                ['P (Ordine Autoregressivo Stagionale)', str(seasonal_order[0])],
+                ['D (Ordine Differenziazione Stagionale)', str(seasonal_order[1])],
+                ['Q (Ordine Media Mobile Stagionale)', str(seasonal_order[2])],
+                ['S (Periodicità Stagionale)', str(seasonal_order[3])]
+            ])
+    
+    # Variabili esogene se presenti
+    if 'exog_names' in model_results and model_results['exog_names']:
+        exog_names = model_results['exog_names']
+        params_data.append(['Variabili Esogene', ', '.join(exog_names)])
+        params_data.append(['Numero Variabili Esogene', str(len(exog_names))])
+    
+    # Altri parametri del modello
+    for key, value in model_info.items():
+        if key not in ['order', 'seasonal_order', 'exog_names'] and isinstance(value, (str, int, float)):
+            params_data.append([key.replace('_', ' ').title(), str(value)])
+    
+    if params_data:
+        params_df = pd.DataFrame(params_data, columns=['Parametro', 'Valore'])
+        from IPython.display import HTML, display
+        html_table = params_df.to_html(index=False, classes='table table-striped', escape=False, table_id='params-table')
+        display(HTML(html_table))
+    else:
+        display(HTML("<p>Parametri del modello non disponibili</p>"))
+else:
+    display(HTML("<p>Informazioni del modello non disponibili</p>"))
+```
+
+## Analisi dei Risultati {#sec-results}
+
+### Performance del Modello
+
+```{python}
+#| label: fig-metrics-comparison
+#| fig-cap: "Confronto delle Metriche di Performance"
+
+metrics = model_results.get('metrics', {})
+if metrics:
+    # Crea grafico delle metriche principali
+    metric_names = []
+    metric_values = []
+    
+    for metric, value in metrics.items():
+        if isinstance(value, (int, float)) and not np.isnan(value):
+            metric_names.append(metric.upper())
+            metric_values.append(value)
+    
+    if metric_names:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        bars = ax.bar(metric_names, metric_values, color='skyblue', alpha=0.7)
+        ax.set_title('Metriche di Performance del Modello', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Valore')
+        
+        # Aggiungi valori sulle barre
+        for bar, value in zip(bars, metric_values):
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(metric_values)*0.01,
+                   f'{value:.4f}', ha='center', va='bottom')
+        
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+    else:
+        display(HTML("<p>Nessuna metrica numerica disponibile per la visualizzazione</p>"))
+else:
+    display(HTML("<p>Metriche non disponibili</p>"))
+```
+
+### Diagnostica del Modello
+
+La validazione del modello include diversi test diagnostici:
+
+```{python}
+#| label: diagnostics-summary
+#| tbl-cap: "Riassunto Diagnostici del Modello"
+
+diagnostics = model_results.get('diagnostics', {})
+if diagnostics:
+    diag_data = []
+    for test, result in diagnostics.items():
+        if isinstance(result, dict):
+            status = "✓ Passato" if result.get('passed', False) else "✗ Fallito"
+            p_value = result.get('p_value', 'N/A')
+            if isinstance(p_value, (int, float)):
+                p_value = f"{p_value:.4f}"
+            diag_data.append([test.replace('_', ' ').title(), status, str(p_value)])
+        else:
+            diag_data.append([test.replace('_', ' ').title(), str(result), 'N/A'])
+    
+    if diag_data:
+        diag_df = pd.DataFrame(diag_data, columns=['Test', 'Risultato', 'P-Value'])
+        from IPython.display import HTML, display
+        html_table = diag_df.to_html(index=False, classes='table table-striped', escape=False, table_id='diagnostics-table')
+        display(HTML(html_table))
+    else:
+        display(HTML("<p>Nessun risultato diagnostico disponibile</p>"))
+else:
+    display(HTML("<p>Diagnostici non disponibili</p>"))
+```
+
+## Visualizzazioni {#sec-plots}
+
+{{plots_section}}
+
+## Previsioni e Raccomandazioni {#sec-recommendations}
+
+### Interpretazione dei Risultati
+
+```{python}
+#| label: interpretation
+
+# Analisi delle performance
+metrics = model_results.get('metrics', {})
+interpretation = []
+
+if 'mae' in metrics and isinstance(metrics['mae'], (int, float)):
+    mae_value = metrics['mae']
+    interpretation.append(f"• **MAE ({mae_value:.4f})**: {'Ottimo' if mae_value < 0.1 else 'Buono' if mae_value < 0.5 else 'Accettabile' if mae_value < 1.0 else 'Da migliorare'} - L'errore medio assoluto indica la precisione delle previsioni.")
+
+if 'mape' in metrics and isinstance(metrics['mape'], (int, float)):
+    mape_value = metrics['mape']
+    interpretation.append(f"• **MAPE ({mape_value:.2f}%)**: {'Eccellente' if mape_value < 5 else 'Buono' if mape_value < 10 else 'Accettabile' if mape_value < 20 else 'Da migliorare'} - Errore percentuale medio.")
+
+if 'r2_score' in metrics and isinstance(metrics['r2_score'], (int, float)):
+    r2_value = metrics['r2_score']
+    interpretation.append(f"• **R² Score ({r2_value:.4f})**: {'Ottimo' if r2_value > 0.9 else 'Buono' if r2_value > 0.7 else 'Accettabile' if r2_value > 0.5 else 'Insufficiente'} - Varianza spiegata dal modello.")
+
+if interpretation:
+    for item in interpretation:
+        display(HTML(f"<p>{item}</p>"))
+else:
+    display(HTML("<p>Non sono disponibili metriche per l'interpretazione automatica.</p>"))
+```
+
+### Raccomandazioni Operative
+
+```{python}
+#| label: recommendations
+
+recommendations = []
+
+# Raccomandazioni basate sulle performance
+metrics = model_results.get('metrics', {})
+if 'aic' in metrics and 'bic' in metrics:
+    aic_val = metrics['aic']
+    bic_val = metrics['bic']
+    if isinstance(aic_val, (int, float)) and isinstance(bic_val, (int, float)):
+        if abs(aic_val - bic_val) < 10:
+            recommendations.append("✓ I criteri AIC e BIC sono allineati, indicando un buon bilanciamento complessità/performance")
+        else:
+            recommendations.append("⚠ Differenza significativa tra AIC e BIC - considerare modelli alternativi")
+
+# Raccomandazioni basate sui residui
+diagnostics = model_results.get('diagnostics', {})
+if diagnostics:
+    if diagnostics.get('ljung_box', {}).get('passed', False):
+        recommendations.append("✓ I residui mostrano caratteristiche di rumore bianco")
+    else:
+        recommendations.append("⚠ I residui mostrano autocorrelazione - considerare modelli più complessi")
+
+# Raccomandazioni generali
+recommendations.extend([
+    "• Monitorare la performance su nuovi dati per rilevare eventuali degradi",
+    "• Considerare re-training periodico del modello",
+    "• Valutare l'aggiunta di variabili esogene se disponibili",
+    "• Implementare sistema di alerting per anomalie nelle previsioni"
+])
+
+for rec in recommendations:
+    display(HTML(f"<p>{rec}</p>"))
+```
+
+## Dettagli Tecnici {#sec-technical}
+
+### Informazioni sul Processo
+
+```{python}
+#| label: tbl-process-info
+#| tbl-cap: "Dettagli Tecnici del Processo"
+
+process_info = [
+    ['Data Generazione Report', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+    ['Libreria', 'ARIMA Forecaster'],
+    ['Versione Python', model_results.get('python_version', 'N/A')],
+    ['Ambiente', model_results.get('environment', 'N/A')]
+]
+
+# Aggiungi informazioni sui dati se disponibili
+if 'data_info' in model_results:
+    data_info = model_results['data_info']
+    for key, value in data_info.items():
+        process_info.append([key.replace('_', ' ').title(), str(value)])
+
+process_df = pd.DataFrame(process_info, columns=['Parametro', 'Valore'])
+from IPython.display import HTML, display
+html_table = process_df.to_html(index=False, classes='table table-striped', escape=False, table_id='process-table')
+display(HTML(html_table))
+```
+
+### Configurazione Completa
+
+{{config_section}}

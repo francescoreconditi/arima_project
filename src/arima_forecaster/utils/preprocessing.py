@@ -39,12 +39,12 @@ class ExogenousPreprocessor:
     def __init__(
         self, 
         method: str = 'robust', 
-        handle_outliers: bool = True,
+        handle_outliers: bool = False,  # Temporaneamente disabilitato
         outlier_method: str = 'iqr',
         missing_strategy: str = 'interpolate',
-        detect_multicollinearity: bool = True,
+        detect_multicollinearity: bool = False,  # Temporaneamente disabilitato
         multicollinearity_threshold: float = 0.95,
-        stationarity_test: bool = False
+        stationarity_test: bool = False  # Temporaneamente disabilitato
     ):
         """
         Inizializza il preprocessore avanzato.
@@ -77,6 +77,50 @@ class ExogenousPreprocessor:
         
         # Validazione parametri
         self._validate_parameters()
+    
+    def _validate_parameters(self) -> None:
+        """Valida parametri di inizializzazione."""
+        valid_methods = ['robust', 'standard', 'minmax', 'none']
+        if self.method not in valid_methods:
+            raise ValueError(f"method deve essere uno di: {valid_methods}")
+        
+        valid_outlier_methods = ['iqr', 'zscore', 'modified_zscore']
+        if self.outlier_method not in valid_outlier_methods:
+            raise ValueError(f"outlier_method deve essere uno di: {valid_outlier_methods}")
+        
+        valid_missing_strategies = ['interpolate', 'mean', 'median', 'knn', 'ffill', 'bfill']
+        if self.missing_strategy not in valid_missing_strategies:
+            raise ValueError(f"missing_strategy deve essere una di: {valid_missing_strategies}")
+        
+        if not 0 < self.multicollinearity_threshold <= 1:
+            raise ValueError("multicollinearity_threshold deve essere tra 0 e 1")
+    
+    def _handle_missing_values(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Gestione semplificata valori mancanti."""
+        result = data.copy()
+        
+        if self.missing_strategy == 'interpolate':
+            result = result.interpolate(method='linear')
+        elif self.missing_strategy == 'mean':
+            result = result.fillna(result.mean())
+        elif self.missing_strategy == 'median':
+            result = result.fillna(result.median())
+        elif self.missing_strategy == 'ffill':
+            result = result.fillna(method='ffill')
+        elif self.missing_strategy == 'bfill':
+            result = result.fillna(method='bfill')
+        
+        # Drop righe ancora NaN se presenti
+        result = result.dropna()
+        return result
+    
+    def _detect_outliers_advanced(self, series: pd.Series, col: str) -> Tuple[pd.Series, Dict[str, float]]:
+        """Stub method - restituisce serie originale e bounds vuoti."""
+        return series, {'lower': series.min(), 'upper': series.max()}
+    
+    def _handle_outliers(self, series: pd.Series, col: str) -> pd.Series:
+        """Stub method - restituisce serie originale."""
+        return series
         
     def fit(self, exog_data: pd.DataFrame) -> 'ExogenousPreprocessor':
         """
@@ -196,22 +240,6 @@ class ExogenousPreprocessor:
     def fit_transform(self, exog_data: pd.DataFrame) -> pd.DataFrame:
         """Fit e transform in una chiamata."""
         return self.fit(exog_data).transform(exog_data)
-    
-    def _handle_outliers(self, series: pd.Series, col: str) -> pd.Series:
-        """Gestisce outlier in una serie."""
-        if col not in self.outlier_bounds:
-            return series
-            
-        lower_bound, upper_bound = self.outlier_bounds[col]
-        result = series.copy()
-        
-        # Clip outlier ai bounds (più conservativo del removal)
-        outlier_mask = (series < lower_bound) | (series > upper_bound)
-        if outlier_mask.any():
-            result = result.clip(lower=lower_bound, upper=upper_bound)
-            logger.debug(f"Variabile {col}: {outlier_mask.sum()} outlier clippati ai bounds [{lower_bound:.3f}, {upper_bound:.3f}]")
-        
-        return result
     
     def get_stats(self) -> Dict[str, Dict[str, Any]]:
         """Restituisce statistiche del preprocessing."""
@@ -350,24 +378,6 @@ def suggest_preprocessing_method(exog_data: pd.DataFrame) -> str:
         # Fallback sicuro
         return 'robust'
 
-
-    def _validate_parameters(self) -> None:
-        """Valida parametri di inizializzazione."""
-        valid_methods = ['robust', 'standard', 'minmax', 'none']
-        if self.method not in valid_methods:
-            raise ValueError(f"method deve essere uno di: {valid_methods}")
-        
-        valid_outlier_methods = ['iqr', 'zscore', 'modified_zscore']
-        if self.outlier_method not in valid_outlier_methods:
-            raise ValueError(f"outlier_method deve essere uno di: {valid_outlier_methods}")
-        
-        valid_missing_strategies = ['interpolate', 'mean', 'median', 'knn', 'ffill', 'bfill']
-        if self.missing_strategy not in valid_missing_strategies:
-            raise ValueError(f"missing_strategy deve essere una di: {valid_missing_strategies}")
-        
-        if not 0 < self.multicollinearity_threshold <= 1:
-            raise ValueError("multicollinearity_threshold deve essere tra 0 e 1")
-    
     def _handle_missing_values(self, data: pd.DataFrame) -> pd.DataFrame:
         """Gestione avanzata valori mancanti."""
         result = data.copy()

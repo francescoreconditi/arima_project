@@ -523,42 +523,42 @@ async def train_prophet_model(
     """
     Addestra un modello Facebook Prophet per forecasting avanzato.
     
-    Facebook Prophet è un modello di forecasting robusto sviluppato da Meta che gestisce:
+    Facebook Prophet è un modello di forecasting robusto sviluppato da Meta che eccelle 
+    nella gestione di serie temporali con pattern complessi, trend non lineari e 
+    stagionalità multiple.
     
-    <h4>🎯 Caratteristiche Principali:</h4>
-    - **Trend automatico**: Rileva automaticamente cambiamenti di trend
-    - **Stagionalità multipla**: Giornaliera, settimanale, annuale
-    - **Gestione festività**: Integrazione calendario festività per paese
-    - **Robusto agli outlier**: Gestisce automaticamente valori anomali
-    - **Valori mancanti**: Non richiede preprocessing per gap nei dati
+    <h3>Parametri Request Body:</h3>
+    <table>
+    <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
+    <tr><td>data</td><td>TimeSeriesData</td><td>Dati della serie temporale</td></tr>
+    <tr><td>growth</td><td>str</td><td>Tipo di crescita: "linear", "logistic", "flat" (default: "linear")</td></tr>
+    <tr><td>yearly_seasonality</td><td>Union[bool, str, int]</td><td>Stagionalità annuale (default: "auto")</td></tr>
+    <tr><td>weekly_seasonality</td><td>Union[bool, str, int]</td><td>Stagionalità settimanale (default: "auto")</td></tr>
+    <tr><td>daily_seasonality</td><td>Union[bool, str, int]</td><td>Stagionalità giornaliera (default: "auto")</td></tr>
+    <tr><td>seasonality_mode</td><td>str</td><td>Modalità: "additive" o "multiplicative" (default: "additive")</td></tr>
+    <tr><td>country_holidays</td><td>str</td><td>Codice paese: IT, US, UK, DE, FR, ES (opzionale)</td></tr>
+    <tr><td>changepoint_prior_scale</td><td>float</td><td>Flessibilità trend (default: 0.05)</td></tr>
+    <tr><td>seasonality_prior_scale</td><td>float</td><td>Forza stagionalità (default: 10.0)</td></tr>
+    <tr><td>holidays_prior_scale</td><td>float</td><td>Impatto festività (default: 10.0)</td></tr>
+    </table>
     
-    <h4>🔧 Parametri Chiave:</h4>
-    - **growth**: Tipo di crescita (linear, logistic, flat)
-    - **seasonality_mode**: Modalità stagionalità (additive, multiplicative)
-    - **country_holidays**: Codice paese per festività (IT, US, UK, DE, FR, ES)
-    - **prior_scale**: Parametri di regolarizzazione per flessibilità
+    <h3>Caratteristiche Principali:</h3>
+    <ul>
+    <li><b>Trend automatico:</b> Rileva automaticamente cambiamenti di trend</li>
+    <li><b>Stagionalità multipla:</b> Supporta pattern giornalieri, settimanali e annuali</li>
+    <li><b>Gestione festività:</b> Integrazione calendario festività per paese</li>
+    <li><b>Robusto agli outlier:</b> Gestisce automaticamente valori anomali</li>
+    <li><b>Valori mancanti:</b> Non richiede preprocessing per gap nei dati</li>
+    </ul>
     
-    <h4>📊 Esempio Richiesta:</h4>
-    <pre><code>
-    POST /models/train/prophet
-    {
-        "data": {
-            "timestamps": ["2023-01-01", "2023-01-02", "2023-01-03"],
-            "values": [100.5, 102.3, 98.7]
-        },
-        "growth": "linear",
-        "yearly_seasonality": "auto",
-        "seasonality_mode": "additive",
-        "country_holidays": "IT"
-    }
-    </code></pre>
-    
-    <h4>✅ Vantaggi Prophet:</h4>
-    - Interpretabile e comprensibile
-    - Gestisce automaticamente trend complessi
-    - Eccellente per serie con forte stagionalità
-    - Robusto con dati rumorosi
-    - Non richiede preprocessing elaborato
+    <h3>Vantaggi Prophet:</h3>
+    <ul>
+    <li>Interpretabile e comprensibile per analisti business</li>
+    <li>Gestisce automaticamente trend complessi e changepoints</li>
+    <li>Eccellente per serie con forte stagionalità e holiday effects</li>
+    <li>Robusto con dati rumorosi e outliers</li>
+    <li>Non richiede preprocessing elaborato o stazionarietà</li>
+    </ul>
     """
     try:
         model_manager, forecast_service = services
@@ -620,47 +620,46 @@ async def train_prophet_auto_select(
     """
     Selezione automatica di parametri ottimali per modelli Prophet.
     
-    Esegue una ricerca sistematica sui parametri Prophet per trovare la migliore
-    configurazione che minimizza l'errore di cross-validazione su dati storici.
+    Esegue una ricerca sistematica sui parametri Prophet utilizzando cross-validation
+    per trovare la configurazione ottimale che minimizza l'errore di previsione.
     
-    <h4>🔍 Processo di Ottimizzazione:</h4>
-    1. **Grid Search**: Testa tutte le combinazioni di parametri specificati
-    2. **Cross-Validation**: Valuta ogni modello con rolling forecast origin
-    3. **Metric Selection**: Sceglie il modello con miglior MAPE/MAE
-    4. **Final Training**: Riaddestra il modello migliore su tutti i dati
+    <h3>Parametri Request Body:</h3>
+    <table>
+    <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
+    <tr><td>data</td><td>TimeSeriesData</td><td>Dati della serie temporale</td></tr>
+    <tr><td>growth_types</td><td>List[str]</td><td>Tipi di crescita da testare: ["linear", "logistic", "flat"]</td></tr>
+    <tr><td>seasonality_modes</td><td>List[str]</td><td>Modalità stagionalità: ["additive", "multiplicative"]</td></tr>
+    <tr><td>country_holidays</td><td>List[Optional[str]]</td><td>Calendari festività: ["IT", "US", "UK", "DE", "FR", "ES", null]</td></tr>
+    <tr><td>max_models</td><td>int</td><td>Numero massimo di modelli da testare (default: 30)</td></tr>
+    <tr><td>cv_horizon</td><td>str</td><td>Orizzonte cross-validation es. "30 days" (default: "30 days")</td></tr>
+    <tr><td>cv_initial</td><td>Optional[str]</td><td>Periodo iniziale training es. "365 days" (opzionale)</td></tr>
+    <tr><td>cv_period</td><td>Optional[str]</td><td>Frequenza cutoff es. "180 days" (opzionale)</td></tr>
+    <tr><td>metric</td><td>str</td><td>Metrica ottimizzazione: "mape", "mae", "rmse" (default: "mape")</td></tr>
+    </table>
     
-    <h4>⚙️ Parametri Testati:</h4>
-    - **Growth Types**: linear, logistic, flat
-    - **Seasonality Modes**: additive, multiplicative  
-    - **Holiday Calendars**: IT, US, UK, DE, FR, ES, None
-    - **Prior Scales**: Range automatico basato sui dati
+    <h3>Processo di Ottimizzazione:</h3>
+    <ol>
+    <li><b>Grid Search:</b> Testa tutte le combinazioni di parametri specificati</li>
+    <li><b>Cross-Validation:</b> Valuta ogni modello con rolling forecast origin</li>
+    <li><b>Metric Selection:</b> Sceglie il modello con miglior performance</li>
+    <li><b>Final Training:</b> Riaddestra il modello migliore su tutti i dati</li>
+    </ol>
     
-    <h4>📈 Metriche di Valutazione:</h4>
-    - **MAPE**: Mean Absolute Percentage Error
-    - **MAE**: Mean Absolute Error
-    - **RMSE**: Root Mean Square Error
-    - **Coverage**: Copertura intervalli confidenza
+    <h3>Metriche di Valutazione:</h3>
+    <ul>
+    <li><b>MAPE:</b> Mean Absolute Percentage Error (errore percentuale)</li>
+    <li><b>MAE:</b> Mean Absolute Error (errore assoluto)</li>
+    <li><b>RMSE:</b> Root Mean Square Error (penalizza errori grandi)</li>
+    <li><b>Coverage:</b> Copertura degli intervalli di confidenza</li>
+    </ul>
     
-    <h4>🎯 Esempio Richiesta:</h4>
-    <pre><code>
-    POST /models/train/prophet/auto-select
-    {
-        "data": {
-            "timestamps": ["2023-01-01", "2023-02-01", "2023-03-01"],
-            "values": [100, 105, 98]
-        },
-        "growth_types": ["linear", "logistic"],
-        "seasonality_modes": ["additive", "multiplicative"],
-        "country_holidays": ["IT", "US", null],
-        "max_models": 30,
-        "cv_horizon": "30 days"
-    }
-    </code></pre>
-    
-    <h4>⚡ Performance:</h4>
-    - Tempo tipico: 2-5 minuti per 20-50 modelli
-    - Memoria: Ottimizzato per gestire serie lunghe
-    - Parallelizzazione: Utilizza tutti i core disponibili
+    <h3>Performance Attese:</h3>
+    <ul>
+    <li>Tempo tipico: 2-5 minuti per 20-50 modelli</li>
+    <li>Memoria: Ottimizzato per gestire serie lunghe (>10k punti)</li>
+    <li>Parallelizzazione: Utilizza tutti i core disponibili</li>
+    <li>Early stopping: Interrompe se trova configurazione ottimale</li>
+    </ul>
     """
     try:
         model_manager, forecast_service = services
@@ -735,9 +734,8 @@ async def _auto_select_prophet_background(
         
         # Crea il selector con i parametri di ricerca
         selector = ProphetModelSelector(
-            growth_types=request.growth_types,
+            growth_modes=request.growth_types,  # Fix: growth_modes nel costruttore
             seasonality_modes=request.seasonality_modes,
-            country_holidays=request.country_holidays,
             max_models=request.max_models,
             cv_horizon=request.cv_horizon
         )
@@ -746,7 +744,13 @@ async def _auto_select_prophet_background(
         import time
         start_time = time.time()
         
-        selector.search(series, verbose=False)
+        # Passa country_holidays alla ricerca, non al costruttore
+        # TODO: Implementare supporto per lista di country_holidays nel search()
+        country_holiday = None
+        if request.country_holidays and len(request.country_holidays) > 0:
+            country_holiday = request.country_holidays[0]  # Per ora usa solo il primo
+        
+        selector.search(series, country_holidays=country_holiday)
         best_model = selector.get_best_model()
         
         search_time = time.time() - start_time
@@ -782,46 +786,36 @@ async def list_prophet_models(services = Depends(get_services)):
     """
     Lista tutti i modelli Prophet disponibili nel sistema.
     
-    Restituisce informazioni su tutti i modelli Prophet addestrati,
-    inclusi parametri, performance e stato corrente.
+    Restituisce informazioni dettagliate su tutti i modelli Prophet addestrati,
+    inclusi parametri di configurazione, metriche di performance e stato corrente.
     
-    <h4>📋 Informazioni Restituite:</h4>
-    - **ID e Nome**: Identificatori univoci del modello
-    - **Parametri**: Configurazione Prophet utilizzata
-    - **Performance**: Metriche di accuratezza
-    - **Stato**: training, completed, failed
-    - **Timestamp**: Date di creazione e completamento
+    <h3>Struttura Risposta:</h3>
+    <table>
+    <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
+    <tr><td>models</td><td>List[Dict]</td><td>Array di modelli Prophet con dettagli completi</td></tr>
+    <tr><td>total_count</td><td>int</td><td>Numero totale di modelli Prophet</td></tr>
+    <tr><td>by_status</td><td>Dict[str, int]</td><td>Conteggio modelli per stato (completed, training, failed)</td></tr>
+    <tr><td>model_types</td><td>Dict[str, int]</td><td>Conteggio per tipo (prophet, prophet-auto)</td></tr>
+    </table>
     
-    <h4>🎯 Esempio Risposta:</h4>
-    <pre><code>
-    {
-        "models": [
-            {
-                "model_id": "prophet-abc123",
-                "model_type": "prophet",
-                "status": "completed",
-                "parameters": {
-                    "growth": "linear",
-                    "seasonality_mode": "additive",
-                    "country_holidays": "IT"
-                },
-                "metrics": {
-                    "mape": 8.5,
-                    "mae": 12.3,
-                    "rmse": 15.7
-                },
-                "created_at": "2024-01-15T10:30:00",
-                "completed_at": "2024-01-15T10:31:30"
-            }
-        ],
-        "total_count": 1,
-        "by_status": {
-            "completed": 1,
-            "training": 0,
-            "failed": 0
-        }
-    }
-    </code></pre>
+    <h3>Informazioni per Modello:</h3>
+    <ul>
+    <li><b>model_id:</b> Identificatore univoco del modello</li>
+    <li><b>model_type:</b> Tipo specifico (prophet o prophet-auto)</li>
+    <li><b>status:</b> Stato corrente (training, completed, failed)</li>
+    <li><b>parameters:</b> Configurazione Prophet utilizzata</li>
+    <li><b>metrics:</b> Performance del modello (MAPE, MAE, RMSE)</li>
+    <li><b>created_at:</b> Timestamp creazione modello</li>
+    <li><b>completed_at:</b> Timestamp completamento training</li>
+    </ul>
+    
+    <h3>Stati del Modello:</h3>
+    <ul>
+    <li><b>training:</b> Modello in fase di addestramento</li>
+    <li><b>auto_selecting:</b> Ricerca parametri ottimali in corso</li>
+    <li><b>completed:</b> Training completato con successo</li>
+    <li><b>failed:</b> Training fallito con errore</li>
+    </ul>
     """
     try:
         model_manager, _ = services

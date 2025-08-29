@@ -115,24 +115,41 @@ class SARIMAXAutoSelector(SARIMAForecaster):
             if validate_input:
                 self._validate_inputs(series, exog)
             
-            # Memorizza dati originali
-            self.training_data = series.copy()
+            # Memorizza dati originali (verrà aggiornato dopo feature engineering)
             self.original_features = list(exog.columns)
             
             # Step 1: Feature Engineering
-            exog_engineered = self._engineer_features(exog, series)
+            exog_engineered, series_aligned = self._engineer_features(exog, series)
             self.logger.info(f"Feature engineering: {len(exog.columns)} → {len(exog_engineered.columns)} feature")
+            self.logger.info(f"Serie allineata: {len(series)} → {len(series_aligned)} obs")
+            
+            # Memorizza dati allineati dopo feature engineering
+            self.training_data = series_aligned.copy()
             
             # Step 2: Preprocessing
             exog_processed = self._preprocess_features(exog_engineered)
             
             # Step 3: Feature Selection
-            exog_selected, selected_indices = self._select_features(exog_processed, series)
+            exog_selected, selected_indices = self._select_features(exog_processed, series_aligned)
             self.logger.info(f"Feature selection: {len(exog_processed.columns)} → {len(exog_selected.columns)} feature")
             
-            # Step 4: Training SARIMAX con feature selezionate
+            # Step 4: Verifica allineamento finale prima del training
+            self.logger.info(f"Verifica allineamento finale:")
+            self.logger.info(f"Serie: {len(series_aligned)} obs, index: {series_aligned.index[0]} to {series_aligned.index[-1]}")
+            self.logger.info(f"Exog: {len(exog_selected)} obs, index: {exog_selected.index[0]} to {exog_selected.index[-1]}")
+            self.logger.info(f"Indici allineati: {series_aligned.index.equals(exog_selected.index)}")
+            
+            if not series_aligned.index.equals(exog_selected.index):
+                self.logger.error("ERRORE: Indici non allineati prima del training SARIMAX!")
+                self.logger.error(f"Serie index dtype: {series_aligned.index.dtype}, Exog index dtype: {exog_selected.index.dtype}")
+                raise ModelTrainingError(
+                    "Indici non allineati dopo preprocessing. "
+                    f"Serie: {len(series_aligned)} obs, Exog: {len(exog_selected)} obs"
+                )
+            
+            # Step 4: Training SARIMAX con feature selezionate e serie allineata
             self.model = SARIMAX(
-                series,
+                series_aligned,
                 exog=exog_selected,
                 order=self.order,
                 seasonal_order=self.seasonal_order,
@@ -256,7 +273,7 @@ class SARIMAXAutoSelector(SARIMAForecaster):
             
             self.logger.debug("Aggiunte interazioni tra variabili")
         
-        # Rimuovi NaN creati da lag/differenze
+        # Rimuovi NaN generati da lags/diff (dropna allinea automaticamente gli indici)
         result = result.dropna()
         
         # Allinea serie temporale ai dati processati
@@ -264,7 +281,7 @@ class SARIMAXAutoSelector(SARIMAForecaster):
         
         self.engineered_features = [col for col in result.columns if col not in original_cols]
         
-        return result
+        return result, series_aligned
     
     def _preprocess_features(self, exog: pd.DataFrame) -> pd.DataFrame:
         """Applica preprocessing alle feature."""
@@ -514,7 +531,11 @@ class SARIMAXAutoSelector(SARIMAForecaster):
         
         # Validazione allineamento indici
         if not series.index.equals(exog.index):
-            self.logger.warning("Indici serie e exog non perfettamente allineati - allineamento automatico")
+            self.logger.warning("Indici serie e exog non perfettamente allineati - applicando allineamento automatico")
+            raise ModelTrainingError(
+                "Indici serie temporale e variabili esogene non sono allineati. "
+                "Assicurarsi che abbiano lo stesso indice temporale."
+            )
     
     def _validate_parameters(self) -> None:
         """Valida parametri inizializzazione."""

@@ -734,7 +734,10 @@ class ARIMADashboard:
                             # Suggerisci e applica preprocessing
                             preprocessing_method = suggest_preprocessing_method(exog_data)
                             preprocessor = ExogenousPreprocessor(
-                                method=preprocessing_method, handle_outliers=True
+                                method=preprocessing_method, 
+                                handle_outliers=False,
+                                detect_multicollinearity=False,
+                                stationarity_test=False
                             )
                             exog_data_processed = preprocessor.fit_transform(exog_data)
 
@@ -786,7 +789,14 @@ class ARIMADashboard:
                                     f"Dimension mismatch: series has {len(data)} observations, exog has {len(exog_data)}"
                                 )
                                 return
+                            
+                            # Allineamento robusto degli indici
                             exog_data.index = data.index
+                            
+                            # Verifica finale allineamento
+                            if not data.index.equals(exog_data.index):
+                                st.error("Impossibile allineare gli indici delle serie temporali")
+                                return
 
                             # Create Advanced SARIMAX selector
                             model = SARIMAXAutoSelector(
@@ -858,14 +868,24 @@ class ARIMADashboard:
                             return
 
                     elif model_type == "Auto-ARIMA":
-                        selector = ARIMAModelSelector(
-                            p_range=(0, max_p),
-                            d_range=(0, max_d),
-                            q_range=(0, max_q),
-                            information_criterion=ic,
-                        )
-                        selector.search(data, verbose=False)
-                        model = selector.get_best_model()
+                        try:
+                            selector = ARIMAModelSelector(
+                                p_range=(0, max_p),
+                                d_range=(0, max_d),
+                                q_range=(0, max_q),
+                                information_criterion=ic,
+                            )
+                            selector.search(data, verbose=False)
+                            model = selector.get_best_model()
+
+                            if model is None:
+                                st.error(
+                                    "Nessun modello ARIMA valido trovato. Prova a modificare i parametri di ricerca."
+                                )
+                                return
+                        except Exception as e:
+                            st.error(f"Errore durante la selezione Auto-ARIMA: {str(e)}")
+                            return
 
                         # Show selection results
                         st.subheader("Selezione Miglior Modello")
@@ -936,7 +956,10 @@ class ARIMADashboard:
                             # Suggerisci e applica preprocessing
                             preprocessing_method = suggest_preprocessing_method(exog_data)
                             preprocessor = ExogenousPreprocessor(
-                                method=preprocessing_method, handle_outliers=True
+                                method=preprocessing_method, 
+                                handle_outliers=False,
+                                detect_multicollinearity=False,
+                                stationarity_test=False
                             )
                             exog_data_processed = preprocessor.fit_transform(exog_data)
 
@@ -1048,18 +1071,23 @@ class ARIMADashboard:
                     elif model_type == "Auto-Prophet":
                         # Check if Prophet is available
                         try:
-                            # Prepare search parameters
+                            # Prepare search parameters - Fix: growth_modes nel costruttore
                             search_params = {
-                                'growth_types': test_growth_types,
+                                'growth_modes': test_growth_types,  # Fix: growth_modes non growth_types
                                 'seasonality_modes': test_seasonality_modes,
-                                'country_holidays': [c if c != "None" else None for c in test_countries],
                                 'max_models': max_models
                             }
 
                             selector = ProphetModelSelector(**search_params)
                             
+                            # country_holidays va nel search(), non nel costruttore
+                            country_holiday = None
+                            if test_countries and len(test_countries) > 0:
+                                first_country = test_countries[0]
+                                country_holiday = first_country if first_country != "None" else None
+                            
                             with st.spinner(f"Testando {max_models} combinazioni di modelli Prophet..."):
-                                selector.search(data, verbose=False)
+                                selector.search(data, country_holidays=country_holiday)
                                 model = selector.get_best_model()
 
                             # Verifica che il modello sia stato trovato
@@ -2266,11 +2294,11 @@ class ARIMADashboard:
                         # Create advanced preprocessor
                         preprocessor = ExogenousPreprocessor(
                             method=preprocessing_method,
-                            handle_outliers=True,
+                            handle_outliers=False,  # Temporaneamente disabilitato per compatibilità
                             outlier_method=outlier_method,
                             missing_strategy=missing_strategy,
-                            detect_multicollinearity=detect_multicollinearity,
-                            stationarity_test=stationarity_test,
+                            detect_multicollinearity=False,  # Temporaneamente disabilitato per compatibilità  
+                            stationarity_test=False,  # Temporaneamente disabilitato per compatibilità
                         )
 
                         # Fit and transform

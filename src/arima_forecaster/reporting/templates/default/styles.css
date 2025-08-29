@@ -1,0 +1,129 @@
+/* Stili CSS per Report ARIMA Forecaster */
+
+/* Limitazione dimensioni immagini esterne */
+.figure img {
+    max-width: 800px !important;
+    width: 100%;
+    height: auto !important;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Stili per tabelle */
+.table {
+    width: 100%;
+    margin-bottom: 1rem;
+    background-color: transparent;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.075);
+}
+
+/* Stili per metriche e risultati */
+#metrics-table, #params-table, #diagnostics-table, #process-table, #forecast-table, #forecast-stats, #exog-vars-table {
+    font-size: 0.95rem;
+}
+
+/* Stili per i titoli delle sezioni */
+h2, h3, h4 {
+    color: #495057;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 0.5rem;
+}
+
+/* Stili per warning e note */
+.text-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.25rem;
+    margin: 1rem 0;
+}
+
+.text-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.25rem;
+    margin: 1rem 0;
+}
+
+/* Stili per i grafici */
+.figure {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.figure-img {
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+/* Stili per le configurazioni */
+#config-informazioni-modello,
+#config-parametri,
+#config-metriche-performance,
+#config-diagnostica,
+#config-training-data,
+#config-forecast,
+#config-altro {
+    font-size: 0.9rem;
+}
+
+/* Stili per raccomandazioni */
+#recommendations p,
+#final-recommendations p {
+    padding-left: 1rem;
+    margin: 0.5rem 0;
+}
+
+/* Stili per l'interpretazione */
+#interpretation p {
+    background-color: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-left: 3px solid #007bff;
+    margin: 0.5rem 0;
+}
+
+/* Media query per responsive design */
+@media (max-width: 768px) {
+    .figure img {
+        max-width: 100% !important;
+    }
+    
+    table {
+        font-size: 0.85rem;
+    }
+}
+
+/* Stili per stampa */
+@media print {
+    .text-warning,
+    .text-danger {
+        border: 1px solid #000;
+        padding: 0.5rem;
+    }
+    
+    h2 {
+        page-break-before: auto;
+        page-break-after: avoid;
+    }
+    
+    table {
+        page-break-inside: avoid;
+    }
+}

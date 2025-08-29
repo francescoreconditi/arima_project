@@ -20,12 +20,13 @@ class QuartoReportGenerator:
     Generates comprehensive Quarto reports for ARIMA, SARIMA and SARIMAX model analysis.
     """
     
-    def __init__(self, output_dir: Union[str, Path] = "outputs/reports"):
+    def __init__(self, output_dir: Union[str, Path] = "outputs/reports", template_name: str = "default"):
         """
         Initialize Quarto report generator.
         
         Args:
             output_dir: Directory where reports will be saved (relative to project root)
+            template_name: Name of the template to use (default: "default")
         """
         # Always save to project root outputs/, regardless of current working directory
         if not os.path.isabs(output_dir):
@@ -44,11 +45,92 @@ class QuartoReportGenerator:
         else:
             self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Setup template directory
+        self.template_name = template_name
+        self.template_dir = Path(__file__).parent / "templates" / template_name
+        if not self.template_dir.exists():
+            raise ForecastError(f"Template '{template_name}' not found in {self.template_dir.parent}")
+        
+        # Load template metadata
+        self.template_metadata = self._load_template_metadata()
+        
         self.logger = get_logger(__name__)
     
-    def _copy_external_resources(self, output_dir: Path) -> Dict[str, str]:
+    def _load_template_metadata(self) -> Dict[str, Any]:
+        """Load template metadata from JSON file."""
+        metadata_path = self.template_dir / "metadata.json"
+        if not metadata_path.exists():
+            self.logger.warning(f"Template metadata not found: {metadata_path}")
+            return {}
+        
+        with open(metadata_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    
+    def _load_template_file(self, filename: str) -> str:
+        """Load a template file content."""
+        file_path = self.template_dir / filename
+        if not file_path.exists():
+            raise ForecastError(f"Template file not found: {file_path}")
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    
+    def _load_format_config(self, format_type: str) -> str:
+        """Load format configuration from template."""
+        format_configs_path = self.template_dir / "format_configs.json"
+        if not format_configs_path.exists():
+            # Fallback to default format YAML
+            return self._get_default_format_yaml(format_type)
+        
+        with open(format_configs_path, 'r', encoding='utf-8') as f:
+            configs = json.load(f)
+        
+        if format_type in configs:
+            return configs[format_type].get('format_yaml', self._get_default_format_yaml(format_type))
+        else:
+            return self._get_default_format_yaml(format_type)
+    
+    def _get_default_format_yaml(self, format_type: str) -> str:
+        """Get default format YAML configuration."""
+        if format_type == "html":
+            return '''format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: true
+    code-summary: "Mostra codice"
+    fig-width: 8
+    fig-height: 5
+    fig-align: center
+    embed-resources: true'''
+        elif format_type == "pdf":
+            return '''format:
+  pdf:
+    geometry: margin=1in
+    toc: true
+    number-sections: true
+    fig-width: 8
+    fig-height: 6'''
+        elif format_type == "docx":
+            return '''format:
+  docx:
+    toc: true
+    number-sections: true
+    fig-width: 8
+    fig-height: 6'''
+        else:
+            return '''format:
+  html:
+    theme: cosmo
+    toc: true
+    embed-resources: true'''
+    
+    def _copy_template_resources(self, output_dir: Path) -> Dict[str, str]:
         """
-        Copy external CSS and JS files to output directory.
+        Copy template CSS and other resources to output directory.
         
         Args:
             output_dir: Directory where resources will be copied
@@ -56,31 +138,30 @@ class QuartoReportGenerator:
         Returns:
             Dict with paths to copied resources
         """
-        resources_dir = Path(__file__).parent / "assets"
-        css_source = resources_dir / "styles.css"
-        js_source = resources_dir / "scripts.js"
+        resources = {}
         
-        css_dest = output_dir / "styles.css"
-        js_dest = output_dir / "scripts.js"
-        
-        # Copy CSS file if it exists
+        # Copy CSS file
+        css_source = self.template_dir / "styles.css"
         if css_source.exists():
+            css_dest = output_dir / "styles.css"
             shutil.copy2(css_source, css_dest)
+            # Return relative path from HTML file to CSS
+            resources['css_path'] = f"{output_dir.name}/styles.css"
         else:
-            self.logger.warning(f"CSS file not found: {css_source}")
-            
-        # Copy JS file if it exists  
+            self.logger.warning(f"Template CSS file not found: {css_source}")
+            resources['css_path'] = ""
+        
+        # Copy any additional JS files from assets directory if they exist
+        assets_dir = Path(__file__).parent / "assets"
+        js_source = assets_dir / "scripts.js"
         if js_source.exists():
+            js_dest = output_dir / "scripts.js"
             shutil.copy2(js_source, js_dest)
+            resources['js_path'] = f"{output_dir.name}/scripts.js"
         else:
-            self.logger.warning(f"JS file not found: {js_source}")
+            resources['js_path'] = ""
             
-        # Return relative paths from HTML file to resources
-        subdir_name = output_dir.name
-        return {
-            'css_path': f"{subdir_name}/styles.css",
-            'js_path': f"{subdir_name}/scripts.js"
-        }
+        return resources
         
     def generate_model_report(
         self,
@@ -154,8 +235,8 @@ class QuartoReportGenerator:
                     # Just use the filename since Quarto will look in the same directory
                     plot_files[plot_name] = f"{plot_name}.png"
         
-        # Generate Quarto document - JSON file is in same directory as QMD
-        qmd_content = self._generate_qmd_content(
+        # Generate Quarto document using template
+        qmd_content = self._generate_qmd_content_from_template(
             title, model_results, plot_files, 'model_results.json', report_dir, format_type
         )
         
@@ -165,7 +246,7 @@ class QuartoReportGenerator:
         
         return qmd_path
     
-    def _generate_qmd_content(
+    def _generate_qmd_content_from_template(
         self,
         title: str,
         model_results: Dict[str, Any],
@@ -174,279 +255,44 @@ class QuartoReportGenerator:
         output_dir: Path,
         format_type: str = "html"
     ) -> str:
-        """Generate Quarto markdown content."""
+        """Generate Quarto markdown content from template files."""
         
-        # Copy external resources and get paths
-        resources = self._copy_external_resources(output_dir)
+        # Copy template resources and get paths
+        resources = self._copy_template_resources(output_dir)
         
-        # Extract key information
+        # Extract key information for placeholders
         model_type = model_results.get('model_type', 'ARIMA')
         order = model_results.get('order', 'N/A')
-        metrics = model_results.get('metrics', {})
-        model_info = model_results.get('model_info', {})
+        date_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # Generate format-specific YAML header
-        if format_type == "html":
-            # Per ora rimuoviamo i riferimenti esterni che causano problemi
-            format_yaml = '''format:
-  html:
-    theme: cosmo
-    toc: true
-    toc-depth: 3
-    toc-location: left
-    code-fold: true
-    code-summary: "Mostra codice"
-    fig-width: 8
-    fig-height: 5
-    fig-align: center
-    embed-resources: true'''
-        elif format_type == "pdf":
-            format_yaml = '''format:
-  pdf:
-    geometry: margin=1in
-    toc: true
-    number-sections: true
-    fig-width: 8
-    fig-height: 6'''
-        elif format_type == "docx":
-            format_yaml = '''format:
-  docx:
-    toc: true
-    number-sections: true
-    fig-width: 8
-    fig-height: 6'''
-        else:
-            # Default to HTML without external resources
-            format_yaml = '''format:
-  html:
-    theme: cosmo
-    toc: true
-    toc-depth: 3
-    toc-location: left
-    code-fold: true
-    code-summary: "Mostra codice"
-    fig-width: 8
-    fig-height: 5
-    fig-align: center
-    embed-resources: true'''
+        # Load format configuration
+        format_yaml = self._load_format_config(format_type)
         
-        qmd_content = f'''---
-title: "{title}"
-subtitle: "Analisi Completa del Modello {model_type}"
-author: "ARIMA Forecaster Library"
-date: "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-{format_yaml}
-execute:
-  echo: false
-  warning: false
-  message: false
-jupyter: python3
----
-
-```{{python}}
-#| include: false
-import json
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime
-from pathlib import Path
-
-# Carica i risultati del modello (using Path for cross-platform compatibility)
-results_file = Path('{results_path_str}')
-with open(results_file, 'r') as f:
-    model_results = json.load(f)
-
-# Configura stile grafici
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for report generation
-plt.style.use('default')
-sns.set_palette("husl")
-plt.rcParams['figure.dpi'] = 100
-plt.rcParams['figure.figsize'] = (8, 5)
-```
-
-## Executive Summary {{#sec-summary}}
-
-### Panoramica del Modello
-
-**Tipo di Modello:** {model_type}  
-**Ordine:** {order}  
-**Data Analisi:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-### Risultati Chiave
-
-```{{python}}
-#| label: tbl-key-metrics
-#| tbl-cap: "Metriche Principali del Modello"
-
-metrics = model_results.get('metrics', {{}})
-if metrics:
-    metrics_df = pd.DataFrame([
-        ['MAE (Mean Absolute Error)', f"{{metrics.get('mae', 'N/A'):.4f}}" if isinstance(metrics.get('mae'), (int, float)) else 'N/A'],
-        ['RMSE (Root Mean Square Error)', f"{{metrics.get('rmse', 'N/A'):.4f}}" if isinstance(metrics.get('rmse'), (int, float)) else 'N/A'],
-        ['MAPE (Mean Absolute Percentage Error)', f"{{metrics.get('mape', 'N/A'):.2f}}%" if isinstance(metrics.get('mape'), (int, float)) else 'N/A'],
-        ['R² Score', f"{{metrics.get('r2_score', 'N/A'):.4f}}" if isinstance(metrics.get('r2_score'), (int, float)) else 'N/A'],
-        ['AIC (Akaike Information Criterion)', f"{{metrics.get('aic', 'N/A'):.2f}}" if isinstance(metrics.get('aic'), (int, float)) else 'N/A'],
-        ['BIC (Bayesian Information Criterion)', f"{{metrics.get('bic', 'N/A'):.2f}}" if isinstance(metrics.get('bic'), (int, float)) else 'N/A'],
-    ], columns=['Metrica', 'Valore'])
-    
-    # Display as rendered HTML table
-    from IPython.display import HTML, display
-    html_table = metrics_df.to_html(index=False, classes='table table-striped', escape=False, table_id='metrics-table')
-    display(HTML(html_table))
-else:
-    display(HTML("<p>Nessuna metrica disponibile</p>"))
-```
-
-## Metodologia e Approccio {{#sec-methodology}}
-
-### Processo di Selezione del Modello
-
-Il modello è stato selezionato attraverso un processo sistematico che include:
-
-1. **Analisi Esplorativa dei Dati**
-   - Verifica della stazionarietà della serie temporale
-   - Identificazione di trend e stagionalità
-   - Analisi di autocorrelazione (ACF) e autocorrelazione parziale (PACF)
-
-2. **Preprocessing dei Dati**
-   - Gestione dei valori mancanti
-   - Rimozione di outlier se necessario
-   - Trasformazioni per raggiungere la stazionarietà
-
-3. **Selezione dei Parametri**
-   - Grid search sui parametri (p, d, q)
-   - Ottimizzazione basata su criteri informativi (AIC, BIC)
-   - Validazione incrociata temporale
-
-### Parametri del Modello
-
-```{{python}}
-#| label: tbl-model-params
-#| tbl-cap: "Parametri del Modello Selezionato"
-
-model_info = model_results.get('model_info', {{}})
-if model_info:
-    params_data = []
-    
-    # Parametri base
-    if 'order' in model_results:
-        order = model_results['order']
-        if isinstance(order, (list, tuple)) and len(order) >= 3:
-            params_data.extend([
-                ['p (Ordine Autoregressivo)', str(order[0])],
-                ['d (Ordine di Differenziazione)', str(order[1])],
-                ['q (Ordine Media Mobile)', str(order[2])]
-            ])
-    
-    # Parametri stagionali se presenti
-    if 'seasonal_order' in model_results:
-        seasonal_order = model_results['seasonal_order']
-        if isinstance(seasonal_order, (list, tuple)) and len(seasonal_order) >= 4:
-            params_data.extend([
-                ['P (Ordine Autoregressivo Stagionale)', str(seasonal_order[0])],
-                ['D (Ordine Differenziazione Stagionale)', str(seasonal_order[1])],
-                ['Q (Ordine Media Mobile Stagionale)', str(seasonal_order[2])],
-                ['S (Periodicità Stagionale)', str(seasonal_order[3])]
-            ])
-    
-    # Variabili esogene se presenti
-    if 'exog_names' in model_results and model_results['exog_names']:
-        exog_names = model_results['exog_names']
-        params_data.append(['Variabili Esogene', ', '.join(exog_names)])
-        params_data.append(['Numero Variabili Esogene', str(len(exog_names))])
-    
-    # Altri parametri del modello
-    for key, value in model_info.items():
-        if key not in ['order', 'seasonal_order', 'exog_names'] and isinstance(value, (str, int, float)):
-            params_data.append([key.replace('_', ' ').title(), str(value)])
-    
-    if params_data:
-        params_df = pd.DataFrame(params_data, columns=['Parametro', 'Valore'])
-        from IPython.display import HTML, display
-        html_table = params_df.to_html(index=False, classes='table table-striped', escape=False, table_id='params-table')
-        display(HTML(html_table))
-    else:
-        display(HTML("<p>Parametri del modello non disponibili</p>"))
-else:
-    display(HTML("<p>Informazioni del modello non disponibili</p>"))
-```
-
-## Analisi dei Risultati {{#sec-results}}
-
-### Performance del Modello
-
-```{{python}}
-#| label: fig-metrics-comparison
-#| fig-cap: "Confronto delle Metriche di Performance"
-
-metrics = model_results.get('metrics', {{}})
-if metrics:
-    # Crea grafico delle metriche principali
-    metric_names = []
-    metric_values = []
-    
-    for metric, value in metrics.items():
-        if isinstance(value, (int, float)) and not np.isnan(value):
-            metric_names.append(metric.upper())
-            metric_values.append(value)
-    
-    if metric_names:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        bars = ax.bar(metric_names, metric_values, color='skyblue', alpha=0.7)
-        ax.set_title('Metriche di Performance del Modello', fontsize=14, fontweight='bold')
-        ax.set_ylabel('Valore')
+        # Load template sections
+        header_content = self._load_template_file("header.qmd")
+        body_content = self._load_template_file("body.qmd")
+        footer_content = self._load_template_file("footer.qmd")
+        config_section = self._load_template_file("config_section.qmd")
         
-        # Aggiungi valori sulle barre
-        for bar, value in zip(bars, metric_values):
-            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(metric_values)*0.01,
-                   f'{{value:.4f}}', ha='center', va='bottom')
+        # Generate plots section
+        plots_section = self._generate_plots_section(plot_files)
         
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.show()
-    else:
-        display(HTML("<p>Nessuna metrica numerica disponibile per la visualizzazione</p>"))
-else:
-    display(HTML("<p>Metriche non disponibili</p>"))
-```
-
-### Diagnostica del Modello
-
-La validazione del modello include diversi test diagnostici:
-
-```{{python}}
-#| label: diagnostics-summary
-#| tbl-cap: "Riassunto Diagnostici del Modello"
-
-diagnostics = model_results.get('diagnostics', {{}})
-if diagnostics:
-    diag_data = []
-    for test, result in diagnostics.items():
-        if isinstance(result, dict):
-            status = "✓ Passato" if result.get('passed', False) else "✗ Fallito"
-            p_value = result.get('p_value', 'N/A')
-            if isinstance(p_value, (int, float)):
-                p_value = f"{{p_value:.4f}}"
-            diag_data.append([test.replace('_', ' ').title(), status, str(p_value)])
-        else:
-            diag_data.append([test.replace('_', ' ').title(), str(result), 'N/A'])
-    
-    if diag_data:
-        diag_df = pd.DataFrame(diag_data, columns=['Test', 'Risultato', 'P-Value'])
-        from IPython.display import HTML, display
-        html_table = diag_df.to_html(index=False, classes='table table-striped', escape=False, table_id='diagnostics-table')
-        display(HTML(html_table))
-    else:
-        display(HTML("<p>Nessun risultato diagnostico disponibile</p>"))
-else:
-    display(HTML("<p>Diagnostici non disponibili</p>"))
-```
-
-## Visualizzazioni {{#sec-plots}}
-
+        # Replace placeholders in header
+        header_content = header_content.replace("{{title}}", title)
+        header_content = header_content.replace("{{model_type}}", model_type)
+        header_content = header_content.replace("{{date}}", date_str)
+        header_content = header_content.replace("{{order}}", str(order))
+        header_content = header_content.replace("{{format_yaml}}", format_yaml)
+        header_content = header_content.replace("{{results_path}}", results_path_str)
+        
+        # Replace placeholders in body
+        body_content = body_content.replace("{{plots_section}}", plots_section)
+        body_content = body_content.replace("{{config_section}}", config_section)
+        
+        # Add custom CSS styles section if CSS exists
+        css_section = ""
+        if resources.get('css_path'):
+            css_section = f'''
 <style>
 /* Limita dimensioni immagini esterne */
 .figure img {{
@@ -457,365 +303,29 @@ else:
     margin: 0 auto;
 }}
 </style>
-
 '''
-
-        # Add plot sections
-        if plot_files:
-            for plot_name, plot_path in plot_files.items():
-                section_title = plot_name.replace('_', ' ').title()
-                qmd_content += f'''
+        
+        # Combine all sections
+        qmd_content = header_content + "\n\n" + body_content + "\n\n" + css_section + "\n\n" + footer_content
+        
+        return qmd_content
+    
+    def _generate_plots_section(self, plot_files: Dict[str, str]) -> str:
+        """Generate the plots section for the report."""
+        if not plot_files:
+            return ""
+        
+        plots_content = ""
+        for plot_name, plot_path in plot_files.items():
+            section_title = plot_name.replace('_', ' ').title()
+            plots_content += f'''
 ### {section_title}
 
 ![{section_title}]({plot_path}){{.figure-img}}
 
 '''
         
-        qmd_content += '''
-## Previsioni e Raccomandazioni {#sec-recommendations}
-
-### Interpretazione dei Risultati
-
-```{python}
-#| label: interpretation
-
-# Analisi delle performance
-metrics = model_results.get('metrics', {})
-interpretation = []
-
-if 'mae' in metrics and isinstance(metrics['mae'], (int, float)):
-    mae_value = metrics['mae']
-    interpretation.append(f"• **MAE ({mae_value:.4f})**: {'Ottimo' if mae_value < 0.1 else 'Buono' if mae_value < 0.5 else 'Accettabile' if mae_value < 1.0 else 'Da migliorare'} - L'errore medio assoluto indica la precisione delle previsioni.")
-
-if 'mape' in metrics and isinstance(metrics['mape'], (int, float)):
-    mape_value = metrics['mape']
-    interpretation.append(f"• **MAPE ({mape_value:.2f}%)**: {'Eccellente' if mape_value < 5 else 'Buono' if mape_value < 10 else 'Accettabile' if mape_value < 20 else 'Da migliorare'} - Errore percentuale medio.")
-
-if 'r2_score' in metrics and isinstance(metrics['r2_score'], (int, float)):
-    r2_value = metrics['r2_score']
-    interpretation.append(f"• **R² Score ({r2_value:.4f})**: {'Ottimo' if r2_value > 0.9 else 'Buono' if r2_value > 0.7 else 'Accettabile' if r2_value > 0.5 else 'Insufficiente'} - Varianza spiegata dal modello.")
-
-if interpretation:
-    for item in interpretation:
-        display(HTML(f"<p>{item}</p>"))
-else:
-    display(HTML("<p>Non sono disponibili metriche per l'interpretazione automatica.</p>"))
-```
-
-### Raccomandazioni Operative
-
-```{python}
-#| label: recommendations
-
-recommendations = []
-
-# Raccomandazioni basate sulle performance
-metrics = model_results.get('metrics', {})
-if 'aic' in metrics and 'bic' in metrics:
-    aic_val = metrics['aic']
-    bic_val = metrics['bic']
-    if isinstance(aic_val, (int, float)) and isinstance(bic_val, (int, float)):
-        if abs(aic_val - bic_val) < 10:
-            recommendations.append("✓ I criteri AIC e BIC sono allineati, indicando un buon bilanciamento complessità/performance")
-        else:
-            recommendations.append("⚠ Differenza significativa tra AIC e BIC - considerare modelli alternativi")
-
-# Raccomandazioni basate sui residui
-diagnostics = model_results.get('diagnostics', {})
-if diagnostics:
-    if diagnostics.get('ljung_box', {}).get('passed', False):
-        recommendations.append("✓ I residui mostrano caratteristiche di rumore bianco")
-    else:
-        recommendations.append("⚠ I residui mostrano autocorrelazione - considerare modelli più complessi")
-
-# Raccomandazioni generali
-recommendations.extend([
-    "• Monitorare la performance su nuovi dati per rilevare eventuali degradi",
-    "• Considerare re-training periodico del modello",
-    "• Valutare l'aggiunta di variabili esogene se disponibili",
-    "• Implementare sistema di alerting per anomalie nelle previsioni"
-])
-
-for rec in recommendations:
-    display(HTML(f"<p>{rec}</p>"))
-```
-
-## Dettagli Tecnici {#sec-technical}
-
-### Informazioni sul Processo
-
-```{python}
-#| label: tbl-process-info
-#| tbl-cap: "Dettagli Tecnici del Processo"
-
-process_info = [
-    ['Data Generazione Report', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-    ['Libreria', 'ARIMA Forecaster'],
-    ['Versione Python', model_results.get('python_version', 'N/A')],
-    ['Ambiente', model_results.get('environment', 'N/A')]
-]
-
-# Aggiungi informazioni sui dati se disponibili
-if 'data_info' in model_results:
-    data_info = model_results['data_info']
-    for key, value in data_info.items():
-        process_info.append([key.replace('_', ' ').title(), str(value)])
-
-process_df = pd.DataFrame(process_info, columns=['Parametro', 'Valore'])
-from IPython.display import HTML, display
-html_table = process_df.to_html(index=False, classes='table table-striped', escape=False, table_id='process-table')
-display(HTML(html_table))
-```
-
-### Configurazione Completa
-
-```{python}
-#| label: full-config
-#| code-fold: false
-#| echo: false
-
-import pandas as pd
-from IPython.display import HTML, display
-
-def flatten_dict(d, parent_key='', sep='.'):
-    """Appiattisce un dizionario nested in formato chiave-valore"""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        # Formatta la chiave in modo più leggibile
-        formatted_key = new_key.replace('_', ' ').title()
-        
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        elif isinstance(v, list):
-            # Se è una lista, mostrala come stringa formattata
-            if len(v) > 0 and isinstance(v[0], (int, float)):
-                # Se è una lista di numeri, mostra solo i primi elementi
-                if len(v) > 5:
-                    v_str = f"[{', '.join(map(str, v[:5]))}, ... ({len(v)} valori totali)]"
-                else:
-                    v_str = f"[{', '.join(map(str, v))}]"
-            else:
-                v_str = str(v)
-            items.append((formatted_key, v_str))
-        else:
-            # Formatta i valori numerici
-            if isinstance(v, float):
-                if abs(v) > 1000:
-                    v_str = f"{v:,.2f}"
-                else:
-                    v_str = f"{v:.4f}"
-            else:
-                v_str = str(v)
-            items.append((formatted_key, v_str))
-    return dict(items)
-
-# Crea tabella con configurazione completa
-config_data = flatten_dict(model_results)
-
-# Organizza i dati in categorie
-categories = {
-    'Informazioni Modello': [],
-    'Parametri': [],
-    'Metriche Performance': [],
-    'Diagnostica': [],
-    'Training Data': [],
-    'Forecast': [],
-    'Altro': []
-}
-
-for key, value in config_data.items():
-    key_lower = key.lower()
-    if 'model' in key_lower or 'type' in key_lower or 'status' in key_lower:
-        categories['Informazioni Modello'].append((key, value))
-    elif 'order' in key_lower or 'seasonal' in key_lower or 'trend' in key_lower:
-        categories['Parametri'].append((key, value))
-    elif any(metric in key_lower for metric in ['mae', 'rmse', 'mape', 'r2', 'aic', 'bic', 'accuracy']):
-        categories['Metriche Performance'].append((key, value))
-    elif any(diag in key_lower for diag in ['ljung', 'jarque', 'heteroscedasticity', 'stationarity', 'residual']):
-        categories['Diagnostica'].append((key, value))
-    elif 'training' in key_lower or 'observations' in key_lower:
-        categories['Training Data'].append((key, value))
-    elif 'forecast' in key_lower or 'prediction' in key_lower:
-        categories['Forecast'].append((key, value))
-    else:
-        categories['Altro'].append((key, value))
-
-# Crea HTML con tabelle separate per categoria
-html_output = ""
-for category, items in categories.items():
-    if items:
-        html_output += f"<h4 style='color: #495057; margin-top: 20px;'>{category}</h4>"
-        df = pd.DataFrame(items, columns=['Parametro', 'Valore'])
-        html_table = df.to_html(
-            index=False, 
-            classes='table table-striped table-hover', 
-            escape=False,
-            table_id=f'config-{category.lower().replace(" ", "-")}'
-        )
-        html_output += html_table
-
-display(HTML(html_output))
-```
-
-## Forecast {#sec-forecast}
-
-### Previsioni del Modello
-
-```{python}
-#| label: forecast-analysis
-#| fig-cap: "Andamento delle Previsioni con Intervalli di Confidenza"
-
-forecast_data = model_results.get('forecast', {})
-forecast_note = model_results.get('forecast_note', '')
-
-if forecast_data and 'values' in forecast_data:
-    # Abbiamo dati di forecast
-    forecast_values = forecast_data['values']
-    forecast_index = forecast_data.get('index', list(range(len(forecast_values))))
-    steps = forecast_data.get('steps', len(forecast_values))
-    confidence_level = forecast_data.get('confidence_level', 0.95)
-    
-    # Crea tabella dei risultati (converte stringhe in float se necessario)
-    forecast_values = [float(val) if isinstance(val, str) else val for val in forecast_values]
-    forecast_df = pd.DataFrame({
-        'Periodo': forecast_index,
-        'Valore Previsto': [f"{val:.2f}" for val in forecast_values]
-    })
-    
-    # Aggiungi intervalli di confidenza se disponibili
-    if 'confidence_intervals' in forecast_data:
-        conf_int = forecast_data['confidence_intervals']
-        lower_vals = [float(val) if isinstance(val, str) else val for val in conf_int['lower']]
-        upper_vals = [float(val) if isinstance(val, str) else val for val in conf_int['upper']]
-        forecast_df['Limite Inferiore'] = [f"{val:.2f}" for val in lower_vals]
-        forecast_df['Limite Superiore'] = [f"{val:.2f}" for val in upper_vals]
-    
-    from IPython.display import HTML, display
-    # Crea header HTML invece di usare print
-    header_html = f"<h4>Tabella Previsioni ({steps} periodi)</h4>"
-    html_table = forecast_df.to_html(index=False, classes='table table-striped', escape=False, table_id='forecast-table')
-    # Combina header e tabella
-    full_html = header_html + html_table
-    display(HTML(full_html))
-    
-    # Crea grafico delle previsioni
-    try:
-        fig, ax = plt.subplots(figsize=(12, 6))
-        
-        # Plot dei valori previsti
-        x_pos = list(range(len(forecast_values)))
-        ax.plot(x_pos, forecast_values, 'ro-', linewidth=2, markersize=6, label=f'Previsioni', color='red')
-        
-        # Plot degli intervalli di confidenza se disponibili
-        if 'confidence_intervals' in forecast_data:
-            conf_int = forecast_data['confidence_intervals']
-            lower_vals = [float(val) if isinstance(val, str) else val for val in conf_int['lower']]
-            upper_vals = [float(val) if isinstance(val, str) else val for val in conf_int['upper']]
-            ax.fill_between(x_pos, lower_vals, upper_vals, 
-                           alpha=0.3, color='red', label=f'Intervallo {confidence_level:.0%}')
-        
-        ax.set_title(f'Previsioni del Modello - {steps} Periodi Futuri', fontsize=14, fontweight='bold')
-        ax.set_xlabel('Periodo')
-        ax.set_ylabel('Valore Previsto')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-        
-        # Aggiungi etichette sui punti
-        for i, (x, y) in enumerate(zip(x_pos, forecast_values)):
-            if i % max(1, len(x_pos)//10) == 0:  # Mostra ogni 10° etichetta per evitare sovraffollamento
-                ax.annotate(f'{y:.1f}', (x, y), textcoords="offset points", xytext=(0,10), ha='center', fontsize=8)
-        
-        plt.xticks(x_pos[::max(1, len(x_pos)//10)], 
-                  [str(idx) for idx in forecast_index[::max(1, len(x_pos)//10)]], 
-                  rotation=45)
-        plt.tight_layout()
-        plt.show()
-        
-        # Statistiche delle previsioni
-        display(HTML("<h4>Statistiche Previsioni</h4>"))
-        stats_data = [
-            ['Valore Medio Previsto', f"{np.mean(forecast_values):.2f}"],
-            ['Valore Minimo', f"{np.min(forecast_values):.2f}"],
-            ['Valore Massimo', f"{np.max(forecast_values):.2f}"],
-            ['Deviazione Standard', f"{np.std(forecast_values):.2f}"]
-        ]
-        
-        if 'confidence_intervals' in forecast_data:
-            conf_int = forecast_data['confidence_intervals']
-            lower_vals = [float(val) if isinstance(val, str) else val for val in conf_int['lower']]
-            upper_vals = [float(val) if isinstance(val, str) else val for val in conf_int['upper']]
-            avg_interval_width = np.mean(np.array(upper_vals) - np.array(lower_vals))
-            stats_data.append(['Larghezza Media Intervallo', f"{avg_interval_width:.2f}"])
-        
-        stats_df = pd.DataFrame(stats_data, columns=['Statistica', 'Valore'])
-        html_table = stats_df.to_html(index=False, classes='table table-striped', escape=False, table_id='forecast-stats')
-        display(HTML(html_table))
-        
-    except Exception as e:
-        display(HTML(f"<p class='text-danger'>Impossibile generare grafico delle previsioni: {e}</p>"))
-        
-elif forecast_note:
-    # Abbiamo una nota sul perché il forecast non è disponibile
-    display(HTML("<h4>Nota sulle Previsioni</h4>"))
-    display(HTML(f"<p class='text-warning'>⚠️ {forecast_note}</p>"))
-    
-    # Se è un modello SARIMAX, fornisci suggerimenti
-    model_type = model_results.get('model_type', '')
-    if 'SARIMAX' in model_type:
-        display(HTML("<p><strong>Suggerimento per modelli SARIMAX:</strong></p>"))
-        display(HTML("<ul><li>I modelli SARIMAX richiedono variabili esogene future per generare previsioni</li>"))
-        display(HTML("<li>Assicurati di fornire i valori futuri delle variabili esogene utilizzate durante l'addestramento</li></ul>"))
-        if 'exog_names' in model_results:
-            exog_names = model_results['exog_names']
-            display(HTML(f"<p>- Variabili esogene richieste: {', '.join(exog_names)}</p>"))
-else:
-    display(HTML("<h4>Previsioni Non Disponibili</h4>"))
-    display(HTML("<p>I dati di previsione non sono stati generati per questo modello.</p>"))
-```
-
-### Variabili Esogene (solo per modelli SARIMAX)
-
-```{python}
-#| label: exogenous-variables
-#| tbl-cap: "Variabili Esogene Utilizzate"
-
-model_type = model_results.get('model_type', '')
-exog_names = model_results.get('exog_names', [])
-
-if 'SARIMAX' in model_type and exog_names:
-    display(HTML(f"<h4>Variabili Esogene Utilizzate nel Modello {model_type}</h4>"))
-    
-    exog_df = pd.DataFrame({
-        'Variabile': exog_names,
-        'Descrizione': [f"Variabile esogena {i+1}" for i in range(len(exog_names))]
-    })
-    
-    from IPython.display import HTML, display
-    html_table = exog_df.to_html(index=False, classes='table table-striped', escape=False, table_id='exog-vars-table')
-    display(HTML(html_table))
-    
-    display(HTML(f"<p><strong>Numero totale di variabili esogene:</strong> {len(exog_names)}</p>"))
-    display(HTML("<p><strong>Importanza delle Variabili Esogene:</strong></p>"))
-    display(HTML("<p>Le variabili esogene forniscono informazioni aggiuntive al modello che possono migliorare l'accuratezza delle previsioni. Queste variabili rappresentano fattori esterni che influenzano la serie temporale ma non sono predetti dal modello stesso.</p>"))
-
-elif 'SARIMAX' in model_type and not exog_names:
-    display(HTML("<p class='text-warning'>⚠️ Modello SARIMAX configurato ma nessuna variabile esogena rilevata.</p>"))
-    
-else:
-    display(HTML("<p>Questo modello non utilizza variabili esogene.</p>"))
-```
-
----
-
-*Report generato automaticamente dalla libreria ARIMA Forecaster*
-'''
-        
-        # Replace placeholders with actual resource paths
-        qmd_content = qmd_content.replace('{{CSS_PATH}}', resources['css_path'])
-        qmd_content = qmd_content.replace('{{JS_PATH}}', resources['js_path'])
-        
-        return qmd_content
+        return plots_content
     
     def _render_report(self, qmd_path: Path, format_type: str, output_filename: str) -> Path:
         """Render Quarto document to specified format."""
@@ -982,35 +492,39 @@ else:
             
             html_content = re.sub(pattern, replace_img_path, html_content)
             
-            # 4. Copy external resources and inject references
-            report_dir = html_path.parent / f"{output_filename}_files"
-            resources = self._copy_external_resources(report_dir)
+            # 4. Inject magnifying lens CSS and JavaScript if JS file exists
+            report_dir = html_path.parent / files_dir
+            js_path = report_dir / "scripts.js"
+            css_path = report_dir / "styles.css"
             
-            # Inject magnifying lens CSS and JavaScript before </head>
-            magnifier_code = f'''<link rel="stylesheet" href="{resources['css_path']}" />
-<script src="{resources['js_path']}"></script>
-'''
-            # Inject the magnifier code before </head> tag
-            head_pattern = r'</head>'
-            if re.search(head_pattern, html_content, re.IGNORECASE):
-                html_content = re.sub(
-                    head_pattern, 
-                    magnifier_code + '\n</head>', 
-                    html_content, 
-                    flags=re.IGNORECASE
-                )
-                self.logger.info(f"Injected magnifying lens functionality into HTML report")
-            else:
-                self.logger.warning("Could not find </head> tag to inject magnifying lens code")
+            if js_path.exists() or css_path.exists():
+                magnifier_code = ""
+                if css_path.exists():
+                    magnifier_code += f'<link rel="stylesheet" href="{files_dir}/styles.css" />\n'
+                if js_path.exists():
+                    magnifier_code += f'<script src="{files_dir}/scripts.js"></script>\n'
+                
+                # Inject the magnifier code before </head> tag
+                head_pattern = r'</head>'
+                if re.search(head_pattern, html_content, re.IGNORECASE):
+                    html_content = re.sub(
+                        head_pattern, 
+                        magnifier_code + '</head>', 
+                        html_content, 
+                        flags=re.IGNORECASE
+                    )
+                    self.logger.info(f"Injected external resources into HTML report")
+                else:
+                    self.logger.warning("Could not find </head> tag to inject external resources")
             
             # Write back the fixed HTML
             with open(html_path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
                 
-            self.logger.info(f"Fixed all resource paths and injected magnifying lens in HTML report: {html_path}")
+            self.logger.info(f"Fixed all resource paths in HTML report: {html_path}")
             
         except Exception as e:
-            self.logger.warning(f"Could not fix HTML resources or inject magnifying lens: {e}")
+            self.logger.warning(f"Could not fix HTML resources: {e}")
             # Don't fail the entire report generation for this issue
     
     def create_comparison_report(
@@ -1018,7 +532,8 @@ else:
         models_results: Dict[str, Dict[str, Any]],
         report_title: str = "ARIMA Models Comparison Report",
         output_filename: str = None,
-        format_type: str = "html"
+        format_type: str = "html",
+        template_name: str = None
     ) -> Path:
         """
         Generate comparative analysis report for multiple models.
@@ -1028,11 +543,19 @@ else:
             report_title: Title for the report
             output_filename: Custom filename for the report
             format_type: Output format ('html', 'pdf', 'docx')
+            template_name: Template to use (default: use instance template)
             
         Returns:
             Path to generated report
         """
         try:
+            # Use custom template if provided
+            if template_name and template_name != self.template_name:
+                old_template = self.template_name
+                self.template_name = template_name
+                self.template_dir = Path(__file__).parent / "templates" / template_name
+                self.template_metadata = self._load_template_metadata()
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if output_filename is None:
                 output_filename = f"models_comparison_{timestamp}"
@@ -1050,7 +573,7 @@ else:
                 json.dump(serializable_results, f, indent=2)
             
             # Generate comparison document
-            qmd_content = self._generate_comparison_qmd(report_title, models_results, results_path)
+            qmd_content = self._generate_comparison_qmd(report_title, models_results, results_path, format_type)
             
             qmd_path = report_dir / "comparison_report.qmd"
             with open(qmd_path, 'w', encoding='utf-8') as f:
@@ -1058,6 +581,12 @@ else:
             
             # Render report
             output_path = self._render_report(qmd_path, format_type, output_filename)
+            
+            # Restore original template if changed
+            if template_name and template_name != old_template:
+                self.template_name = old_template
+                self.template_dir = Path(__file__).parent / "templates" / old_template
+                self.template_metadata = self._load_template_metadata()
             
             self.logger.info(f"Comparison report generated: {output_path}")
             return output_path
@@ -1070,28 +599,24 @@ else:
         self, 
         title: str, 
         models_results: Dict[str, Dict[str, Any]], 
-        results_path: Path
+        results_path: Path,
+        format_type: str = "html"
     ) -> str:
         """Generate Quarto document for models comparison."""
         
+        # Get format configuration
+        format_yaml = self._load_format_config(format_type)
+        
+        # For comparison reports, we still use the embedded template for now
+        # In future, this could also be modularized
+        model_type = "Multiple Models"
+        
         qmd_content = f'''---
 title: "{title}"
-subtitle: "Analisi Completa del Modello {model_type}"
+subtitle: "Analisi Comparativa Modelli"
 author: "ARIMA Forecaster Library"
 date: "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-format:
-  html:
-    theme: cosmo
-    toc: true
-    toc-depth: 3
-    code-fold: true
-    code-summary: "Mostra codice"
-    fig-width: 12
-    fig-height: 8
-  pdf:
-    geometry: margin=1in
-    toc: true
-    number-sections: true
+{format_yaml}
 execute:
   echo: false
   warning: false
@@ -1140,8 +665,9 @@ for model_name, results in models_results.items():
 models_df = pd.DataFrame(models_data, columns=[
     'Nome Modello', 'Tipo', 'Ordine (p,d,q)', 'Ordine Stagionale', 'AIC'
 ])
-from IPython.display import display, Markdown
-display(Markdown(models_df.to_markdown(index=False)))
+from IPython.display import display, Markdown, HTML
+html_table = models_df.to_html(index=False, classes='table table-striped', escape=False)
+display(HTML(html_table))
 ```
 
 ## Confronto Performance
@@ -1263,7 +789,8 @@ ranking_df = pd.DataFrame(ranking_data, columns=[
 # Aggiungi ranking
 ranking_df.insert(0, 'Rank', range(1, len(ranking_df) + 1))
 
-display(Markdown(ranking_df.to_markdown(index=False)))
+html_table = ranking_df.to_html(index=False, classes='table table-striped', escape=False)
+display(HTML(html_table))
 ```
 
 ## Raccomandazioni Finali
@@ -1273,7 +800,7 @@ display(Markdown(ranking_df.to_markdown(index=False)))
 
 if len(ranking_df) > 0:
     best_model = ranking_df.iloc[0]['Modello']
-    display(HTML(f"<h3>Modello Raccomandato: {best_model}</h3>"))
+    display(HTML(f"<h3>Modello Raccomandato: {{best_model}}</h3>"))
     
     best_results = models_results.get(best_model, {{}})
     best_metrics = best_results.get('metrics', {{}})
@@ -1290,7 +817,7 @@ if len(ranking_df) > 0:
         recommendations.append(f"• **Modello alternativo**: {{second_best}} - Considerare come alternativa")
     
     for rec in recommendations:
-        display(HTML(f"<p>{rec}</p>"))
+        display(HTML(f"<p>{{rec}}</p>"))
 else:
     display(HTML("<p>Nessun modello disponibile per le raccomandazioni</p>"))
 ```
@@ -1299,9 +826,5 @@ else:
 
 *Report comparativo generato automaticamente dalla libreria ARIMA Forecaster*
 '''
-        
-        # Replace placeholders with actual resource paths
-        qmd_content = qmd_content.replace('{{CSS_PATH}}', resources['css_path'])
-        qmd_content = qmd_content.replace('{{JS_PATH}}', resources['js_path'])
         
         return qmd_content

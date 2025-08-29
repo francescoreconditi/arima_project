@@ -39,6 +39,7 @@ class ARIMAModelSelector:
         self.results = []
         self.best_order = None
         self.best_model = None
+        self.training_series = None
         self.logger = get_logger(__name__)
         
         if self.information_criterion not in ['aic', 'bic', 'hqic']:
@@ -63,6 +64,7 @@ class ARIMAModelSelector:
         """
         self.logger.info(f"Avvio selezione modello ARIMA con criterio {self.information_criterion.upper()}")
         self.results = []
+        self.training_series = series
         
         # Genera tutte le combinazioni
         p_values = list(range(self.p_range[0], self.p_range[1] + 1))
@@ -87,7 +89,7 @@ class ARIMAModelSelector:
                 
                 # Addestra modello
                 model = ARIMA(series, order=order)
-                fitted_model = model.fit(disp=False)
+                fitted_model = model.fit()
                 
                 # Ottieni valore criterio
                 if self.information_criterion == 'aic':
@@ -128,6 +130,27 @@ class ARIMAModelSelector:
         self.logger.info(f"Miglior modello: ARIMA{best_order} con {self.information_criterion.upper()}={best_criterion:.2f}")
         
         return best_order
+    
+    def get_best_model(self) -> Optional['ARIMAForecaster']:
+        """
+        Ottieni il miglior modello ARIMA addestrato.
+        
+        Returns:
+            Istanza ARIMAForecaster migliore o None se nessun modello addestrato
+        """
+        if self.best_model is None:
+            return None
+        
+        # Importa qui per evitare circular imports
+        from .arima_model import ARIMAForecaster
+        
+        # Crea un'istanza ARIMAForecaster con l'ordine ottimale
+        forecaster = ARIMAForecaster(order=self.best_order)
+        forecaster.fitted_model = self.best_model
+        forecaster.is_fitted = True
+        forecaster.training_data = self.training_series
+        
+        return forecaster
     
     def get_results_summary(self, top_n: int = 10) -> pd.DataFrame:
         """

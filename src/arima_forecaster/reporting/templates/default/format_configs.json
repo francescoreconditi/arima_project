@@ -1,0 +1,17 @@
+{
+  "html": {
+    "format_yaml": "format:\n  html:\n    theme: cosmo\n    toc: true\n    toc-depth: 3\n    toc-location: left\n    code-fold: true\n    code-summary: \"Mostra codice\"\n    fig-width: 8\n    fig-height: 5\n    fig-align: center\n    embed-resources: true",
+    "extensions": [".html"],
+    "description": "Report HTML interattivo con stili Bootstrap"
+  },
+  "pdf": {
+    "format_yaml": "format:\n  pdf:\n    geometry: margin=1in\n    toc: true\n    number-sections: true\n    fig-width: 8\n    fig-height: 6",
+    "extensions": [".pdf"],
+    "description": "Report PDF per documentazione formale"
+  },
+  "docx": {
+    "format_yaml": "format:\n  docx:\n    toc: true\n    number-sections: true\n    fig-width: 8\n    fig-height: 6",
+    "extensions": [".docx"],
+    "description": "Report Word per editing e condivisione"
+  }
+}
