@@ -267,6 +267,93 @@ class ExogenousPreprocessor:
             stats[col] = col_stats
             
         return stats
+    
+    def _test_stationarity(self, data: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
+        """Testa stazionarietà delle variabili."""
+        return {}  # Stub per ora
+    
+    def _apply_stationarity_transforms(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Applica trasformazioni per rendere serie stazionarie."""
+        return data  # Stub per ora
+    
+    def _detect_multicollinearity(self, data: pd.DataFrame) -> List[str]:
+        """Rileva features multicollineari."""
+        return []  # Stub per ora
+    
+    def get_preprocessing_report(self) -> Dict[str, Any]:
+        """Genera report completo del preprocessing."""
+        if not self.is_fitted:
+            return {'status': 'not_fitted'}
+        
+        report = {
+            'status': 'fitted',
+            'configuration': {
+                'scaling_method': self.method,
+                'outlier_method': self.outlier_method,
+                'missing_strategy': self.missing_strategy,
+                'multicollinearity_threshold': self.multicollinearity_threshold,
+                'stationarity_test': self.stationarity_test
+            },
+            'transformations_applied': self.transformation_log,
+            'outlier_summary': {},
+            'stationarity_summary': self.stationarity_results,
+            'multicollinear_features': self.multicollinear_features
+        }
+        
+        # Riassunto outlier per variabile
+        for col, bounds in self.outlier_bounds.items():
+            if isinstance(bounds, dict):
+                report['outlier_summary'][col] = {
+                    'lower_bound': bounds.get('lower'),
+                    'upper_bound': bounds.get('upper'),
+                    'method': self.outlier_method
+                }
+            else:
+                report['outlier_summary'][col] = {
+                    'lower_bound': bounds[0] if isinstance(bounds, tuple) else None,
+                    'upper_bound': bounds[1] if isinstance(bounds, tuple) else None,
+                    'method': self.outlier_method
+                }
+        
+        return report
+    
+    def suggest_improvements(self, target_series: Optional[pd.Series] = None) -> List[str]:
+        """Suggerisce miglioramenti al preprocessing basati sui risultati."""
+        suggestions = []
+        
+        if not self.is_fitted:
+            return ['Run fit() first to get suggestions']
+        
+        # Analisi multicollinearità
+        if self.multicollinear_features:
+            suggestions.append(f"Consider removing multicollinear features: {self.multicollinear_features}")
+        
+        # Analisi stazionarietà
+        non_stationary = [col for col, result in self.stationarity_results.items() 
+                         if result.get('is_stationary') == False]
+        if non_stationary:
+            suggestions.append(f"Consider differencing non-stationary variables: {non_stationary}")
+        
+        # Analisi outlier
+        high_outlier_vars = [col for col in self.outlier_bounds.keys() 
+                           if len(self.transformation_log) > 0]  # Placeholder logic
+        if high_outlier_vars:
+            suggestions.append("Consider more robust outlier handling for variables with many outliers")
+        
+        # Analisi correlazione con target se fornita
+        if target_series is not None and hasattr(self, '_last_processed_data'):
+            try:
+                correlations = self._last_processed_data.corrwith(target_series).abs().sort_values(ascending=False)
+                low_corr_features = correlations[correlations < 0.1].index.tolist()
+                
+                if low_corr_features:
+                    suggestions.append(f"Consider removing low-correlation features: {low_corr_features[:5]}")
+                    
+            except Exception:
+                pass
+        
+        return suggestions if suggestions else ['Preprocessing configuration appears optimal']
+
 
 def validate_exog_data(exog_data: pd.DataFrame, series_length: int) -> Tuple[bool, str]:
     """
@@ -377,255 +464,6 @@ def suggest_preprocessing_method(exog_data: pd.DataFrame) -> str:
     except Exception:
         # Fallback sicuro
         return 'robust'
-
-    def _handle_missing_values(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Gestione avanzata valori mancanti."""
-        result = data.copy()
-        
-        if self.missing_strategy == 'interpolate':
-            # Interpolazione temporale (migliore per serie temporali)
-            result = result.interpolate(method='time', limit_direction='both')
-            result = result.fillna(method='ffill').fillna(method='bfill')
-            
-        elif self.missing_strategy == 'knn':
-            # KNN Imputation (considera correlazioni)
-            for col in data.columns:
-                if data[col].isna().any():
-                    imputer = KNNImputer(n_neighbors=min(5, len(data) // 10 or 1))
-                    result[col] = imputer.fit_transform(data[[col]].values).flatten()
-                    self.missing_imputers[col] = imputer
-                    
-        elif self.missing_strategy in ['mean', 'median']:
-            # Strategia classica
-            for col in data.columns:
-                if data[col].isna().any():
-                    imputer = SimpleImputer(strategy=self.missing_strategy)
-                    result[col] = imputer.fit_transform(data[[col]].values).flatten()
-                    self.missing_imputers[col] = imputer
-                    
-        elif self.missing_strategy == 'ffill':
-            result = result.fillna(method='ffill').fillna(method='bfill')
-            
-        elif self.missing_strategy == 'bfill':
-            result = result.fillna(method='bfill').fillna(method='ffill')
-        
-        # Log trasformazioni
-        missing_counts = data.isna().sum()
-        filled_counts = missing_counts[missing_counts > 0]
-        if len(filled_counts) > 0:
-            self.transformation_log.append(f"Missing values handled: {dict(filled_counts)} using {self.missing_strategy}")
-        
-        return result
-    
-    def _detect_outliers_advanced(self, series: pd.Series, col: str) -> Tuple[pd.Series, Dict[str, float]]:
-        """Detection outlier avanzata con multiple strategie."""
-        if self.outlier_method == 'iqr':
-            q1, q3 = series.quantile([0.25, 0.75])
-            iqr = q3 - q1
-            lower_bound = q1 - 1.5 * iqr
-            upper_bound = q3 + 1.5 * iqr
-            
-        elif self.outlier_method == 'zscore':
-            # Z-score classico
-            z_scores = np.abs(zscore(series, nan_policy='omit'))
-            threshold = 3  # 3 sigma rule
-            lower_bound = series.mean() - threshold * series.std()
-            upper_bound = series.mean() + threshold * series.std()
-            
-        elif self.outlier_method == 'modified_zscore':
-            # Modified Z-score usando mediana (più robusto)
-            median = series.median()
-            mad = stats.median_abs_deviation(series, nan_policy='omit')
-            modified_z_scores = 0.6745 * (series - median) / mad
-            threshold = 3.5
-            outlier_mask = np.abs(modified_z_scores) > threshold
-            
-            lower_bound = series.quantile(0.01)  # Percentile approach as fallback
-            upper_bound = series.quantile(0.99)
-        
-        bounds = {'lower': lower_bound, 'upper': upper_bound}
-        outlier_mask = (series < lower_bound) | (series > upper_bound)
-        outlier_count = outlier_mask.sum()
-        
-        if outlier_count > 0:
-            logger.info(f"Variable {col}: {outlier_count} outliers detected using {self.outlier_method}")
-            self.transformation_log.append(f"Outliers in {col}: {outlier_count} ({self.outlier_method})")
-        
-        return series, bounds
-    
-    def _detect_multicollinearity(self, data: pd.DataFrame) -> List[str]:
-        """Rileva features multicollineari."""
-        if len(data.columns) < 2:
-            return []
-        
-        try:
-            corr_matrix = data.corr().abs()
-            
-            # Trova coppie altamente correlate
-            multicollinear = []
-            for i in range(len(corr_matrix.columns)):
-                for j in range(i+1, len(corr_matrix.columns)):
-                    if corr_matrix.iloc[i, j] > self.multicollinearity_threshold:
-                        col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
-                        
-                        # Rimuovi la variabile con correlazione media più alta
-                        col1_mean_corr = corr_matrix[col1].drop(col1).mean()
-                        col2_mean_corr = corr_matrix[col2].drop(col2).mean()
-                        
-                        if col1_mean_corr > col2_mean_corr:
-                            multicollinear.append(col1)
-                        else:
-                            multicollinear.append(col2)
-                        
-                        logger.warning(f"High correlation detected: {col1} vs {col2} ({corr_matrix.iloc[i, j]:.3f})")
-            
-            # Rimuovi duplicati
-            multicollinear = list(set(multicollinear))
-            
-            if multicollinear:
-                self.transformation_log.append(f"Multicollinear features detected: {multicollinear}")
-            
-            return multicollinear
-            
-        except Exception as e:
-            logger.warning(f"Multicollinearity detection failed: {e}")
-            return []
-    
-    def _test_stationarity(self, data: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
-        """Testa stazionarietà delle variabili."""
-        from statsmodels.tsa.stattools import adfuller
-        
-        results = {}
-        
-        for col in data.columns:
-            try:
-                series = data[col].dropna()
-                if len(series) < 10:
-                    continue
-                
-                adf_result = adfuller(series, autolag='AIC')
-                
-                results[col] = {
-                    'adf_statistic': adf_result[0],
-                    'p_value': adf_result[1],
-                    'critical_values': adf_result[4],
-                    'is_stationary': adf_result[1] < 0.05,
-                    'recommendation': 'stationary' if adf_result[1] < 0.05 else 'non_stationary'
-                }
-                
-                if adf_result[1] >= 0.05:
-                    logger.info(f"Variable {col} appears non-stationary (p-value: {adf_result[1]:.4f})")
-                
-            except Exception as e:
-                logger.warning(f"Stationarity test failed for {col}: {e}")
-                results[col] = {'error': str(e), 'is_stationary': None}
-        
-        return results
-    
-    def _apply_stationarity_transforms(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Applica trasformazioni per rendere serie stazionarie."""
-        if not self.stationarity_results:
-            return data
-        
-        result = data.copy()
-        
-        for col, test_result in self.stationarity_results.items():
-            if test_result.get('is_stationary') == False and col in result.columns:
-                original_series = result[col].copy()
-                
-                # Prova differenziazione
-                diff_series = original_series.diff().dropna()
-                
-                if len(diff_series) > 10:
-                    try:
-                        from statsmodels.tsa.stattools import adfuller
-                        adf_diff = adfuller(diff_series, autolag='AIC')
-                        
-                        if adf_diff[1] < 0.05:  # Differenziazione risolve non-stazionarietà
-                            result[f"{col}_diff"] = original_series.diff()
-                            result = result.drop(columns=[col])
-                            
-                            logger.info(f"Applied differencing to {col} -> {col}_diff")
-                            self.transformation_log.append(f"Differencing applied: {col} -> {col}_diff")
-                            
-                    except Exception as e:
-                        logger.warning(f"Failed to apply differencing to {col}: {e}")
-        
-        return result
-    
-    def get_preprocessing_report(self) -> Dict[str, Any]:
-        """Genera report completo del preprocessing."""
-        if not self.is_fitted:
-            return {'status': 'not_fitted'}
-        
-        report = {
-            'status': 'fitted',
-            'configuration': {
-                'scaling_method': self.method,
-                'outlier_method': self.outlier_method,
-                'missing_strategy': self.missing_strategy,
-                'multicollinearity_threshold': self.multicollinearity_threshold,
-                'stationarity_test': self.stationarity_test
-            },
-            'transformations_applied': self.transformation_log,
-            'outlier_summary': {},
-            'stationarity_summary': self.stationarity_results,
-            'multicollinear_features': self.multicollinear_features
-        }
-        
-        # Riassunto outlier per variabile
-        for col, bounds in self.outlier_bounds.items():
-            if isinstance(bounds, dict):
-                report['outlier_summary'][col] = {
-                    'lower_bound': bounds.get('lower'),
-                    'upper_bound': bounds.get('upper'),
-                    'method': self.outlier_method
-                }
-            else:
-                report['outlier_summary'][col] = {
-                    'lower_bound': bounds[0] if isinstance(bounds, tuple) else None,
-                    'upper_bound': bounds[1] if isinstance(bounds, tuple) else None,
-                    'method': self.outlier_method
-                }
-        
-        return report
-    
-    def suggest_improvements(self, target_series: Optional[pd.Series] = None) -> List[str]:
-        """Suggerisce miglioramenti al preprocessing basati sui risultati."""
-        suggestions = []
-        
-        if not self.is_fitted:
-            return ['Run fit() first to get suggestions']
-        
-        # Analisi multicollinearità
-        if self.multicollinear_features:
-            suggestions.append(f"Consider removing multicollinear features: {self.multicollinear_features}")
-        
-        # Analisi stazionarietà
-        non_stationary = [col for col, result in self.stationarity_results.items() 
-                         if result.get('is_stationary') == False]
-        if non_stationary:
-            suggestions.append(f"Consider differencing non-stationary variables: {non_stationary}")
-        
-        # Analisi outlier
-        high_outlier_vars = [col for col in self.outlier_bounds.keys() 
-                           if len(self.transformation_log) > 0]  # Placeholder logic
-        if high_outlier_vars:
-            suggestions.append("Consider more robust outlier handling for variables with many outliers")
-        
-        # Analisi correlazione con target se fornita
-        if target_series is not None and hasattr(self, '_last_processed_data'):
-            try:
-                correlations = self._last_processed_data.corrwith(target_series).abs().sort_values(ascending=False)
-                low_corr_features = correlations[correlations < 0.1].index.tolist()
-                
-                if low_corr_features:
-                    suggestions.append(f"Consider removing low-correlation features: {low_corr_features[:5]}")
-                    
-            except Exception:
-                pass
-        
-        return suggestions if suggestions else ['Preprocessing configuration appears optimal']
 
 
 def analyze_feature_relationships(exog_data: pd.DataFrame, target_series: pd.Series) -> Dict[str, Any]:

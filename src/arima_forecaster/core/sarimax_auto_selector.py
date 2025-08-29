@@ -207,10 +207,21 @@ class SARIMAXAutoSelector(SARIMAForecaster):
             if exog is not None:
                 # Applica stesso preprocessing e selezione del training
                 exog_processed = self._prepare_forecast_exog(exog, steps)
+                if exog_processed is None or len(exog_processed) == 0:
+                    self.logger.error("Preparazione exog forecast fallita - nessuna feature valida")
+                    raise ForecastError("Impossibile preparare variabili esogene per forecast")
             else:
-                # Genera exog_forecast nullo se non fornito
-                exog_processed = None
-                self.logger.warning("Nessuna variabile esogena fornita per forecast")
+                # Per modelli SARIMAX con exog, dobbiamo fornire valori anche per forecast
+                # Se non abbiamo exog, creiamo valori zero
+                if self.selected_features:
+                    self.logger.warning("Creazione exog nulle per forecast - modello addestrato con exog")
+                    exog_processed = pd.DataFrame(
+                        np.zeros((steps, len(self.selected_features))),
+                        columns=self.selected_features
+                    )
+                else:
+                    exog_processed = None
+                    self.logger.info("Nessuna variabile esogena richiesta per forecast")
             
             # Genera forecast
             forecast_result = self.fitted_model.get_forecast(
@@ -241,7 +252,7 @@ class SARIMAXAutoSelector(SARIMAForecaster):
             self.logger.error(f"Forecast SARIMAX fallito: {e}")
             raise ForecastError(f"Impossibile generare forecast SARIMAX: {e}")
     
-    def _engineer_features(self, exog: pd.DataFrame, series: pd.Series) -> pd.DataFrame:
+    def _engineer_features(self, exog: pd.DataFrame, series: pd.Series) -> Tuple[pd.DataFrame, pd.Series]:
         """Applica feature engineering alle variabili esogene."""
         result = exog.copy()
         original_cols = list(exog.columns)
@@ -480,7 +491,9 @@ class SARIMAXAutoSelector(SARIMAForecaster):
         try:
             # 1. Applica stesso feature engineering
             if self.feature_engineering:
-                exog_engineered = self._engineer_features(exog, pd.Series(dtype=float))
+                # Create a dummy series for feature engineering
+                dummy_series = pd.Series(index=exog.index, dtype=float)
+                exog_engineered, _ = self._engineer_features(exog, dummy_series)
             else:
                 exog_engineered = exog.copy()
             
@@ -503,14 +516,25 @@ class SARIMAXAutoSelector(SARIMAForecaster):
                 # 4. Assicura lunghezza corretta per forecast
                 if len(exog_final) < steps:
                     # Estendi usando l'ultimo valore (forward fill)
-                    last_values = exog_final.iloc[-1:].reindex(
-                        range(len(exog_final), steps),
-                        method='ffill'
-                    )
-                    exog_final = pd.concat([exog_final, last_values])
+                    n_missing = steps - len(exog_final)
+                    last_row = exog_final.iloc[-1:]
+                    
+                    # Crea nuovo index numerico per le righe estese
+                    extension_data = []
+                    for i in range(n_missing):
+                        extension_data.append(last_row.iloc[0].copy())
+                    
+                    extension = pd.DataFrame(extension_data, columns=exog_final.columns)
+                    # Concatena e resetta l'index
+                    exog_final = pd.concat([exog_final, extension], ignore_index=True)
+                    
                 elif len(exog_final) > steps:
-                    exog_final = exog_final.iloc[:steps]
+                    exog_final = exog_final.iloc[:steps].copy()
                 
+                # Reset index to ensure numeric index for statsmodels (0, 1, 2, ...)
+                exog_final = exog_final.reset_index(drop=True)
+                
+                self.logger.info(f"Preparazione exog forecast completata: {len(exog_final)} righe, {len(available_features)} features")
                 return exog_final
             else:
                 return None

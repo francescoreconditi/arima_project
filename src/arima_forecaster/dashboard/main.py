@@ -1382,20 +1382,59 @@ class ARIMADashboard:
                                 "💡 Suggerimento: Vai alla sezione 'Model Training' e re-addestra il modello SARIMAX per risolvere il problema."
                             )
 
-                        if show_intervals:
-                            forecast, conf_int = model.forecast(
-                                steps=forecast_steps,
-                                exog_future=exog_future,
-                                alpha=1 - confidence_level,
-                                return_conf_int=True,
-                            )
+                        # Check if model is SARIMAX or SARIMAXAutoSelector (both support exog_future)
+                        if isinstance(model, SARIMAXAutoSelector):
+                            # SARIMAXAutoSelector uses forecast_with_exog method
+                            if show_intervals:
+                                forecast_result = model.forecast_with_exog(
+                                    steps=forecast_steps,
+                                    exog=exog_future,
+                                    alpha=1 - confidence_level,
+                                    confidence_intervals=True,
+                                )
+                                # Handle return format
+                                if isinstance(forecast_result, tuple):
+                                    forecast, conf_int = forecast_result
+                                else:
+                                    forecast = forecast_result
+                                    conf_int = None
+                            else:
+                                forecast = model.forecast_with_exog(
+                                    steps=forecast_steps,
+                                    exog=exog_future,
+                                    confidence_intervals=False,
+                                )
+                                conf_int = None
+                        elif isinstance(model, SARIMAXForecaster):
+                            # Regular SARIMAX model
+                            if show_intervals:
+                                forecast, conf_int = model.forecast(
+                                    steps=forecast_steps,
+                                    exog_future=exog_future,
+                                    alpha=1 - confidence_level,
+                                    return_conf_int=True,
+                                )
+                            else:
+                                forecast = model.forecast(
+                                    steps=forecast_steps,
+                                    exog_future=exog_future,
+                                    confidence_intervals=False,
+                                )
+                                conf_int = None
                         else:
-                            forecast = model.forecast(
-                                steps=forecast_steps,
-                                exog_future=exog_future,
-                                confidence_intervals=False,
-                            )
-                            conf_int = None
+                            # SARIMA model (no exogenous variables in forecast)
+                            if show_intervals:
+                                forecast, conf_int = model.forecast(
+                                    steps=forecast_steps,
+                                    alpha=1 - confidence_level,
+                                    return_conf_int=True,
+                                )
+                            else:
+                                forecast = model.forecast(
+                                    steps=forecast_steps,
+                                    confidence_intervals=False,
+                                )
+                                conf_int = None
                     else:
                         # Regular ARIMA/SARIMA forecast
                         if show_intervals:
