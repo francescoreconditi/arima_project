@@ -602,18 +602,54 @@ class QuartoReportGenerator:
         results_path: Path,
         format_type: str = "html"
     ) -> str:
-        """Generate Quarto document for models comparison."""
+        """Generate Quarto document for models comparison using template."""
         
         # Get format configuration
         format_yaml = self._load_format_config(format_type)
         
-        # For comparison reports, we still use the embedded template for now
-        # In future, this could also be modularized
-        model_type = "Multiple Models"
+        # Load comparison template
+        template_path = self.template_dir / "confronto.qmd"
+        
+        try:
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            # Replace template variables
+            qmd_content = template_content.format(
+                title=title,
+                date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                format_yaml=format_yaml,
+                results_path=results_path
+            )
+            
+            self.logger.info(f"Generato report comparativo usando template: {template_path}")
+            return qmd_content
+            
+        except FileNotFoundError:
+            self.logger.error(f"Template confronto.qmd non trovato in: {template_path}")
+            # Fallback to basic comparison template
+            return self._generate_basic_comparison_qmd(title, models_results, results_path, format_type)
+        
+        except Exception as e:
+            self.logger.error(f"Errore caricamento template confronto: {e}")
+            # Fallback to basic comparison template
+            return self._generate_basic_comparison_qmd(title, models_results, results_path, format_type)
+    
+    def _generate_basic_comparison_qmd(
+        self, 
+        title: str, 
+        models_results: Dict[str, Dict[str, Any]], 
+        results_path: Path,
+        format_type: str = "html"
+    ) -> str:
+        """Fallback method for basic comparison report generation."""
+        
+        # Get format configuration
+        format_yaml = self._load_format_config(format_type)
         
         qmd_content = f'''---
 title: "{title}"
-subtitle: "Analisi Comparativa Modelli"
+subtitle: "Analisi Comparativa Modelli (Fallback)"
 author: "ARIMA Forecaster Library"
 date: "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 {format_yaml}
@@ -628,203 +664,34 @@ jupyter: python3
 #| include: false
 import json
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime
+from IPython.display import display, HTML
 
 # Carica i risultati dei modelli
 with open('{results_path}', 'r') as f:
     models_results = json.load(f)
-
-plt.style.use('default')
-sns.set_palette("Set2")
 ```
 
-## Panoramica Confronto Modelli
+## Confronto Modelli (Modalità Fallback)
 
 ```{{python}}
-#| label: tbl-models-overview
-#| tbl-cap: "Panoramica dei Modelli Confrontati"
-
-models_data = []
+models_list = []
 for model_name, results in models_results.items():
     model_type = results.get('model_type', 'N/A')
-    order = results.get('order', 'N/A')
-    seasonal_order = results.get('seasonal_order', 'N/A')
-    aic = results.get('metrics', {{}}).get('aic', 'N/A')
+    metrics = results.get('metrics', {{}})
+    aic = metrics.get('aic', 'N/A')
     
-    models_data.append([
-        model_name,
+    models_list.append([
+        model_name, 
         model_type,
-        str(order),
-        str(seasonal_order) if seasonal_order != 'N/A' else 'N/A',
         f"{{aic:.2f}}" if isinstance(aic, (int, float)) else 'N/A'
     ])
 
-models_df = pd.DataFrame(models_data, columns=[
-    'Nome Modello', 'Tipo', 'Ordine (p,d,q)', 'Ordine Stagionale', 'AIC'
-])
-from IPython.display import display, Markdown, HTML
-html_table = models_df.to_html(index=False, classes='table table-striped', escape=False)
-display(HTML(html_table))
+df = pd.DataFrame(models_list, columns=['Modello', 'Tipo', 'AIC'])
+display(HTML(df.to_html(index=False, classes='table table-striped')))
 ```
 
-## Confronto Performance
-
-```{{python}}
-#| label: fig-performance-comparison
-#| fig-cap: "Confronto delle Metriche di Performance"
-
-# Estrai metriche per tutti i modelli
-metrics_data = []
-model_names = []
-
-for model_name, results in models_results.items():
-    metrics = results.get('metrics', {{}})
-    model_names.append(model_name)
-    metrics_data.append(metrics)
-
-if metrics_data:
-    # Identifica metriche comuni
-    common_metrics = set(metrics_data[0].keys())
-    for metrics in metrics_data[1:]:
-        common_metrics &= set(metrics.keys())
-    
-    # Filtra metriche numeriche
-    numeric_metrics = []
-    for metric in common_metrics:
-        if all(isinstance(m.get(metric), (int, float)) for m in metrics_data):
-            numeric_metrics.append(metric)
-    
-    if numeric_metrics:
-        # Crea DataFrame per il confronto
-        comparison_data = []
-        for i, model_name in enumerate(model_names):
-            for metric in numeric_metrics:
-                comparison_data.append([
-                    model_name, 
-                    metric.upper(), 
-                    metrics_data[i][metric]
-                ])
-        
-        comparison_df = pd.DataFrame(comparison_data, columns=['Modello', 'Metrica', 'Valore'])
-        
-        # Crea grafici di confronto
-        n_metrics = len(numeric_metrics)
-        fig, axes = plt.subplots(1, min(n_metrics, 3), figsize=(15, 5))
-        if n_metrics == 1:
-            axes = [axes]
-        
-        for i, metric in enumerate(numeric_metrics[:3]):
-            metric_data = comparison_df[comparison_df['Metrica'] == metric.upper()]
-            ax = axes[i] if len(axes) > 1 else axes[0]
-            
-            bars = ax.bar(metric_data['Modello'], metric_data['Valore'], alpha=0.7)
-            ax.set_title(f'Confronto {{metric.upper()}}', fontweight='bold')
-            ax.set_ylabel('Valore')
-            
-            # Aggiungi valori sulle barre
-            for bar, value in zip(bars, metric_data['Valore']):
-                ax.text(bar.get_x() + bar.get_width()/2, 
-                       bar.get_height() + max(metric_data['Valore'])*0.01,
-                       f'{{value:.4f}}', ha='center', va='bottom', fontsize=8)
-            
-            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
-        
-        plt.tight_layout()
-        plt.show()
-    else:
-        display(HTML("<p>Nessuna metrica numerica comune trovata per il confronto</p>"))
-else:
-    display(HTML("<p>Dati delle metriche non disponibili</p>"))
-```
-
-## Ranking dei Modelli
-
-```{{python}}
-#| label: tbl-model-ranking
-#| tbl-cap: "Ranking dei Modelli per Performance"
-
-ranking_data = []
-for model_name, results in models_results.items():
-    metrics = results.get('metrics', {{}})
-    
-    # Calcola score composito (lower is better per AIC, RMSE, MAE)
-    score = 0
-    score_count = 0
-    
-    # AIC (lower is better)
-    if 'aic' in metrics and isinstance(metrics['aic'], (int, float)):
-        score += metrics['aic']
-        score_count += 1
-    
-    # RMSE (lower is better)  
-    if 'rmse' in metrics and isinstance(metrics['rmse'], (int, float)):
-        score += metrics['rmse'] * 100  # Scale up for better comparison
-        score_count += 1
-    
-    # R² (higher is better, so we subtract from 1)
-    if 'r2_score' in metrics and isinstance(metrics['r2_score'], (int, float)):
-        score += (1 - metrics['r2_score']) * 100
-        score_count += 1
-    
-    avg_score = score / score_count if score_count > 0 else float('inf')
-    
-    ranking_data.append([
-        model_name,
-        f"{{metrics.get('aic', 'N/A'):.2f}}" if isinstance(metrics.get('aic'), (int, float)) else 'N/A',
-        f"{{metrics.get('rmse', 'N/A'):.4f}}" if isinstance(metrics.get('rmse'), (int, float)) else 'N/A',
-        f"{{metrics.get('r2_score', 'N/A'):.4f}}" if isinstance(metrics.get('r2_score'), (int, float)) else 'N/A',
-        f"{{avg_score:.2f}}" if avg_score != float('inf') else 'N/A'
-    ])
-
-# Ordina per score composito
-ranking_data.sort(key=lambda x: float(x[4]) if x[4] != 'N/A' else float('inf'))
-
-ranking_df = pd.DataFrame(ranking_data, columns=[
-    'Modello', 'AIC', 'RMSE', 'R² Score', 'Score Composito'
-])
-
-# Aggiungi ranking
-ranking_df.insert(0, 'Rank', range(1, len(ranking_df) + 1))
-
-html_table = ranking_df.to_html(index=False, classes='table table-striped', escape=False)
-display(HTML(html_table))
-```
-
-## Raccomandazioni Finali
-
-```{{python}}
-#| label: final-recommendations
-
-if len(ranking_df) > 0:
-    best_model = ranking_df.iloc[0]['Modello']
-    display(HTML(f"<h3>Modello Raccomandato: {{best_model}}</h3>"))
-    
-    best_results = models_results.get(best_model, {{}})
-    best_metrics = best_results.get('metrics', {{}})
-    
-    recommendations = [
-        f"• **Modello migliore**: {{best_model}} - Mostra le performance complessive migliori",
-        "• **Implementazione**: Procedere con l'implementazione del modello raccomandato",
-        "• **Monitoraggio**: Implementare sistema di monitoraggio continuo delle performance",
-        "• **Backup**: Mantenere il secondo miglior modello come backup"
-    ]
-    
-    if len(ranking_df) > 1:
-        second_best = ranking_df.iloc[1]['Modello']
-        recommendations.append(f"• **Modello alternativo**: {{second_best}} - Considerare come alternativa")
-    
-    for rec in recommendations:
-        display(HTML(f"<p>{{rec}}</p>"))
-else:
-    display(HTML("<p>Nessun modello disponibile per le raccomandazioni</p>"))
-```
-
----
-
-*Report comparativo generato automaticamente dalla libreria ARIMA Forecaster*
+*Template confronto.qmd non disponibile - usando modalità fallback*
 '''
         
+        self.logger.warning("Usando template fallback per report comparativo")
         return qmd_content
