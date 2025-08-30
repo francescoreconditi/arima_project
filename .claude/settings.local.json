@@ -1,13 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv pip install:*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(start http://localhost:8501)"
     ],
     "deny": [],
+    "ask": [],
     "additionalDirectories": [
       "C:\\Progetti\\arima_project",
       "C:\\Backup\\Code\\arima_project"
-    ],
-    "ask": []
+    ]
   }
 }
