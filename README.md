@@ -933,6 +933,211 @@ uv run python examples/user_engagement_forecasting.py
 
 ---
 
+### 📊 **Benchmark Performance Dettagliati**
+
+#### Velocità Training Modelli
+| Modello | Tempo Medio | Memoria | Note |
+|---------|-------------|---------|------|
+| **ARIMA** | ~0.1-1.0s | 1-10MB | Performance baseline |
+| **SARIMA** | ~0.5-5.0s | 5-20MB | Con componenti stagionali |
+| **SARIMAX** | ~1.0-8.0s | 10-50MB | Con variabili esogene |
+| **VAR** | ~0.1-2.0s | 5-25MB | Multivariato |
+| **Prophet** | ~3.0-8.0s | 20-100MB | Con MCMC sampling |
+| **Auto-ML** | ~10-300s | 50-500MB | Ottimizzazione completa |
+| **Forecast** | < 100ms | < 1MB | Post-training |
+| **Report** | 10-20s | 10-50MB | HTML/PDF con Quarto |
+
+#### Efficienza Ottimizzazione
+| Algoritmo | Convergenza | Parallelizzazione | Casi d'Uso |
+|-----------|-------------|-------------------|-------------|
+| **Grid Search** | Baseline | ✅ Multi-core | Spazi piccoli |
+| **Optuna TPE** | 2-5x più veloce | ✅ Distributed | Spazi complessi |
+| **Bayesian** | 3-7x più veloce | ⚠️ Limitata | Funzioni costose |
+| **Multi-obiettivo** | 10-50 soluzioni Pareto | ✅ Multi-core | Trade-off multipli |
+| **Ensemble** | 3-7 modelli diversi | ✅ GPU-ready | Massima accuratezza |
+
+#### Utilizzo Memoria
+| Componente | Memoria Base | Memoria Massima | Scaling |
+|------------|--------------|-----------------|----------|
+| **Singolo Modello** | 1-10MB | 50MB | Lineare con dati |
+| **Ensemble (5 modelli)** | 5-50MB | 250MB | Lineare con N modelli |
+| **Server API** | 50-200MB | 1GB | Con cache modelli |
+| **Dashboard** | 100-300MB | 800MB | Con grafici interattivi |
+| **GPU Acceleration** | +500MB VRAM | +4GB VRAM | Con batch processing |
+
+### 🔧 **Configurazione Production-Ready**
+
+#### Impostazioni Ottimizzazione Auto-ML
+```python
+from arima_forecaster.automl import ARIMAOptimizer, HyperparameterTuner
+
+# Configurazione ottimizzazione personalizzata
+optimizer = ARIMAOptimizer(
+    objective_metric='aic',
+    cv_folds=3,
+    test_size=0.2,
+    n_jobs=4,  # Processamento parallelo
+    random_state=42,
+    timeout=3600,  # Timeout 1 ora
+    memory_limit='4GB'
+)
+
+# Impostazioni tuner avanzate
+tuner = HyperparameterTuner(
+    objective_metrics=['aic', 'bic', 'mse'],
+    ensemble_method='pareto',
+    meta_learning=True,
+    early_stopping_patience=10,
+    pruning_enabled=True,  # Pruning trials non promettenti
+    storage='sqlite:///optuna_studies.db'  # Persistenza studi
+)
+```
+
+#### Configurazione API Enterprise
+```python
+from arima_forecaster.api import create_app
+
+# Configurazione API production-ready
+app = create_app(
+    model_storage_path="/data/models",
+    enable_scalar=True,
+    production_mode=True,
+    max_concurrent_models=10,
+    model_cache_size=100,
+    request_timeout=300,
+    cors_origins=["https://dashboard.company.com"],
+    rate_limit="100/minute",
+    auth_enabled=True
+)
+
+# Esegui con impostazioni enterprise
+import uvicorn
+uvicorn.run(
+    app, 
+    host="0.0.0.0", 
+    port=8080, 
+    workers=4,
+    worker_class="uvicorn.workers.UvicornWorker",
+    access_log=True,
+    log_config="logging.conf"
+)
+```
+
+#### Variabili d'Ambiente Complete
+```bash
+# .env file production
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+PRODUCTION_MODE=true
+ENABLE_SCALAR=true
+MAX_WORKERS=4
+REQUEST_TIMEOUT=300
+
+# Model Storage
+MODEL_STORAGE_PATH=/data/models
+MODEL_CACHE_SIZE=100
+MAX_CONCURRENT_MODELS=10
+
+# Security
+CORS_ORIGINS=["https://dashboard.company.com", "https://api.company.com"]
+RATE_LIMIT=100/minute
+AUTH_ENABLED=true
+SECRET_KEY=your-secret-key-here
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=/var/log/arima-forecaster.log
+LOG_ROTATION=daily
+
+# Database (for model registry)
+DATABASE_URL=postgresql://user:pass@localhost/arima_models
+REDIS_URL=redis://localhost:6379/0
+
+# Monitoring
+METRICS_ENABLED=true
+HEALTH_CHECK_ENDPOINT=/health
+PROMETHEUS_METRICS=/metrics
+
+# GPU Configuration
+ARIMA_BACKEND=auto
+CUDA_DEVICE=0
+MAX_GPU_MODELS_PARALLEL=100
+GPU_MEMORY_LIMIT=0.8
+
+# Auto-ML Settings
+OPTUNA_STORAGE=postgresql://user:pass@localhost/optuna
+MAX_TRIALS=1000
+OPTIMIZATION_TIMEOUT=3600
+```
+
+### 🚀 **Estendere la Libreria**
+
+#### Aggiungere Nuovi Ottimizzatori
+```python
+from arima_forecaster.automl.base import BaseOptimizer
+
+class CustomOptimizer(BaseOptimizer):
+    """Ottimizzatore personalizzato con algoritmo proprietario."""
+    
+    def optimize_custom(self, series, **kwargs):
+        """Implementa logica di ottimizzazione personalizzata."""
+        # Implementazione algoritmo custom
+        best_params = self._custom_search_algorithm(series)
+        return {
+            'best_params': best_params,
+            'best_score': self._evaluate_params(series, best_params),
+            'search_history': self.history,
+            'convergence_info': self.convergence_metrics
+        }
+    
+    def _custom_search_algorithm(self, series):
+        """Algoritmo di ricerca proprietario."""
+        # Logica custom per ottimizzazione
+        pass
+```
+
+#### Estendere API con Endpoint Personalizzati
+```python
+from fastapi import APIRouter
+from arima_forecaster.api.main import app
+
+# Router personalizzato
+custom_router = APIRouter(prefix="/custom", tags=["Custom"])
+
+@custom_router.post("/proprietary-forecast")
+async def custom_forecasting_endpoint(request: CustomRequest):
+    """Endpoint per forecasting con algoritmi proprietari."""
+    # Implementa logica business specifica
+    return {"forecast": custom_results, "metadata": custom_info}
+
+# Registra router personalizzato
+app.include_router(custom_router)
+```
+
+#### Template Report Personalizzati
+```python
+from arima_forecaster.reporting import QuartoReportGenerator
+
+# Estendi generatore con template custom
+class CompanyReportGenerator(QuartoReportGenerator):
+    def create_branded_report(self, model_results, **kwargs):
+        """Genera report con template aziendale."""
+        template_config = {
+            'template': 'templates/company_template.qmd',
+            'logo': 'assets/company_logo.png',
+            'colors': ['#0066CC', '#FF6600', '#339933'],
+            'font_family': 'Arial',
+            'header_footer': True
+        }
+        
+        return self.create_comparison_report(
+            models_results=model_results,
+            custom_template=template_config,
+            **kwargs
+        )
+```
+
 ### 🧪 **Testing e Qualità**
 
 #### 🧪 **Ambiente R&D per Ricerca Algoritmi**
