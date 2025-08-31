@@ -1,16 +1,10 @@
-/* Stili CSS per Report ARIMA Forecaster */
+/* Stili CSS per Report ARIMA Forecaster - Template Base */
 
-/* Limitazione dimensioni immagini esterne */
-.figure img {
-    max-width: 800px !important;
-    width: 100%;
-    height: auto !important;
-    display: block;
-    margin: 0 auto;
-}
+/* NOTE: Questi sono stili base del template.
+   Gli stili avanzati (zoom, TOC, etc.) sono in assets/styles.css */
 
-/* Stili per tabelle */
-.table {
+/* Stili base per tabelle se non definiti altrove */
+.table:not(.styled-table) {
     width: 100%;
     margin-bottom: 1rem;
     background-color: transparent;
@@ -29,14 +23,14 @@
     font-size: 0.95rem;
 }
 
-/* Stili per i titoli delle sezioni */
-h2, h3, h4 {
+/* Stili per i titoli delle sezioni - solo se non già stilizzati */
+section h2:not(.styled), section h3:not(.styled), section h4:not(.styled) {
     color: #495057;
     margin-top: 1.5rem;
     margin-bottom: 1rem;
 }
 
-h2 {
+section h2:not(.styled) {
     border-bottom: 2px solid #dee2e6;
     padding-bottom: 0.5rem;
 }
@@ -60,13 +54,13 @@ h2 {
     margin: 1rem 0;
 }
 
-/* Stili per i grafici */
-.figure {
+/* Stili per i grafici - solo se non gestiti da zoom functionality */
+.figure:not(.has-zoom) {
     text-align: center;
     margin: 2rem 0;
 }
 
-.figure-img {
+.figure-img:not(.zoomable-image) {
     max-width: 100%;
     height: auto;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -101,7 +95,7 @@ h2 {
 
 /* Media query per responsive design */
 @media (max-width: 768px) {
-    .figure img {
+    .figure img:not(.zoomable-image) {
         max-width: 100% !important;
     }
     

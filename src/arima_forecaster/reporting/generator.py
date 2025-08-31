@@ -140,19 +140,30 @@ class QuartoReportGenerator:
         """
         resources = {}
         
-        # Copy CSS file
-        css_source = self.template_dir / "styles.css"
-        if css_source.exists():
-            css_dest = output_dir / "styles.css"
-            shutil.copy2(css_source, css_dest)
-            # Return relative path from HTML file to CSS
+        # Copy CSS file from template directory (base styles)
+        template_css_source = self.template_dir / "styles.css"
+        if template_css_source.exists():
+            template_css_dest = output_dir / "template-styles.css"
+            shutil.copy2(template_css_source, template_css_dest)
+            resources['template_css_path'] = f"{output_dir.name}/template-styles.css"
+        else:
+            self.logger.warning(f"Template CSS file not found: {template_css_source}")
+            resources['template_css_path'] = ""
+        
+        # Copy CSS and JS files from assets directory (advanced styles)
+        assets_dir = Path(__file__).parent / "assets"
+        
+        # Copy main CSS from assets (has zoom, TOC styles, etc.)
+        assets_css_source = assets_dir / "styles.css"
+        if assets_css_source.exists():
+            assets_css_dest = output_dir / "styles.css"
+            shutil.copy2(assets_css_source, assets_css_dest)
             resources['css_path'] = f"{output_dir.name}/styles.css"
         else:
-            self.logger.warning(f"Template CSS file not found: {css_source}")
+            self.logger.warning(f"Assets CSS file not found: {assets_css_source}")
             resources['css_path'] = ""
         
-        # Copy any additional JS files from assets directory if they exist
-        assets_dir = Path(__file__).parent / "assets"
+        # Copy JS file from assets
         js_source = assets_dir / "scripts.js"
         if js_source.exists():
             js_dest = output_dir / "scripts.js"
@@ -492,19 +503,25 @@ class QuartoReportGenerator:
             
             html_content = re.sub(pattern, replace_img_path, html_content)
             
-            # 4. Inject magnifying lens CSS and JavaScript if JS file exists
+            # 4. Inject CSS and JavaScript files
             report_dir = html_path.parent / files_dir
             js_path = report_dir / "scripts.js"
             css_path = report_dir / "styles.css"
+            template_css_path = report_dir / "template-styles.css"
             
-            if js_path.exists() or css_path.exists():
-                magnifier_code = ""
-                if css_path.exists():
-                    magnifier_code += f'<link rel="stylesheet" href="{files_dir}/styles.css" />\n'
-                if js_path.exists():
-                    magnifier_code += f'<script src="{files_dir}/scripts.js"></script>\n'
-                
-                # Inject the magnifier code before </head> tag
+            magnifier_code = ""
+            # Include template CSS first (base styles)
+            if template_css_path.exists():
+                magnifier_code += f'<link rel="stylesheet" href="{files_dir}/template-styles.css" />\n'
+            # Include main CSS second (advanced styles - will override template styles)
+            if css_path.exists():
+                magnifier_code += f'<link rel="stylesheet" href="{files_dir}/styles.css" />\n'
+            # Include JavaScript
+            if js_path.exists():
+                magnifier_code += f'<script src="{files_dir}/scripts.js"></script>\n'
+            
+            if magnifier_code:
+                # Inject the code before </head> tag
                 head_pattern = r'</head>'
                 if re.search(head_pattern, html_content, re.IGNORECASE):
                     html_content = re.sub(

@@ -6,7 +6,11 @@
       "Bash(uv pip install:*)",
       "Bash(cp:*)",
       "Bash(mkdir:*)",
-      "Bash(start http://localhost:8501)"
+      "Bash(start http://localhost:8501)",
+      "Bash(powershell:*)",
+      "Bash(copy:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],
