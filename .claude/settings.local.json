@@ -10,7 +10,8 @@
       "Bash(powershell:*)",
       "Bash(copy:*)",
       "Bash(grep:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "ask": [],
