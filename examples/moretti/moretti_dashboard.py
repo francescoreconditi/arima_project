@@ -26,7 +26,7 @@ from arima_forecaster.utils.exog_diagnostics import ExogDiagnostics
 
 # Import modulo inventory balance optimizer
 try:
-    from inventory_balance_optimizer import (
+    from arima_forecaster.inventory import (
         SafetyStockCalculator,
         TotalCostAnalyzer,
         InventoryAlertSystem,
