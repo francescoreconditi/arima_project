@@ -23,6 +23,21 @@ from arima_forecaster.utils.translations import get_all_translations, translate
 from arima_forecaster.core import SARIMAXAutoSelector
 from arima_forecaster.utils.preprocessing import ExogenousPreprocessor, analyze_feature_relationships
 from arima_forecaster.utils.exog_diagnostics import ExogDiagnostics
+
+# Import modulo inventory balance optimizer
+try:
+    from arima_forecaster.inventory import (
+        SafetyStockCalculator,
+        TotalCostAnalyzer,
+        InventoryAlertSystem,
+        InventoryKPIDashboard,
+        CostiGiacenza,
+        AnalisiRischio,
+        AlertLevel
+    )
+    INVENTORY_OPTIMIZER_AVAILABLE = True
+except ImportError:
+    INVENTORY_OPTIMIZER_AVAILABLE = False
 try:
     from arima_forecaster.core import ARIMAForecaster, SARIMAForecaster, ProphetForecaster, ProphetModelSelector
     from arima_forecaster.core.cold_start import ColdStartForecaster
@@ -1472,10 +1487,11 @@ def main():
     st.markdown("---")
     
     # Grafici Analisi
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "📈 Trend Vendite",
         "🔮 Previsioni", 
         "📋 Ordini",
+        "🏪 Depositi",
         "💡 Suggerimenti",
         "📄 Report",
         "🗃️ Dati CSV",
@@ -1754,6 +1770,166 @@ def main():
         st.plotly_chart(fig_timeline, use_container_width=True)
     
     with tab4:
+        # TAB DEPOSITI - BILANCIAMENTO SCORTE
+        st.subheader("🏪 Gestione Depositi e Bilanciamento Scorte")
+        
+        if INVENTORY_OPTIMIZER_AVAILABLE:
+            col1, col2 = st.columns([2, 1])
+            
+            with col2:
+                st.subheader("⚙️ Configurazione")
+                
+                # Parametri configurabili
+                service_level = st.selectbox(
+                    "Livello Servizio Target",
+                    options=[0.85, 0.90, 0.95, 0.99],
+                    index=2,
+                    format_func=lambda x: f"{x:.0%}"
+                )
+                
+                deposito_sel = st.selectbox(
+                    "Deposito",
+                    options=["Centrale Milano", "Filiale Roma", "Filiale Napoli", "Hub Logistico Bologna"],
+                    index=0
+                )
+                
+                # Simula dati deposito
+                np.random.seed(42)
+                stock_levels = {
+                    "CRZ001": np.random.randint(200, 400),
+                    "MAT001": np.random.randint(150, 300),
+                    "ELT001": np.random.randint(80, 150)
+                }
+                
+                st.markdown("### 📊 Stock Correnti")
+                for codice, stock in stock_levels.items():
+                    prod_info = prodotti_filtrati[prodotti_filtrati['codice'] == codice]
+                    if not prod_info.empty:
+                        nome = prod_info.iloc[0]['nome']
+                        st.metric(f"{codice}", f"{stock} unità", f"{nome[:20]}...")
+            
+            with col1:
+                st.subheader("📈 Analisi Bilanciamento Scorte")
+                
+                # Calcola KPI per ogni prodotto
+                calculator = SafetyStockCalculator()
+                alert_system = InventoryAlertSystem()
+                
+                results_data = []
+                
+                for codice in prodotti_filtrati['codice']:
+                    if codice in vendite.columns and codice in stock_levels:
+                        serie_vendite = vendite[codice].dropna()
+                        stock_corrente = stock_levels[codice]
+                        
+                        # Calcola safety stock
+                        safety_stock = calculator.calculate_dynamic_safety_stock(
+                            demand_mean=serie_vendite.mean(),
+                            demand_std=serie_vendite.std(),
+                            lead_time_days=15,  # Default lead time
+                            service_level=service_level,
+                            criticality_factor=1.2
+                        )
+                        
+                        # Calcola reorder point
+                        reorder_point = calculator.calculate_reorder_point(
+                            demand_mean=serie_vendite.mean(),
+                            lead_time_days=15,
+                            safety_stock=safety_stock['dynamic_safety_stock']
+                        )
+                        
+                        # Analisi rischio
+                        analisi = alert_system.check_inventory_status(
+                            current_stock=stock_corrente,
+                            safety_stock=safety_stock['dynamic_safety_stock'],
+                            reorder_point=reorder_point,
+                            max_stock=stock_corrente * 2,  # Simulated max
+                            daily_demand=serie_vendite.mean(),
+                            lead_time_days=15
+                        )
+                        
+                        results_data.append({
+                            'Codice': codice,
+                            'Stock': stock_corrente,
+                            'Safety Stock': safety_stock['dynamic_safety_stock'],
+                            'Reorder Point': int(reorder_point),
+                            'Giorni Copertura': analisi.giorni_copertura,
+                            'Alert': analisi.livello_alert.value[1],
+                            'Stockout Risk': f"{analisi.probabilita_stockout:.1%}",
+                            'Overstock Risk': f"{analisi.probabilita_overstock:.1%}",
+                            'Turnover': f"{analisi.inventory_turnover:.1f}x"
+                        })
+                
+                # Tabella risultati
+                if results_data:
+                    results_df = pd.DataFrame(results_data)
+                    st.dataframe(results_df, use_container_width=True)
+                
+                # Grafici visualizzazioni
+                st.subheader("📊 Dashboard KPI Deposito")
+                
+                # Metriche aggregate
+                col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                
+                if results_data:
+                    avg_turnover = np.mean([float(r['Turnover'].replace('x', '')) for r in results_data])
+                    avg_coverage = np.mean([r['Giorni Copertura'] for r in results_data])
+                    critical_items = sum(1 for r in results_data if 'Critico' in r['Alert'] or 'Stockout' in r['Alert'])
+                    overstock_items = sum(1 for r in results_data if 'Overstock' in r['Alert'] or 'Eccesso' in r['Alert'])
+                    
+                    with col_m1:
+                        st.metric("Inventory Turnover", f"{avg_turnover:.1f}x", "Medio deposito")
+                    
+                    with col_m2:
+                        st.metric("Days of Supply", f"{avg_coverage:.0f}gg", "Media copertura")
+                    
+                    with col_m3:
+                        color = "🔴" if critical_items > 0 else "🟢"
+                        st.metric("Articoli Critici", f"{critical_items}", f"{color} Alert")
+                    
+                    with col_m4:
+                        color = "🟣" if overstock_items > 0 else "🟢"
+                        st.metric("Overstock Items", f"{overstock_items}", f"{color} Eccessi")
+                
+                # Grafico alert levels
+                if results_data:
+                    st.subheader("🚨 Mappa Alert Deposito")
+                    
+                    # Conta alert per tipo
+                    alert_counts = {}
+                    for r in results_data:
+                        alert = r['Alert']
+                        alert_counts[alert] = alert_counts.get(alert, 0) + 1
+                    
+                    # Grafico a torta alert
+                    fig_alerts = px.pie(
+                        values=list(alert_counts.values()),
+                        names=list(alert_counts.keys()),
+                        title="Distribuzione Alert per Stato Stock"
+                    )
+                    st.plotly_chart(fig_alerts, use_container_width=True)
+                
+                # Raccomandazioni automatiche
+                st.subheader("💡 Raccomandazioni Automatiche")
+                
+                for result in results_data[:3]:  # Mostra top 3
+                    codice = result['Codice']
+                    alert_type = result['Alert']
+                    
+                    if 'Critico' in alert_type or 'Stockout' in alert_type:
+                        st.error(f"🚨 **{codice}**: Ordine urgente richiesto! Stock: {result['Stock']}, Reorder: {result['Reorder Point']}")
+                    elif 'Basse' in alert_type or 'diminuzione' in alert_type:
+                        st.warning(f"⚠️ **{codice}**: Pianificare riordino. Copertura: {result['Giorni Copertura']} giorni")
+                    elif 'Overstock' in alert_type or 'Eccesso' in alert_type:
+                        st.info(f"🟣 **{codice}**: Eccesso scorte. Considerare promozioni o sospendere ordini")
+                    else:
+                        st.success(f"✅ **{codice}**: Livelli ottimali")
+        
+        else:
+            st.warning("⚠️ Modulo Inventory Balance Optimizer non disponibile. Installare dipendenze.")
+            st.info("Per utilizzare questa funzionalità, eseguire: `pip install scipy pydantic`")
+    
+    with tab5:
         calcola_suggerimenti_riordino(prodotti_filtrati, previsioni, domanda_mod)
         
         # Ottimizzazione fornitori
@@ -1803,7 +1979,7 @@ def main():
             </div>
             """, unsafe_allow_html=True)
     
-    with tab5:
+    with tab6:
         st.subheader("📄 Generazione Report Automatico")
         
         # Configurazione Report
@@ -1955,7 +2131,7 @@ def main():
                     else:
                         st.error("❌ Errore nella generazione del report. Verificare che Quarto sia installato.")
     
-    with tab6:
+    with tab7:
         st.subheader("🗃️ Gestione File CSV")
         
         # Mostra status dei file CSV
@@ -2089,7 +2265,7 @@ def main():
                 help="Scarica template per creare nuovi file prodotti"
             )
     
-    with tab7:
+    with tab8:
         st.subheader("🔬 Advanced Exogenous Analysis")
         
         if not FORECASTING_AVAILABLE:
@@ -2159,7 +2335,7 @@ def main():
             else:
                 st.info("Seleziona un prodotto specifico per testare Advanced Exog Analysis.")
     
-    with tab8:
+    with tab9:
         st.subheader("🚀 Cold Start Problem - Nuovo Prodotto")
         
         if not COLD_START_AVAILABLE:
