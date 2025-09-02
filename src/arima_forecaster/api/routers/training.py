@@ -213,13 +213,13 @@ async def train_model(
     le informazioni iniziali del modello. Il training continua asincronamente.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th><th>Richiesto</th></tr>
         <tr><td>request</td><td>ModelTrainingRequest</td><td>Configurazione per l'addestramento del modello</td><td>Sì</td></tr>
     </table>
     
     <h4>Campi del Request Body:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th><th>Esempio</th></tr>
         <tr><td>model_type</td><td>str</td><td>Tipo di modello: "arima", "sarima", "sarimax"</td><td>"sarima"</td></tr>
         <tr><td>data</td><td>TimeSeriesData</td><td>Dati della serie temporale</td><td>{timestamps: [...], values: [...]}</td></tr>
@@ -292,7 +292,7 @@ async def train_var_model(
     Addestra un modello VAR (Vector Autoregression) per serie multivariate.
     
     <h4>Parametri Request Body:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>data</td><td>MultivariateSeries</td><td>Serie temporali multivariate</td></tr>
         <tr><td>max_lags</td><td>int</td><td>Numero massimo di lag da considerare</td></tr>
@@ -362,7 +362,7 @@ async def auto_select_model(
     che minimizza il criterio di informazione specificato (AIC/BIC).
     
     <h4>Parametri Request Body:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>data</td><td>TimeSeriesData</td><td>Dati della serie temporale</td></tr>
         <tr><td>max_p</td><td>int</td><td>Valore massimo per p (default: 3)</td></tr>

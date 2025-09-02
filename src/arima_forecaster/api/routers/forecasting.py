@@ -66,14 +66,14 @@ async def generate_forecast(
     con intervalli di confidenza opzionali.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th><th>Richiesto</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID univoco del modello da utilizzare</td><td>Sì</td></tr>
         <tr><td>request</td><td>ForecastRequest</td><td>Parametri per la generazione delle previsioni</td><td>Sì</td></tr>
     </table>
     
     <h4>Campi del Request Body:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th><th>Default</th></tr>
         <tr><td>steps</td><td>int</td><td>Numero di passi futuri da prevedere</td><td>Richiesto</td></tr>
         <tr><td>confidence_level</td><td>float</td><td>Livello di confidenza (es. 0.95 per 95%)</td><td>0.95</td></tr>
@@ -93,7 +93,7 @@ async def generate_forecast(
     </code></pre>
     
     <h4>Risposta:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>forecast</td><td>list[float]</td><td>Valori previsti per ogni passo futuro</td></tr>
         <tr><td>timestamps</td><td>list[str]</td><td>Date/timestamp per ogni previsione</td></tr>

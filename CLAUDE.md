@@ -46,6 +46,23 @@ Quando possibile SEMPRE scrivere commenti nei sorgenti in Italiano.
 
 ### 🔴 Preferisci sempre Pydantic a Dataclass
 
+### 🔴 DIVIETO ASSOLUTO EMOJI NEI SORGENTI
+**REGOLA CRITICA: MAI SCRIVERE EMOJI DIRETTAMENTE NEI FILE PYTHON/CODICE**
+1. **PROBLEMA**: Emoji causano crash Unicode "no low surrogate in string" su Windows cp1252
+2. **SOLUZIONE**: Usare SEMPRE equivalenti ASCII dal primo momento di scrittura
+3. **MAPPING STANDARD**:
+   ```
+   🔥 → [FIRE]          📊 → [CHART]        🎯 → [TARGET]
+   📈 → [UP]            📉 → [DOWN]         💰 → [MONEY]
+   🛒 → [CART]          📦 → [BOX]          🏪 → [SHOP]
+   🌤️ → [WEATHER]       ⚠️ → [WARN]         ✅ → [OK]
+   🤖 → [ROBOT]         🍽️ → [FOOD]         🔮 → [FORECAST]
+   💼 → [BUSINESS]      📁 → [FOLDER]       📋 → [CLIPBOARD]
+   🎉 → [PARTY]         💡 → [BULB]         👥 → [PEOPLE]
+   ```
+4. **CONSEGUENZE**: Violare questa regola causa crash runtime e perdita tempo debugging
+5. **ECCEZIONE**: Solo nei commenti/documentazione Markdown sono permesse emoji
+
 ### 🔴 Sistema Traduzioni Centralizzato
 **Dal 26/08/2024: Sistema traduzioni unificato per tutto il progetto**
 1. **Directory traduzioni**: `src/arima_forecaster/assets/locales/` contiene file JSON per ogni lingua

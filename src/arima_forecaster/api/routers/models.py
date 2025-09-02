@@ -62,14 +62,14 @@ async def list_models(
     utile per dashboard e interfacce di gestione.
     
     <h4>Risposta:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>models</td><td>list[ModelInfo]</td><td>Lista dei modelli disponibili</td></tr>
         <tr><td>total_count</td><td>int</td><td>Numero totale di modelli</td></tr>
     </table>
     
     <h4>Campi di ModelInfo:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID univoco del modello</td></tr>
         <tr><td>model_type</td><td>str</td><td>Tipo di modello (arima, sarima, var)</td></tr>
@@ -146,7 +146,7 @@ async def get_model_info(
     Recupera le informazioni dettagliate di un modello specifico.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID univoco del modello</td></tr>
     </table>
@@ -221,7 +221,7 @@ async def delete_model(
     Questa operazione è irreversibile.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID univoco del modello da eliminare</td></tr>
     </table>

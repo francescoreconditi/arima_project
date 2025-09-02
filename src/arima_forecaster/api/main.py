@@ -28,6 +28,14 @@ from arima_forecaster.api.routers import (
     models_router,
     reports_router,
     training_router,
+    inventory_router,
+    demand_sensing_router,
+    advanced_models_router,
+    evaluation_router,
+    automl_router,
+    visualization_router,
+    data_management_router,
+    enterprise_router,
 )
 from arima_forecaster.utils.logger import get_logger
 
@@ -101,6 +109,38 @@ def create_app(
             "name": "Reports",
             "description": "📄 Report Professionali<br><br>Generazione documentazione completa con Quarto:<br><br>• Formati Multipli: HTML interattivo, PDF stampa, DOCX editabile<br>• Grafici Avanzati: Visualizzazioni Plotly interattive<br>• Executive Summary: Sintesi risultati per management<br>• Analisi Tecnica: Diagnostica e raccomandazioni dettagliate",
         },
+        {
+            "name": "Inventory Management",
+            "description": "[CART] Ottimizzazione Inventory Management<br><br>Sistema completo per ottimizzazione scorte enterprise:<br><br>• Classificazione ABC/XYZ: Movement analysis automatico<br>• Slow/Fast Moving Optimization: Strategie differentiate<br>• Safety Stock Dinamico: Calcolo con demand uncertainty<br>• EOQ Optimization: Economic Order Quantity con sconti<br>• Multi-Echelon: Risk pooling e network optimization<br>• Capacity Constraints: Vincoli volume/peso/budget<br>• Bundle/Kitting Analysis: Make-to-Stock vs Assemble-to-Order",
+        },
+        {
+            "name": "Demand Sensing", 
+            "description": "[WEATHER] Demand Sensing Avanzato<br><br>Integrazione fattori esterni per forecast accuracy:<br><br>• Weather Integration: Previsioni meteo business-calibrate<br>• Google Trends Analysis: Pattern ricerche e correlazioni<br>• Social Sentiment: Sentiment analysis multi-platform<br>• Economic Indicators: Macro data per forecast context<br>• Calendar Events: Festività e eventi business impact<br>• Ensemble Forecasting: Combinazione multi-source weighted<br>• Sensitivity Analysis: Ottimizzazione pesi automatica",
+        },
+        {
+            "name": "Advanced Models",
+            "description": "[CHART] Modelli Avanzati e Comparazioni<br><br>Modelli multivariati e selezione automatica:<br><br>• Vector Autoregression (VAR): Serie interdipendenti<br>• Granger Causality Tests: Relazioni causali tra variabili<br>• Impulse Response Analysis: Shock propagation e policy impact<br>• Model Comparison Framework: Ranking automatico performance<br>• Auto-ML Selection: Selezione ottimale con cross-validation<br>• Grid Search Asincrono: Parameter tuning background jobs",
+        },
+        {
+            "name": "Evaluation & Diagnostics",
+            "description": "[MAGNIFY] Valutazione e Diagnostica Avanzata<br><br>Testing approfondito e validazione modelli:<br><br>• Cross-Validation: Time series split e walk-forward<br>• Residual Analysis: Test normalità, autocorrelazione, eteroschedasticità<br>• Model Comparison: Statistical tests di significatività<br>• Performance Metrics: 15+ metriche specializzate forecasting<br>• Diagnostic Plots: QQ-plot, ACF/PACF, residui analysis<br>• Backtesting: Simulazione performance storica realistica",
+        },
+        {
+            "name": "AutoML & Optimization", 
+            "description": "[ROBOT] AutoML e Ottimizzazione Automatica<br><br>Selezione e tuning automatico modelli:<br><br>• Optuna Integration: Bayesian optimization hyperparameters<br>• Hyperopt TPE: Tree-structured Parzen Estimator<br>• Scikit-optimize: Gaussian Process optimization<br>• Multi-objective: Ottimizzazione Pareto accuracy vs complexity<br>• Ensemble Methods: Stacking, voting, bagging automatico<br>• Grid Search: Parallel hyperparameter exploration",
+        },
+        {
+            "name": "Visualization & Reporting",
+            "description": "[CHART_BAR] Visualizzazione e Reporting Professionale<br><br>Grafici interattivi e report executive:<br><br>• Interactive Plots: Plotly dashboards con drill-down<br>• Executive Dashboards: KPI monitoring real-time<br>• Professional Reports: PDF/HTML multi-formato<br>• Model Comparison: Side-by-side performance visualization<br>• Custom Plots: Visualizzazioni personalizzate avanzate<br>• Alert System: Monitoring anomalie e degradation",
+        },
+        {
+            "name": "Data Management",
+            "description": "[DATABASE] Gestione Dati e Preprocessing<br><br>Pipeline completa data management:<br><br>• Data Upload: CSV/Excel/JSON con validazione automatica<br>• Quality Assessment: Scoring qualità multi-dimensionale<br>• Preprocessing Pipeline: Steps configurabili trasformazione<br>• Data Exploration: Analisi esplorativa automatica<br>• Train/Test Split: Metodi appropriati time series<br>• Data Validation: Check consistenza e anomalie",
+        },
+        {
+            "name": "Multi-language & Enterprise",
+            "description": "[GLOBE] Enterprise e Multi-lingua<br><br>Funzionalità enterprise production-ready:<br><br>• Multi-language: Traduzioni automatiche 8 lingue<br>• Enterprise Config: Scaling, security, governance<br>• Production Deployment: Blue/green, canary, rollback<br>• Compliance Audit: GDPR, SOC2, ISO27001<br>• Integration Testing: API, database, message queue<br>• Security Audit: Vulnerability scanning e penetration test",
+        },
     ]
     
     # Crea l'istanza FastAPI con metadati completi
@@ -163,6 +203,14 @@ def create_app(
     app.include_router(models_router)  # /models prefix nel router
     app.include_router(diagnostics_router)  # /models prefix nel router
     app.include_router(reports_router)  # No prefix per reports
+    app.include_router(inventory_router)  # /inventory prefix nel router
+    app.include_router(demand_sensing_router)  # /demand-sensing prefix nel router
+    app.include_router(advanced_models_router)  # /advanced-models prefix nel router
+    app.include_router(evaluation_router)  # /evaluation prefix nel router
+    app.include_router(automl_router)  # /automl prefix nel router
+    app.include_router(visualization_router)  # /visualization prefix nel router
+    app.include_router(data_management_router)  # /data prefix nel router
+    app.include_router(enterprise_router)  # /enterprise prefix nel router
 
     # Log di startup
     @app.on_event("startup")

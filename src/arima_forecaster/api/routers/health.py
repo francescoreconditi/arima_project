@@ -36,7 +36,7 @@ async def root() -> Dict[str, str]:
     Endpoint root dell'API che fornisce informazioni di base sul servizio.
     
     <h4>Valore di Ritorno:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>message</td><td>string</td><td>Messaggio di benvenuto</td></tr>
         <tr><td>version</td><td>string</td><td>Versione dell'API</td></tr>
@@ -68,7 +68,7 @@ async def health_check() -> Dict[str, Any]:
     lo stato del servizio in produzione.
     
     <h4>Valore di Ritorno:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>status</td><td>string</td><td>Stato del servizio (sempre "healthy")</td></tr>
         <tr><td>timestamp</td><td>string</td><td>Timestamp corrente ISO 8601</td></tr>

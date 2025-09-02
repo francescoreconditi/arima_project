@@ -64,13 +64,13 @@ async def get_model_diagnostics(
     di performance dettagliate per valutare la qualità del fit.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID univoco del modello da analizzare</td></tr>
     </table>
     
     <h4>Risposta:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>residuals_stats</td><td>dict</td><td>Statistiche sui residui (mean, std, skewness, kurtosis)</td></tr>
         <tr><td>ljung_box_test</td><td>dict</td><td>Test di Ljung-Box per autocorrelazione residui</td></tr>

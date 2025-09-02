@@ -94,14 +94,14 @@ async def generate_report(
     includendo analisi, visualizzazioni e raccomandazioni.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID del modello per cui generare il report</td></tr>
         <tr><td>request</td><td>ReportRequest</td><td>Configurazione del report</td></tr>
     </table>
     
     <h4>Campi del Request Body:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th><th>Default</th></tr>
         <tr><td>format</td><td>str</td><td>Formato output: "html", "pdf", "docx"</td><td>"html"</td></tr>
         <tr><td>include_diagnostics</td><td>bool</td><td>Includere analisi diagnostiche</td><td>true</td></tr>
@@ -201,13 +201,13 @@ async def download_report(filename: str):
     I report sono serviti come file statici dal file system.
     
     <h4>Parametri di Ingresso:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>filename</td><td>str</td><td>Nome del file del report da scaricare</td></tr>
     </table>
     
     <h4>Headers di Risposta:</h4>
-    <table class="table table-striped">
+    <table >
         <tr><th>Header</th><th>Valore</th><th>Descrizione</th></tr>
         <tr><td>Content-Type</td><td>application/octet-stream</td><td>Tipo MIME per download</td></tr>
         <tr><td>Content-Disposition</td><td>attachment; filename="..."</td><td>Forza il download del file</td></tr>
