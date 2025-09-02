@@ -164,6 +164,14 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
 - **ModelTuner**: Tuning avanzato multi-obiettivo
 - Ensemble methods e stacking
 
+#### Inventory Management (`src/arima_forecaster/inventory/`)
+- **BalanceOptimizer** (`balance_optimizer.py`): Sistema completo ottimizzazione magazzino
+  - Slow/Fast Moving Classification con ABC/XYZ analysis
+  - Perishable/FEFO Management per prodotti deperibili
+  - Multi-Echelon Optimization con risk pooling
+  - Capacity Constraints Management (volume, peso, budget, pallet)
+  - Kitting/Bundle Optimization per Make-to-Stock vs Assemble-to-Order
+
 #### Utils & Traduzioni (`src/arima_forecaster/utils/`)
 - **TranslationManager** (`translations.py`): Sistema traduzioni centralizzato multilingue
 - **Logger** (`logger.py`): Logging configurabile per debugging e monitoraggio  
@@ -176,6 +184,7 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
 
 ### Pipeline Dati Tipica
 
+#### Pipeline Base Forecasting:
 1. **Caricamento**: `DataLoader.load_data()` con validazione
 2. **Preprocessing**: `TimeSeriesPreprocessor.preprocess_pipeline()`
 3. **Selezione Modello**: `ARIMAModelSelector.search()` o manuale
@@ -184,6 +193,15 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
 6. **Visualizzazione**: `ForecastPlotter.create_dashboard()`
 7. **Reporting**: `QuartoReportGenerator.generate_report()`
 8. **Deployment**: API REST o dashboard web
+
+#### Pipeline Inventory Management (nuovo!):
+1. **Classificazione**: `MovementClassifier.classify_movement_speed()` per ABC/XYZ
+2. **Ottimizzazione Slow/Fast**: `SlowFastOptimizer.optimize_inventory()`
+3. **Gestione Deperibili**: `PerishableManager.optimize_fefo_quantity()` se applicabile
+4. **Multi-Echelon**: `MultiEchelonOptimizer.optimize_network()` per multi-location
+5. **Vincoli Capacità**: `CapacityConstrainedOptimizer.optimize_with_constraints()`
+6. **Bundle/Kit**: `KittingOptimizer.analyze_kit_strategy()` per componenti
+7. **Integrazione**: Combinazione strategie per raccomandazione finale
 
 ### Pattern Import Consigliati
 
@@ -202,7 +220,17 @@ from arima_forecaster.evaluation import ModelEvaluator
 from arima_forecaster.reporting import QuartoReportGenerator  # Richiede [reports]
 from arima_forecaster.automl import HyperparameterOptimizer  # Richiede [automl]
 
-# Import traduzioni (nuovo!)
+# Import inventory management (nuovo!)
+from arima_forecaster.inventory.balance_optimizer import (
+    MovementClassifier,
+    SlowFastOptimizer,
+    PerishableManager,
+    MultiEchelonOptimizer,
+    CapacityConstrainedOptimizer,
+    KittingOptimizer
+)
+
+# Import traduzioni
 from arima_forecaster.utils.translations import translate as _, get_all_translations
 ```
 
@@ -258,6 +286,11 @@ just build       # Build package per distribuzione
 - ✅ Dashboard Streamlit interattiva multilingue (5 lingue: IT, EN, ES, FR, ZH)
 - ✅ Reporting Quarto con export multi-formato
 - ✅ Ensemble methods e model stacking
+- ✅ **NUOVO:** Slow/Fast Moving Inventory Classification con ABC/XYZ analysis
+- ✅ **NUOVO:** Perishable/FEFO Management per prodotti deperibili
+- ✅ **NUOVO:** Multi-Echelon Optimization con risk pooling
+- ✅ **NUOVO:** Capacity Constraints Management (volume, peso, budget, pallet)
+- ✅ **NUOVO:** Kitting/Bundle Optimization per strategie Make-to-Stock vs Assemble-to-Order
 
 ### Directory Output
 - `outputs/models/`: Modelli serializzati (.pkl)

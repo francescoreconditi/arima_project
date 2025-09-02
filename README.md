@@ -23,6 +23,12 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **📄 Report Quarto**: Generazione report dinamici multilingue con analisi automatiche
 - **🎯 Ensemble Methods**: Combinazione intelligente di modelli diversi
 - **⚡ GPU Parallel Processing**: Training fino a 500+ modelli in parallelo su GPU NVIDIA
+- **🏭 Inventory Optimization**: Sistema avanzato ottimizzazione magazzino enterprise-grade
+- **⏰ Slow/Fast Moving**: Gestione differenziata prodotti bassa/alta rotazione
+- **📦 Perishable/FEFO**: Gestione prodotti deperibili con markdown automatico
+- **🏢 Multi-Echelon**: Ottimizzazione inventory reti distribuite multi-livello
+- **⚖️ Capacity Constraints**: Gestione vincoli capacità (volume, budget, pallet)
+- **🔧 Kitting/Bundle**: Ottimizzazione kit vs componenti separati
 
 ### ✨ **Caratteristiche Core**
 
@@ -71,6 +77,8 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── automl/                     # Auto-ML e ottimizzazione avanzata
 │   │   ├── optimizer.py           # Ottimizzatori con Optuna/Hyperopt
 │   │   └── tuner.py               # Hyperparameter tuning avanzato
+│   ├── inventory/                   # 🏭 Sistema Ottimizzazione Magazzino Enterprise
+│   │   └── balance_optimizer.py    # Bilanciamento scorte: Slow/Fast, Perishable, Multi-Echelon, Capacity, Kitting
 │   ├── utils/                       # Logging, eccezioni, traduzioni, GPU e Advanced Exog Utils
 │   │   ├── gpu_utils.py            # 🚀 GPU/CUDA utilities e array management
 │   │   ├── translations.py         # Sistema traduzioni centralizzato multilingue
@@ -89,7 +97,9 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── guida_prophet.md           # 📈 Guida pratica uso Prophet
 │   ├── arima_vs_sarima.md         # Confronto dettagliato modelli
 │   ├── sarima_vs_sarimax.md       # Confronto SARIMA vs SARIMAX
-│   └── prophet_vs_arima.md        # 📈 Confronto Prophet vs ARIMA
+│   ├── prophet_vs_arima.md        # 📈 Confronto Prophet vs ARIMA
+│   ├── slow_fast_moving_theory.md # 🏭 Teoria e pratica gestione Slow/Fast Moving
+│   └── inventory_optimization_guide.md # 🏭 Guida completa ottimizzazione magazzino
 ├── .env.example                   # 🚀 Template configurazione completo per GPU/CPU
 ├── examples/                       # Script esempio pratici
 │   ├── advanced_forecasting_showcase.py  # Demo funzionalità avanzate
@@ -97,6 +107,8 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── moretti/                   # ⭐ Caso pratico completo Moretti S.p.A.
 │   │   ├── test_advanced_exog_handling.py  # ⭐ Demo Advanced Exog Handling completo
 │   │   └── moretti_dashboard.py   # Dashboard multilingue sistema medicale
+│   ├── slow_fast_moving_demo.py   # 🏭 Demo classificazione e ottimizzazione Slow/Fast Moving
+│   ├── advanced_features_demo.py  # 🏭 Demo completa 4 casistiche avanzate inventory
 │   └── forecasting_base.py        # Esempi base ARIMA/SARIMA
 ├── notebooks/                      # Jupyter notebooks per ricerca e sviluppo
 │   └── research_and_development.ipynb # Ambiente R&D per sperimentazione algoritmi
@@ -733,7 +745,276 @@ dashboard = ARIMADashboard()
 dashboard.run()
 ```
 
-#### 8. Report Dinamici con Quarto
+#### 8. 🏭 Inventory Optimization - Slow/Fast Moving (NUOVO)
+
+```python
+from arima_forecaster.inventory import (
+    MovementClassifier, SlowFastOptimizer, PerishableManager,
+    MultiEchelonOptimizer, CapacityConstrainedOptimizer, KittingOptimizer
+)
+import pandas as pd
+
+# 1. CLASSIFICAZIONE SLOW/FAST MOVING
+classifier = MovementClassifier()
+
+# Classifica prodotto per velocità movimento
+turnover_annuo = 8.5  # rotazioni/anno
+categoria = classifier.classify_by_movement(turnover_annuo)
+print(f"Categoria: {categoria.value[1]}")  # "Media rotazione"
+
+# Analisi portfolio completo
+products_data = pd.DataFrame({
+    'product_id': ['A001', 'B002', 'C003'],
+    'name': ['Mascherine FFP2', 'Carrozzina Standard', 'Kit Chirurgico'],
+    'fatturato': [500000, 250000, 75000]
+})
+
+sales_history = pd.DataFrame({
+    'product_id': ['A001'] * 365 + ['B002'] * 365,
+    'quantity': np.random.poisson(50, 365).tolist() + np.random.poisson(5, 365).tolist()
+})
+
+# Analisi completa con classificazione ABC-XYZ
+analysis = classifier.analyze_product_portfolio(products_data, sales_history)
+print(analysis[['product_id', 'movimento', 'turnover', 'cv']].head())
+
+# 2. OTTIMIZZAZIONE DIFFERENZIATA
+optimizer = SlowFastOptimizer(costi_giacenza)
+
+# Per prodotti Fast Moving
+fast_optimization = optimizer.optimize_fast_moving(
+    demand_history=daily_sales_fast,
+    unit_cost=25.0,
+    lead_time=7,
+    supplier_constraints={'min_order_qty': 100, 'truck_capacity': 1000}
+)
+
+print(f"Fast Moving Strategy:")
+print(f"  Safety Stock: {fast_optimization['safety_stock']} unità")
+print(f"  EOQ: {fast_optimization['eoq']} unità") 
+print(f"  Service Level: {fast_optimization['service_level']:.0%}")
+
+# Per prodotti Slow Moving
+slow_optimization = optimizer.optimize_slow_moving(
+    demand_history=daily_sales_slow,
+    unit_cost=450.0,
+    lead_time=21,
+    shelf_life_days=730  # 2 anni shelf life
+)
+
+print(f"Slow Moving Strategy:")
+print(f"  Safety Stock: {slow_optimization['safety_stock']} unità")
+print(f"  Rischio Obsolescenza: {slow_optimization['obsolescence_risk']:.0%}")
+print(f"  Make-to-Order Threshold: {slow_optimization['make_to_order_threshold']}")
+
+# 3. GESTIONE PRODOTTI DEPERIBILI (FEFO)
+from datetime import datetime, timedelta
+
+perishable_mgr = PerishableManager()
+
+# Lotti con scadenze diverse
+lotti_farmaci = [
+    {
+        'lotto_id': 'LOT001',
+        'quantita': 500,
+        'data_produzione': datetime.now() - timedelta(days=200),
+        'data_scadenza': datetime.now() + timedelta(days=165),
+        'valore_unitario': 12.50
+    }
+]
+
+# Analisi FEFO (First Expired, First Out)
+lotti_analizzati = perishable_mgr.analizza_lotti(lotti_farmaci)
+lotto_critico = lotti_analizzati[0]
+
+# Calcola markdown automatico per smaltimento
+markdown = perishable_mgr.calcola_markdown_ottimale(
+    lotto_critico,
+    domanda_giornaliera=15,
+    elasticita_prezzo=2.0
+)
+
+print(f"Lotto {lotto_critico.lotto_id}:")
+print(f"  Giorni rimanenti: {lotto_critico.giorni_residui}")
+print(f"  Markdown suggerito: {markdown['markdown_suggerito']:.0%}")
+print(f"  Azione: {markdown['azione']}")
+```
+
+#### 9. 🏢 Multi-Echelon & Capacity Optimization (NUOVO)
+
+```python
+# MULTI-ECHELON: Ottimizzazione rete distributiva
+from arima_forecaster.inventory import MultiEchelonOptimizer, NodoInventory, LivelloEchelon
+
+# Setup rete: Centrale → 3 Regionali → 6 Locali
+rete_nodi = {
+    'CENTRAL': NodoInventory(
+        nodo_id='CENTRAL',
+        nome='Deposito Centrale Milano',
+        livello=LivelloEchelon.CENTRALE,
+        capacita_max=50000,
+        stock_attuale=15000,
+        demand_rate=0,
+        lead_time_fornitori={'SUPPLIER': 14},
+        costi_trasporto={'REG_NORD': 2.5, 'REG_CENTRO': 3.0},
+        nodi_figli=['REG_NORD', 'REG_CENTRO'],
+        nodi_genitori=['SUPPLIER']
+    )
+}
+
+optimizer_me = MultiEchelonOptimizer(rete_nodi)
+
+# Safety stock con risk pooling
+ss_info = optimizer_me.calcola_safety_stock_echelon(
+    'CENTRAL',
+    service_level_target=0.95,
+    variabilita_domanda=25
+)
+
+print(f"Safety Stock Centrale: {ss_info['safety_stock']} unità")
+print(f"Beneficio Risk Pooling: {ss_info['beneficio_pooling_pct']:.1f}%")
+
+# Allocation ottimale tra nodi
+allocation = optimizer_me.ottimizza_allocation(
+    stock_disponibile_centrale=8000,
+    richieste_nodi={'REG_NORD': 3500, 'REG_CENTRO': 2800},
+    priorita_nodi={'REG_NORD': 1.5, 'REG_CENTRO': 1.0}
+)
+
+print(f"Fill Rate: {allocation['fill_rate_medio']:.0%}")
+for nodo, dettaglio in allocation['dettaglio_nodi'].items():
+    print(f"  {nodo}: {dettaglio['allocato']}/{dettaglio['richiesta']}")
+
+# CAPACITY CONSTRAINTS: Gestione vincoli fisici/budget
+from arima_forecaster.inventory import CapacityConstrainedOptimizer, VincoloCapacita, TipoCapacita
+
+vincoli = {
+    'volume': VincoloCapacita(
+        tipo=TipoCapacita.VOLUME,
+        capacita_massima=1200.0,  # m³
+        utilizzo_corrente=850.0,
+        unita_misura="m³",
+        costo_per_unita=150.0  # €/m³ espansione
+    ),
+    'budget': VincoloCapacita(
+        tipo=TipoCapacita.BUDGET,
+        capacita_massima=500000.0,  # €500k
+        utilizzo_corrente=320000.0,
+        unita_misura="€"
+    )
+}
+
+capacity_optimizer = CapacityConstrainedOptimizer(vincoli)
+
+# Richieste che superano capacity
+richieste_riordino = {
+    'PROD_A': 1500,
+    'PROD_B': 2000,  # Alto impatto volume/budget
+    'PROD_C': 8000
+}
+
+# Ottimizzazione con vincoli
+result = capacity_optimizer.ottimizza_con_vincoli(
+    richieste_riordino,
+    priorita_prodotti={'PROD_A': 1.0, 'PROD_B': 1.8, 'PROD_C': 0.6}
+)
+
+print(f"Fill Rate con vincoli: {result['fill_rate']:.0%}")
+print("Vincoli saturati:", result['vincoli_saturati'])
+
+# Suggerimenti investimenti
+if result['fill_rate'] < 0.9:
+    richieste_mancanti = {
+        pid: richieste_riordino[pid] - result['quantita_approvate'][pid]
+        for pid in richieste_riordino
+        if result['quantita_approvate'][pid] < richieste_riordino[pid]
+    }
+    
+    espansioni = capacity_optimizer.suggerisci_espansione_capacita(richieste_mancanti)
+    print(f"Investimento suggerito: €{espansioni['investimento_totale']:,.0f}")
+    print(f"ROI medio: {espansioni['roi_medio_ponderato']:.1f}%/anno")
+```
+
+#### 10. 🔧 Kit/Bundle Optimization (NUOVO)
+
+```python
+# KITTING: Ottimizzazione kit vs componenti separati
+from arima_forecaster.inventory import KittingOptimizer, ComponenteKit, DefinzioneKit, TipoComponente
+
+# Definisci componenti kit medico
+componenti = [
+    ComponenteKit(
+        componente_id='STETOSCOPIO',
+        nome='Stetoscopio Standard',
+        tipo=TipoComponente.MASTER,
+        quantita_per_kit=1,
+        costo_unitario=45.0,
+        lead_time=14,
+        criticalita=0.9,
+        sostituibili=['STETOSCOPIO_PRO']
+    ),
+    ComponenteKit(
+        componente_id='TERMOMETRO',
+        nome='Termometro Digitale',
+        tipo=TipoComponente.STANDARD,
+        quantita_per_kit=1,
+        costo_unitario=15.0,
+        lead_time=7,
+        sostituibili=['TERMOMETRO_IR']
+    )
+]
+
+# Definisci kit completo
+kit_medico = DefinzioneKit(
+    kit_id='KIT_MEDICO_BASE',
+    nome='Kit Medico Base',
+    componenti=componenti,
+    prezzo_vendita_kit=150.0,
+    margine_target=0.35,
+    domanda_storica_kit=[25, 30, 28, 35],
+    can_sell_components_separately=True
+)
+
+kitting_optimizer = KittingOptimizer({'KIT_MEDICO_BASE': kit_medico})
+
+# Setup inventory componenti
+kitting_optimizer.aggiorna_inventory_componente('STETOSCOPIO', 150)
+kitting_optimizer.aggiorna_inventory_componente('TERMOMETRO', 200)
+
+# Analisi assemblabilità
+kit_info = kitting_optimizer.calcola_kit_assemblabili('KIT_MEDICO_BASE')
+print(f"Kit assemblabili: {kit_info['kit_assemblabili']}")
+print(f"Componente limitante: {kit_info['componente_limitante']}")
+
+# Decisione: Kit vs Componenti Separati
+forecast_kit = np.array([28, 32, 30, 25])
+forecast_componenti = {
+    'STETOSCOPIO': np.array([5, 7, 4, 6]),
+    'TERMOMETRO': np.array([12, 15, 10, 8])
+}
+
+strategy = kitting_optimizer.ottimizza_kit_vs_componenti(
+    'KIT_MEDICO_BASE',
+    forecast_kit,
+    forecast_componenti
+)
+
+print(f"Strategia: {strategy['strategia_consigliata']}")
+print(f"Focus: {strategy['focus_principale']}")
+print(f"ROI kit vs componenti: {strategy['analisi_finanziaria']['roi_kit_vs_componenti']:.2f}x")
+
+# Disassembly planning
+disassembly = kitting_optimizer.pianifica_disassembly(
+    'KIT_MEDICO_BASE',
+    20,  # Disfa 20 kit
+    {'TERMOMETRO': 25, 'STETOSCOPIO': 10}  # Domanda urgente componenti
+)
+
+print(f"Disassembly convenienza: €{disassembly['convenienza_netta']:,.0f}")
+print(f"Raccomandazione: {disassembly['raccomandazione']}")
+```
+
+#### 11. Report Dinamici con Quarto
 
 ```python
 from arima_forecaster import ARIMAForecaster, SARIMAForecaster, SARIMAXForecaster

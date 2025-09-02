@@ -54,6 +54,42 @@ class CostiGiacenza(BaseModel):
     costo_cliente_perso: float = Field(500.0, description="Valore lifetime cliente perso")
 
 
+class CategoriaMovimentazione(Enum):
+    """Classificazione prodotti per velocità di movimento"""
+    FAST_MOVING = ("fast", "Alta rotazione", 12)      # Turnover > 12x/anno
+    MEDIUM_MOVING = ("medium", "Media rotazione", 6)   # Turnover 6-12x/anno  
+    SLOW_MOVING = ("slow", "Bassa rotazione", 3)      # Turnover 3-6x/anno
+    VERY_SLOW = ("very_slow", "Bassissima rotazione", 1)  # Turnover < 3x/anno
+
+
+class ClassificazioneABC(Enum):
+    """Classificazione ABC per valore economico"""
+    A = ("A", "Alto valore - 80% fatturato", 0.8)
+    B = ("B", "Medio valore - 15% fatturato", 0.15)
+    C = ("C", "Basso valore - 5% fatturato", 0.05)
+
+
+class ClassificazioneXYZ(Enum):
+    """Classificazione XYZ per variabilità domanda"""
+    X = ("X", "Domanda stabile - CV < 0.5", 0.5)
+    Y = ("Y", "Domanda variabile - CV 0.5-1.0", 1.0)
+    Z = ("Z", "Domanda erratica - CV > 1.0", 999)
+
+
+class ProfiloProdotto(BaseModel):
+    """Profilo completo prodotto con classificazioni"""
+    codice: str
+    nome: str
+    categoria_movimento: CategoriaMovimentazione
+    classe_abc: ClassificazioneABC
+    classe_xyz: ClassificazioneXYZ
+    turnover_annuo: float
+    coefficiente_variazione: float
+    valore_giacenza_media: float
+    percentuale_fatturato: float
+    strategia_suggerita: str
+
+
 class AnalisiRischio(BaseModel):
     """Analisi rischio overstock/stockout"""
     probabilita_stockout: float
@@ -63,6 +99,7 @@ class AnalisiRischio(BaseModel):
     cash_cycle_days: int
     rischio_obsolescenza: float
     livello_alert: AlertLevel
+    categoria_movimento: Optional[CategoriaMovimentazione] = None
 
 
 # =====================================================
@@ -154,6 +191,381 @@ class SafetyStockCalculator:
         holding_cost = holding_cost_rate * unit_cost
         eoq = np.sqrt((2 * annual_demand * ordering_cost) / holding_cost)
         return round(eoq)
+
+
+# =====================================================
+# CLASSIFICATORE SLOW/FAST MOVING
+# =====================================================
+
+class MovementClassifier:
+    """Classificatore prodotti per velocità movimento e variabilità"""
+    
+    @staticmethod
+    def classify_by_movement(turnover: float) -> CategoriaMovimentazione:
+        """Classifica prodotto per velocità di movimento basata su turnover"""
+        if turnover >= 12:
+            return CategoriaMovimentazione.FAST_MOVING
+        elif turnover >= 6:
+            return CategoriaMovimentazione.MEDIUM_MOVING
+        elif turnover >= 3:
+            return CategoriaMovimentazione.SLOW_MOVING
+        else:
+            return CategoriaMovimentazione.VERY_SLOW
+    
+    @staticmethod
+    def classify_abc(products_df: pd.DataFrame, value_column: str = 'fatturato') -> pd.DataFrame:
+        """
+        Classifica prodotti secondo analisi ABC (Pareto)
+        
+        Args:
+            products_df: DataFrame con dati prodotti
+            value_column: Colonna da usare per classificazione (fatturato, margine, etc.)
+        """
+        df = products_df.copy()
+        
+        # Calcola percentuale cumulativa
+        df = df.sort_values(value_column, ascending=False)
+        df['cumulative_value'] = df[value_column].cumsum()
+        df['cumulative_pct'] = df['cumulative_value'] / df[value_column].sum()
+        
+        # Assegna classi ABC
+        df['classe_abc'] = pd.cut(
+            df['cumulative_pct'],
+            bins=[0, 0.8, 0.95, 1.0],
+            labels=['A', 'B', 'C']
+        )
+        
+        return df
+    
+    @staticmethod
+    def classify_xyz(demand_series: pd.Series) -> ClassificazioneXYZ:
+        """
+        Classifica per variabilità domanda usando coefficiente di variazione
+        
+        CV = σ / μ
+        """
+        mean_demand = demand_series.mean()
+        std_demand = demand_series.std()
+        
+        if mean_demand == 0:
+            return ClassificazioneXYZ.Z
+        
+        cv = std_demand / mean_demand
+        
+        if cv < 0.5:
+            return ClassificazioneXYZ.X
+        elif cv <= 1.0:
+            return ClassificazioneXYZ.Y
+        else:
+            return ClassificazioneXYZ.Z
+    
+    @staticmethod
+    def get_strategy_by_classification(
+        movimento: CategoriaMovimentazione,
+        abc: ClassificazioneABC,
+        xyz: ClassificazioneXYZ
+    ) -> Dict[str, Any]:
+        """
+        Definisce strategia ottimale basata su classificazione combinata
+        """
+        strategies = {
+            # Fast Moving + Classe A
+            (CategoriaMovimentazione.FAST_MOVING, ClassificazioneABC.A, ClassificazioneXYZ.X): {
+                'strategia': 'Just-In-Time con safety stock minimo',
+                'service_level': 0.99,
+                'review_period': 'Continuo',
+                'ordering_policy': 'EOQ ottimizzato',
+                'safety_stock_factor': 0.8
+            },
+            (CategoriaMovimentazione.FAST_MOVING, ClassificazioneABC.A, ClassificazioneXYZ.Y): {
+                'strategia': 'Buffer moderato con riordino frequente',
+                'service_level': 0.98,
+                'review_period': 'Settimanale',
+                'ordering_policy': 'EOQ con aggiustamenti',
+                'safety_stock_factor': 1.0
+            },
+            (CategoriaMovimentazione.FAST_MOVING, ClassificazioneABC.A, ClassificazioneXYZ.Z): {
+                'strategia': 'Safety stock elevato, forecast avanzato',
+                'service_level': 0.95,
+                'review_period': 'Bisettimanale',
+                'ordering_policy': 'Order-up-to level',
+                'safety_stock_factor': 1.5
+            },
+            
+            # Slow Moving + Classe A (raro ma critico)
+            (CategoriaMovimentazione.SLOW_MOVING, ClassificazioneABC.A, ClassificazioneXYZ.X): {
+                'strategia': 'Stock minimo garantito',
+                'service_level': 0.95,
+                'review_period': 'Mensile',
+                'ordering_policy': 'Min-Max',
+                'safety_stock_factor': 1.2
+            },
+            
+            # Slow Moving + Classe C
+            (CategoriaMovimentazione.SLOW_MOVING, ClassificazioneABC.C, ClassificazioneXYZ.Z): {
+                'strategia': 'Make-to-order quando possibile',
+                'service_level': 0.85,
+                'review_period': 'Trimestrale',
+                'ordering_policy': 'Order on demand',
+                'safety_stock_factor': 0.5
+            },
+            
+            # Very Slow Moving
+            (CategoriaMovimentazione.VERY_SLOW, ClassificazioneABC.C, ClassificazioneXYZ.Z): {
+                'strategia': 'No stock - solo su ordine',
+                'service_level': 0.80,
+                'review_period': 'Su richiesta',
+                'ordering_policy': 'Make-to-order',
+                'safety_stock_factor': 0
+            }
+        }
+        
+        # Strategia di default se combinazione non trovata
+        default_strategy = {
+            'strategia': 'Bilanciamento standard',
+            'service_level': 0.90,
+            'review_period': 'Mensile',
+            'ordering_policy': 'EOQ standard',
+            'safety_stock_factor': 1.0
+        }
+        
+        return strategies.get((movimento, abc, xyz), default_strategy)
+    
+    @staticmethod
+    def analyze_product_portfolio(
+        products_data: pd.DataFrame,
+        sales_history: pd.DataFrame,
+        value_column: str = 'fatturato'
+    ) -> pd.DataFrame:
+        """
+        Analisi completa portfolio prodotti con classificazioni multiple
+        
+        Args:
+            products_data: Dati anagrafici prodotti
+            sales_history: Storico vendite
+            value_column: Colonna per analisi ABC
+        """
+        results = []
+        
+        for product_id in products_data['product_id'].unique():
+            # Filtra dati prodotto
+            product_info = products_data[products_data['product_id'] == product_id].iloc[0]
+            product_sales = sales_history[sales_history['product_id'] == product_id]['quantity']
+            
+            # Calcola metriche
+            annual_demand = product_sales.sum()
+            avg_inventory = product_info.get('avg_inventory', annual_demand / 12)
+            turnover = annual_demand / avg_inventory if avg_inventory > 0 else 0
+            
+            # Classificazioni
+            movimento = MovementClassifier.classify_by_movement(turnover)
+            xyz = MovementClassifier.classify_xyz(product_sales)
+            
+            # Coefficiente variazione
+            cv = product_sales.std() / product_sales.mean() if product_sales.mean() > 0 else 999
+            
+            results.append({
+                'product_id': product_id,
+                'product_name': product_info.get('name', ''),
+                'movimento': movimento.value[0],
+                'movimento_desc': movimento.value[1],
+                'classe_xyz': xyz.value[0],
+                'xyz_desc': xyz.value[1],
+                'turnover': turnover,
+                'cv': cv,
+                'annual_demand': annual_demand,
+                'avg_inventory': avg_inventory
+            })
+        
+        results_df = pd.DataFrame(results)
+        
+        # Aggiungi classificazione ABC
+        if value_column in products_data.columns:
+            results_df = results_df.merge(
+                products_data[['product_id', value_column]],
+                on='product_id'
+            )
+            results_df = MovementClassifier.classify_abc(results_df, value_column)
+        
+        return results_df
+
+
+# =====================================================
+# OTTIMIZZATORE SPECIFICO SLOW/FAST MOVING
+# =====================================================
+
+class SlowFastOptimizer:
+    """Ottimizzatore specializzato per slow e fast moving"""
+    
+    def __init__(self, costi: CostiGiacenza):
+        self.costi = costi
+        self.classifier = MovementClassifier()
+    
+    def optimize_slow_moving(
+        self,
+        demand_history: np.ndarray,
+        unit_cost: float,
+        lead_time: int,
+        shelf_life_days: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Ottimizzazione specifica per slow moving
+        
+        Caratteristiche:
+        - Lotti minimi per ridurre capitale immobilizzato
+        - Safety stock ridotto
+        - Possibile make-to-order
+        - Considerazione shelf life
+        """
+        demand_mean = np.mean(demand_history)
+        demand_std = np.std(demand_history)
+        
+        # Per slow moving, usa percentili invece di distribuzione normale
+        safety_stock = np.percentile(demand_history, 75) * lead_time
+        
+        # EOQ modificato per slow moving (lotti più piccoli)
+        annual_demand = demand_mean * 365
+        eoq_standard = np.sqrt((2 * annual_demand * self.costi.costo_ordine_urgente) / 
+                              (self.costi.tasso_capitale * unit_cost))
+        
+        # Riduci EOQ per slow moving
+        eoq_adjusted = max(1, eoq_standard * 0.5)
+        
+        # Se c'è shelf life, limita ulteriormente
+        if shelf_life_days:
+            max_stock_days = shelf_life_days * 0.5  # Max 50% shelf life
+            max_stock = demand_mean * max_stock_days
+            eoq_adjusted = min(eoq_adjusted, max_stock)
+        
+        # Calcola costi
+        holding_cost = safety_stock * unit_cost * self.costi.tasso_capitale
+        obsolescence_risk = min(1.0, (demand_std / demand_mean) * 2) if demand_mean > 0 else 1.0
+        
+        return {
+            'safety_stock': round(safety_stock),
+            'eoq': round(eoq_adjusted),
+            'reorder_point': round(demand_mean * lead_time + safety_stock),
+            'annual_orders': annual_demand / eoq_adjusted,
+            'holding_cost': holding_cost,
+            'obsolescence_risk': obsolescence_risk,
+            'suggested_policy': 'Min-Max con revisione mensile',
+            'make_to_order_threshold': demand_mean * 30  # Se stock > 30gg, considera MTO
+        }
+    
+    def optimize_fast_moving(
+        self,
+        demand_history: np.ndarray,
+        unit_cost: float,
+        lead_time: int,
+        supplier_constraints: Optional[Dict] = None
+    ) -> Dict[str, Any]:
+        """
+        Ottimizzazione specifica per fast moving
+        
+        Caratteristiche:
+        - Focus su disponibilità continua
+        - Safety stock robusto
+        - Ottimizzazione costi trasporto con lotti
+        - Considerazione vincoli fornitore
+        """
+        demand_mean = np.mean(demand_history)
+        demand_std = np.std(demand_history)
+        
+        # Safety stock più generoso per fast moving
+        z_score = stats.norm.ppf(0.98)  # 98% service level
+        safety_stock = z_score * demand_std * np.sqrt(lead_time)
+        
+        # EOQ con considerazione trasporto
+        annual_demand = demand_mean * 365
+        ordering_cost = self.costi.costo_ordine_urgente
+        
+        # Se ci sono vincoli fornitore
+        if supplier_constraints:
+            min_order = supplier_constraints.get('min_order_qty', 1)
+            truck_capacity = supplier_constraints.get('truck_capacity', float('inf'))
+        else:
+            min_order = 1
+            truck_capacity = float('inf')
+        
+        # EOQ standard
+        eoq_standard = np.sqrt((2 * annual_demand * ordering_cost) / 
+                              (self.costi.tasso_capitale * unit_cost))
+        
+        # Arrotonda a multipli del minimo ordine o capacità camion
+        eoq_adjusted = max(min_order, eoq_standard)
+        if truck_capacity < float('inf'):
+            eoq_adjusted = round(eoq_adjusted / truck_capacity) * truck_capacity
+        
+        # Calcola metriche
+        cycle_time = eoq_adjusted / demand_mean
+        annual_orders = annual_demand / eoq_adjusted
+        
+        return {
+            'safety_stock': round(safety_stock),
+            'eoq': round(eoq_adjusted),
+            'reorder_point': round(demand_mean * lead_time + safety_stock),
+            'cycle_time_days': round(cycle_time),
+            'annual_orders': round(annual_orders, 1),
+            'service_level': 0.98,
+            'suggested_policy': 'Continuous review (s,Q)',
+            'express_order_threshold': safety_stock * 0.5  # Ordine express se sotto 50% SS
+        }
+    
+    def compare_strategies(
+        self,
+        demand_history: np.ndarray,
+        unit_cost: float,
+        lead_time: int,
+        current_policy: Dict[str, float]
+    ) -> pd.DataFrame:
+        """
+        Confronta strategia attuale con ottimizzata per slow/fast
+        """
+        demand_mean = np.mean(demand_history)
+        turnover = (demand_mean * 365) / current_policy.get('avg_inventory', demand_mean * 30)
+        
+        # Classifica il prodotto
+        categoria = self.classifier.classify_by_movement(turnover)
+        
+        # Ottimizza in base alla categoria
+        if categoria in [CategoriaMovimentazione.SLOW_MOVING, CategoriaMovimentazione.VERY_SLOW]:
+            optimized = self.optimize_slow_moving(demand_history, unit_cost, lead_time)
+            strategy_type = "Slow Moving"
+        else:
+            optimized = self.optimize_fast_moving(demand_history, unit_cost, lead_time)
+            strategy_type = "Fast Moving"
+        
+        # Calcola risparmi
+        current_holding = current_policy.get('avg_inventory', 0) * unit_cost * self.costi.tasso_capitale
+        optimized_holding = optimized['safety_stock'] * unit_cost * self.costi.tasso_capitale
+        
+        savings = current_holding - optimized_holding
+        savings_pct = (savings / current_holding * 100) if current_holding > 0 else 0
+        
+        comparison = pd.DataFrame({
+            'Metrica': ['Categoria', 'Safety Stock', 'EOQ', 'Reorder Point', 
+                       'Costo Giacenza Annuo', 'Risparmio Potenziale', 'Risparmio %'],
+            'Politica Attuale': [
+                'Non classificato',
+                current_policy.get('safety_stock', 'N/A'),
+                current_policy.get('eoq', 'N/A'),
+                current_policy.get('reorder_point', 'N/A'),
+                f"€{current_holding:.0f}",
+                '-',
+                '-'
+            ],
+            'Politica Ottimizzata': [
+                strategy_type,
+                optimized['safety_stock'],
+                optimized['eoq'],
+                optimized['reorder_point'],
+                f"€{optimized_holding:.0f}",
+                f"€{savings:.0f}",
+                f"{savings_pct:.1f}%"
+            ]
+        })
+        
+        return comparison
 
 
 # =====================================================
@@ -612,6 +1024,964 @@ class InventoryKPIDashboard:
 
 
 # =====================================================
+# 1. PERISHABLE INVENTORY & FEFO MANAGEMENT
+# =====================================================
+
+class TipoScadenza(Enum):
+    """Tipi di scadenza per prodotti deperibili"""
+    FIXED_SHELF_LIFE = ("fixed", "Scadenza fissa dalla produzione")
+    DYNAMIC_AGING = ("dynamic", "Deterioramento progressivo")
+    REGULATORY = ("regulatory", "Scadenza normativa obbligatoria")
+    QUALITY_BASED = ("quality", "Basata su parametri qualità")
+
+
+class LottoPerishable(BaseModel):
+    """Informazioni lotto prodotto deperibile"""
+    lotto_id: str
+    quantita: int
+    data_produzione: datetime
+    data_scadenza: datetime
+    shelf_life_giorni: int
+    giorni_residui: int
+    percentuale_vita_residua: float
+    valore_unitario: float
+    rischio_obsolescenza: float
+
+
+class PerishableManager:
+    """Gestore inventory per prodotti deperibili con logica FEFO"""
+    
+    def __init__(self, tipo_scadenza: TipoScadenza = TipoScadenza.FIXED_SHELF_LIFE):
+        self.tipo_scadenza = tipo_scadenza
+    
+    def analizza_lotti(self, lotti: List[Dict]) -> List[LottoPerishable]:
+        """Analizza lotti esistenti e calcola metriche scadenza"""
+        lotti_analizzati = []
+        
+        for lotto_data in lotti:
+            data_prod = pd.to_datetime(lotto_data['data_produzione'])
+            data_scad = pd.to_datetime(lotto_data['data_scadenza'])
+            oggi = pd.Timestamp.now()
+            
+            shelf_life_totale = (data_scad - data_prod).days
+            giorni_residui = max(0, (data_scad - oggi).days)
+            perc_vita_residua = giorni_residui / shelf_life_totale if shelf_life_totale > 0 else 0
+            
+            # Calcola rischio obsolescenza (aumenta esponenzialmente vicino a scadenza)
+            if giorni_residui <= 0:
+                rischio = 1.0  # Scaduto
+            elif perc_vita_residua < 0.1:
+                rischio = 0.9  # <10% vita residua
+            elif perc_vita_residua < 0.3:
+                rischio = 0.6  # <30% vita residua
+            else:
+                rischio = min(0.3, (1 - perc_vita_residua))
+            
+            lotto = LottoPerishable(
+                lotto_id=lotto_data['lotto_id'],
+                quantita=lotto_data['quantita'],
+                data_produzione=data_prod,
+                data_scadenza=data_scad,
+                shelf_life_giorni=shelf_life_totale,
+                giorni_residui=giorni_residui,
+                percentuale_vita_residua=perc_vita_residua,
+                valore_unitario=lotto_data['valore_unitario'],
+                rischio_obsolescenza=rischio
+            )
+            lotti_analizzati.append(lotto)
+        
+        return sorted(lotti_analizzati, key=lambda x: x.data_scadenza)  # FEFO sorting
+    
+    def calcola_markdown_ottimale(
+        self,
+        lotto: LottoPerishable,
+        domanda_giornaliera: float,
+        elasticita_prezzo: float = 1.5
+    ) -> Dict[str, float]:
+        """
+        Calcola markdown ottimale per accelerare vendita prima scadenza
+        
+        Args:
+            lotto: Lotto da analizzare
+            domanda_giornaliera: Domanda media corrente
+            elasticita_prezzo: Elasticità domanda/prezzo (>1 = elastica)
+        """
+        giorni_vendita_normale = lotto.quantita / domanda_giornaliera if domanda_giornaliera > 0 else 999
+        
+        if giorni_vendita_normale <= lotto.giorni_residui:
+            # Vendita normale possibile
+            return {
+                'markdown_suggerito': 0,
+                'prezzo_finale': lotto.valore_unitario,
+                'giorni_smaltimento': giorni_vendita_normale,
+                'azione': 'Vendita normale'
+            }
+        
+        # Calcola markdown necessario per accelerare vendita
+        accelerazione_necessaria = giorni_vendita_normale / max(1, lotto.giorni_residui - 1)
+        markdown_percentuale = min(0.8, (accelerazione_necessaria - 1) / elasticita_prezzo)
+        
+        prezzo_scontato = lotto.valore_unitario * (1 - markdown_percentuale)
+        domanda_accelerata = domanda_giornaliera * (1 + markdown_percentuale * elasticita_prezzo)
+        giorni_smaltimento = lotto.quantita / domanda_accelerata if domanda_accelerata > 0 else 999
+        
+        if giorni_smaltimento > lotto.giorni_residui:
+            # Anche con markdown massimo non si smaltisce
+            return {
+                'markdown_suggerito': 0.8,
+                'prezzo_finale': lotto.valore_unitario * 0.2,
+                'giorni_smaltimento': giorni_smaltimento,
+                'azione': 'Liquidazione urgente'
+            }
+        else:
+            return {
+                'markdown_suggerito': markdown_percentuale,
+                'prezzo_finale': prezzo_scontato,
+                'giorni_smaltimento': giorni_smaltimento,
+                'azione': 'Markdown accelerato'
+            }
+    
+    def strategia_riordino_perishable(
+        self,
+        lotti_esistenti: List[LottoPerishable],
+        forecast_domanda: np.ndarray,
+        shelf_life_nuovo_lotto: int,
+        costo_obsolescenza_unitario: float
+    ) -> Dict[str, Any]:
+        """Strategia riordino considerando rischio obsolescenza"""
+        
+        # Calcola copertura lotti esistenti
+        stock_totale = sum(lotto.quantita for lotto in lotti_esistenti)
+        stock_a_rischio = sum(lotto.quantita for lotto in lotti_esistenti if lotto.rischio_obsolescenza > 0.5)
+        
+        domanda_media = np.mean(forecast_domanda)
+        giorni_copertura = stock_totale / domanda_media if domanda_media > 0 else 999
+        
+        # Calcola shelf life medio ponderato stock esistente
+        if stock_totale > 0:
+            shelf_life_medio = sum(
+                lotto.giorni_residui * lotto.quantita for lotto in lotti_esistenti
+            ) / stock_totale
+        else:
+            shelf_life_medio = 0
+        
+        # Decisione riordino
+        if giorni_copertura < 7:  # Meno di 1 settimana
+            # Ordina quantità per 2 settimane max (per evitare obsolescenza)
+            giorni_target = min(14, shelf_life_nuovo_lotto * 0.7)
+            quantita_riordino = domanda_media * giorni_target - stock_totale
+            azione = "Riordino normale"
+            
+        elif stock_a_rischio > stock_totale * 0.3:  # >30% stock a rischio
+            # Sospendi ordini, smaltisci prima stock a rischio
+            quantita_riordino = 0
+            azione = "Sospendi ordini - Smaltimento prioritario"
+            
+        elif giorni_copertura > shelf_life_medio:
+            # Troppo stock vs shelf life residua
+            quantita_riordino = 0
+            azione = "Overstock vs shelf life"
+            
+        else:
+            # Situazione normale
+            quantita_riordino = max(0, domanda_media * 7 - stock_totale)  # Target 1 settimana
+            azione = "Riordino conservativo"
+        
+        # Calcola costo obsolescenza atteso
+        costo_obsolescenza = sum(
+            lotto.quantita * lotto.rischio_obsolescenza * costo_obsolescenza_unitario
+            for lotto in lotti_esistenti
+        )
+        
+        return {
+            'quantita_riordino': max(0, quantita_riordino),
+            'giorni_copertura_attuali': giorni_copertura,
+            'stock_a_rischio': stock_a_rischio,
+            'percentuale_a_rischio': stock_a_rischio / stock_totale * 100 if stock_totale > 0 else 0,
+            'costo_obsolescenza_atteso': costo_obsolescenza,
+            'shelf_life_medio_residuo': shelf_life_medio,
+            'azione_consigliata': azione,
+            'urgenza_markdown': len([l for l in lotti_esistenti if l.giorni_residui <= 7])
+        }
+
+
+# =====================================================  
+# 2. MULTI-ECHELON INVENTORY OPTIMIZATION
+# =====================================================
+
+class LivelloEchelon(Enum):
+    """Livelli della supply chain"""
+    CENTRALE = ("central", "Deposito centrale")
+    REGIONALE = ("regional", "Hub regionale") 
+    LOCALE = ("local", "Punto vendita/Filiale")
+    CLIENTE = ("customer", "Cliente finale")
+
+
+class NodoInventory(BaseModel):
+    """Nodo nella rete multi-echelon"""
+    nodo_id: str
+    nome: str
+    livello: LivelloEchelon
+    capacita_max: int
+    stock_attuale: int
+    demand_rate: float
+    lead_time_fornitori: Dict[str, int]  # lead time dai fornitori/nodi superiori
+    costi_trasporto: Dict[str, float]    # costi verso nodi inferiori
+    nodi_figli: List[str]                # nodi che servire
+    nodi_genitori: List[str]             # nodi che forniscono
+
+
+class MultiEchelonOptimizer:
+    """Ottimizzatore inventory per reti multi-echelon"""
+    
+    def __init__(self, rete_nodi: Dict[str, NodoInventory]):
+        self.rete = rete_nodi
+        self.matrice_costi = self._calcola_matrice_costi()
+    
+    def _calcola_matrice_costi(self) -> Dict[str, Dict[str, float]]:
+        """Calcola matrice costi trasporto tra tutti i nodi"""
+        matrice = {}
+        
+        for nodo_id, nodo in self.rete.items():
+            matrice[nodo_id] = {}
+            for figlio_id in nodo.nodi_figli:
+                if figlio_id in nodo.costi_trasporto:
+                    matrice[nodo_id][figlio_id] = nodo.costi_trasporto[figlio_id]
+        
+        return matrice
+    
+    def calcola_safety_stock_echelon(
+        self,
+        nodo_id: str,
+        service_level_target: float,
+        variabilita_domanda: float,
+        variabilita_lead_time: float = 0.1
+    ) -> Dict[str, float]:
+        """
+        Calcola safety stock ottimale considerando pooling risk su rete
+        
+        Formula multi-echelon: SS = z * σ * √(LT + Review_Period) * √(1 - ρ)
+        dove ρ è il coefficiente di correlazione tra nodi
+        """
+        nodo = self.rete[nodo_id]
+        
+        # Z-score per service level
+        z_score = stats.norm.ppf(service_level_target)
+        
+        # Lead time medio ponderato
+        if nodo.lead_time_fornitori:
+            lead_time_medio = np.mean(list(nodo.lead_time_fornitori.values()))
+        else:
+            lead_time_medio = 14  # Default 2 settimane
+        
+        # Beneficio risk pooling (riduzione variabilità per aggregazione)
+        if len(nodo.nodi_figli) > 1:
+            pooling_factor = 1 / np.sqrt(len(nodo.nodi_figli))  # Central Limit Theorem
+        else:
+            pooling_factor = 1.0
+        
+        # Safety stock base
+        safety_stock_base = (
+            z_score * 
+            variabilita_domanda * 
+            np.sqrt(lead_time_medio) * 
+            pooling_factor
+        )
+        
+        # Safety stock considerando livello echelon
+        if nodo.livello == LivelloEchelon.CENTRALE:
+            # Centrale: pooling benefit massimo, ma deve servire tutta la rete
+            ss_multiplier = 0.8  # Ridotto per pooling
+        elif nodo.livello == LivelloEchelon.REGIONALE:
+            # Regionale: bilanciamento tra pooling e responsività
+            ss_multiplier = 1.0
+        else:  # LOCALE
+            # Locale: serve direttamente clienti, safety stock più alto
+            ss_multiplier = 1.2
+        
+        safety_stock_finale = safety_stock_base * ss_multiplier
+        
+        return {
+            'safety_stock': round(safety_stock_finale),
+            'pooling_factor': pooling_factor,
+            'lead_time_medio': lead_time_medio,
+            'z_score': z_score,
+            'beneficio_pooling_pct': (1 - pooling_factor) * 100
+        }
+    
+    def ottimizza_allocation(
+        self,
+        stock_disponibile_centrale: int,
+        richieste_nodi: Dict[str, int],
+        priorita_nodi: Dict[str, float] = None
+    ) -> Dict[str, Any]:
+        """
+        Ottimizza allocazione stock dal centrale verso nodi regionali/locali
+        usando fair share con priorità
+        """
+        if priorita_nodi is None:
+            priorita_nodi = {nodo_id: 1.0 for nodo_id in richieste_nodi.keys()}
+        
+        richiesta_totale = sum(richieste_nodi.values())
+        
+        if stock_disponibile_centrale >= richiesta_totale:
+            # Stock sufficiente per tutti
+            allocazioni = richieste_nodi.copy()
+            fill_rate_medio = 1.0
+            
+        else:
+            # Stock insufficiente: fair share ponderato per priorità
+            priorita_totale = sum(priorita_nodi.values())
+            allocazioni = {}
+            
+            for nodo_id, richiesta in richieste_nodi.items():
+                peso = priorita_nodi.get(nodo_id, 1.0) / priorita_totale
+                allocazione_proporzionale = stock_disponibile_centrale * peso
+                
+                # Non superare mai la richiesta
+                allocazioni[nodo_id] = min(richiesta, allocazione_proporzionale)
+            
+            # Ricalcola se ci sono residui da redistribuire
+            stock_allocato = sum(allocazioni.values())
+            stock_residuo = stock_disponibile_centrale - stock_allocato
+            
+            if stock_residuo > 0:
+                # Redistribuisci residuo a nodi che possono ancora ricevere
+                for nodo_id in richieste_nodi:
+                    gap = richieste_nodi[nodo_id] - allocazioni[nodo_id]
+                    if gap > 0 and stock_residuo > 0:
+                        extra = min(gap, stock_residuo)
+                        allocazioni[nodo_id] += extra
+                        stock_residuo -= extra
+            
+            fill_rate_medio = sum(allocazioni.values()) / richiesta_totale
+        
+        # Calcola metriche per ogni nodo
+        dettaglio_nodi = {}
+        for nodo_id in richieste_nodi:
+            dettaglio_nodi[nodo_id] = {
+                'richiesta': richieste_nodi[nodo_id],
+                'allocato': allocazioni.get(nodo_id, 0),
+                'fill_rate': allocazioni.get(nodo_id, 0) / richieste_nodi[nodo_id] if richieste_nodi[nodo_id] > 0 else 0,
+                'priorita': priorita_nodi.get(nodo_id, 1.0),
+                'shortage': max(0, richieste_nodi[nodo_id] - allocazioni.get(nodo_id, 0))
+            }
+        
+        return {
+            'allocazioni': allocazioni,
+            'fill_rate_medio': fill_rate_medio,
+            'stock_residuo': max(0, stock_disponibile_centrale - sum(allocazioni.values())),
+            'dettaglio_nodi': dettaglio_nodi,
+            'richiesta_totale': richiesta_totale,
+            'efficienza_utilizzo': sum(allocazioni.values()) / stock_disponibile_centrale if stock_disponibile_centrale > 0 else 0
+        }
+    
+    def lateral_transshipment(
+        self,
+        nodo_shortage: str,
+        quantita_necessaria: int,
+        costo_transshipment_km: float = 0.5,
+        distanze: Dict[str, Dict[str, float]] = None
+    ) -> Dict[str, Any]:
+        """
+        Calcola ottimo lateral transshipment tra nodi stesso livello
+        per risolvere stockout
+        """
+        nodo_target = self.rete[nodo_shortage]
+        candidati_donatori = []
+        
+        # Trova nodi stesso livello con stock eccedente
+        for nodo_id, nodo in self.rete.items():
+            if (nodo_id != nodo_shortage and 
+                nodo.livello == nodo_target.livello and
+                nodo.stock_attuale > 0):
+                
+                # Calcola stock eccedente (sopra safety stock stimato)
+                safety_stock_stimato = nodo.demand_rate * 7  # 1 settimana
+                stock_eccedente = max(0, nodo.stock_attuale - safety_stock_stimato)
+                
+                if stock_eccedente > 0:
+                    # Calcola costo trasporto
+                    if distanze and nodo_shortage in distanze.get(nodo_id, {}):
+                        distanza = distanze[nodo_id][nodo_shortage]
+                        costo_trasporto = distanza * costo_transshipment_km
+                    else:
+                        costo_trasporto = 100  # Costo default
+                    
+                    candidati_donatori.append({
+                        'nodo_id': nodo_id,
+                        'stock_eccedente': stock_eccedente,
+                        'costo_trasporto_unitario': costo_trasporto,
+                        'costo_totale': costo_trasporto * quantita_necessaria
+                    })
+        
+        if not candidati_donatori:
+            return {
+                'fattibile': False,
+                'motivo': 'Nessun nodo con stock eccedente disponibile',
+                'transshipments': []
+            }
+        
+        # Ordina per costo totale crescente
+        candidati_donatori.sort(key=lambda x: x['costo_trasporto_unitario'])
+        
+        # Pianifica transshipments ottimali
+        transshipments = []
+        quantita_rimanente = quantita_necessaria
+        
+        for candidato in candidati_donatori:
+            if quantita_rimanente <= 0:
+                break
+                
+            quantita_da_trasferire = min(
+                quantita_rimanente,
+                candidato['stock_eccedente']
+            )
+            
+            if quantita_da_trasferire > 0:
+                transshipments.append({
+                    'da_nodo': candidato['nodo_id'],
+                    'a_nodo': nodo_shortage,
+                    'quantita': quantita_da_trasferire,
+                    'costo_unitario': candidato['costo_trasporto_unitario'],
+                    'costo_totale': candidato['costo_trasporto_unitario'] * quantita_da_trasferire
+                })
+                quantita_rimanente -= quantita_da_trasferire
+        
+        costo_totale_transshipment = sum(t['costo_totale'] for t in transshipments)
+        quantita_coperta = sum(t['quantita'] for t in transshipments)
+        
+        return {
+            'fattibile': quantita_coperta > 0,
+            'quantita_coperta': quantita_coperta,
+            'quantita_rimanente_scoperta': quantita_rimanente,
+            'copertura_percentuale': quantita_coperta / quantita_necessaria * 100,
+            'costo_totale': costo_totale_transshipment,
+            'costo_unitario_medio': costo_totale_transshipment / quantita_coperta if quantita_coperta > 0 else 0,
+            'transshipments': transshipments,
+            'numero_nodi_donatori': len(transshipments)
+        }
+
+
+# =====================================================
+# 3. CAPACITY CONSTRAINTS MANAGEMENT
+# =====================================================
+
+class TipoCapacita(Enum):
+    """Tipi di vincoli di capacità"""
+    VOLUME = ("volume", "m³", "Spazio fisico in metri cubi")
+    PESO = ("weight", "kg", "Peso massimo sostenibile")
+    PALLET_POSITIONS = ("pallet", "pallet", "Numero posizioni pallet")
+    BUDGET = ("budget", "€", "Budget acquisti disponibile") 
+    SKU_COUNT = ("sku", "items", "Numero massimo SKU gestibili")
+    HANDLING_CAPACITY = ("handling", "units/day", "Capacità movimentazione giornaliera")
+
+
+class VincoloCapacita(BaseModel):
+    """Definizione vincolo di capacità"""
+    tipo: TipoCapacita
+    capacita_massima: float
+    utilizzo_corrente: float
+    unita_misura: str
+    costo_per_unita: float = 0.0
+    penalita_overflow: float = 0.0  # Costo extra se si supera la capacità
+
+
+class AttributiProdotto(BaseModel):
+    """Attributi fisici prodotto per calcoli capacità"""
+    volume_m3: float = 0.0
+    peso_kg: float = 0.0
+    posizioni_pallet_richieste: float = 0.0
+    costo_unitario: float = 0.0
+    handling_complexity: float = 1.0  # 1.0 = normale, >1 = più complesso
+
+
+class CapacityConstrainedOptimizer:
+    """Ottimizzatore inventory con vincoli di capacità"""
+    
+    def __init__(self, vincoli: Dict[str, VincoloCapacita]):
+        self.vincoli = vincoli
+        self.prodotti_attributi: Dict[str, AttributiProdotto] = {}
+    
+    def aggiorna_attributi_prodotto(self, prodotto_id: str, attributi: AttributiProdotto):
+        """Aggiorna attributi fisici di un prodotto"""
+        self.prodotti_attributi[prodotto_id] = attributi
+    
+    def calcola_utilizzo_capacita(
+        self,
+        inventario_pianificato: Dict[str, int]
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        Calcola utilizzo previsto di ogni tipo di capacità
+        
+        Args:
+            inventario_pianificato: {prodotto_id: quantita_pianificata}
+        """
+        utilizzi = {}
+        
+        for vincolo_id, vincolo in self.vincoli.items():
+            utilizzo_totale = 0.0
+            
+            for prodotto_id, quantita in inventario_pianificato.items():
+                if prodotto_id not in self.prodotti_attributi:
+                    continue
+                    
+                attributi = self.prodotti_attributi[prodotto_id]
+                
+                if vincolo.tipo == TipoCapacita.VOLUME:
+                    utilizzo_totale += quantita * attributi.volume_m3
+                elif vincolo.tipo == TipoCapacita.PESO:
+                    utilizzo_totale += quantita * attributi.peso_kg
+                elif vincolo.tipo == TipoCapacita.PALLET_POSITIONS:
+                    utilizzo_totale += quantita * attributi.posizioni_pallet_richieste
+                elif vincolo.tipo == TipoCapacita.BUDGET:
+                    utilizzo_totale += quantita * attributi.costo_unitario
+                elif vincolo.tipo == TipoCapacita.SKU_COUNT:
+                    utilizzo_totale += 1 if quantita > 0 else 0
+                elif vincolo.tipo == TipoCapacita.HANDLING_CAPACITY:
+                    utilizzo_totale += quantita * attributi.handling_complexity / 365  # Giornaliero
+            
+            percentuale_utilizzo = (utilizzo_totale / vincolo.capacita_massima * 100) if vincolo.capacita_massima > 0 else 0
+            spazio_disponibile = max(0, vincolo.capacita_massima - utilizzo_totale)
+            
+            utilizzi[vincolo_id] = {
+                'utilizzo_assoluto': utilizzo_totale,
+                'capacita_massima': vincolo.capacita_massima,
+                'percentuale_utilizzo': percentuale_utilizzo,
+                'spazio_disponibile': spazio_disponibile,
+                'overflow': max(0, utilizzo_totale - vincolo.capacita_massima),
+                'status': 'OK' if utilizzo_totale <= vincolo.capacita_massima else 'OVERFLOW'
+            }
+        
+        return utilizzi
+    
+    def ottimizza_con_vincoli(
+        self,
+        richieste_riordino: Dict[str, int],
+        priorita_prodotti: Dict[str, float] = None,
+        max_iterations: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Ottimizza quantità riordino considerando tutti i vincoli di capacità
+        usando algoritmo di programmazione lineare semplificato
+        """
+        if priorita_prodotti is None:
+            priorita_prodotti = {pid: 1.0 for pid in richieste_riordino.keys()}
+        
+        # Crea lista prodotti ordinata per priorità decrescente  
+        prodotti_ordinati = sorted(
+            richieste_riordino.keys(),
+            key=lambda p: priorita_prodotti.get(p, 0),
+            reverse=True
+        )
+        
+        # Algoritmo greedy con backtracking
+        quantita_approvate = {}
+        utilizzi_capacita = {vid: 0.0 for vid in self.vincoli.keys()}
+        
+        for prodotto_id in prodotti_ordinati:
+            quantita_richiesta = richieste_riordino[prodotto_id]
+            quantita_massima_fattibile = quantita_richiesta
+            
+            if prodotto_id not in self.prodotti_attributi:
+                # Se non abbiamo attributi, approva quantità ridotta
+                quantita_approvate[prodotto_id] = min(quantita_richiesta, quantita_richiesta // 2)
+                continue
+            
+            attributi = self.prodotti_attributi[prodotto_id]
+            
+            # Verifica vincoli uno per uno
+            for vincolo_id, vincolo in self.vincoli.items():
+                utilizzo_attuale = utilizzi_capacita[vincolo_id]
+                spazio_rimanente = vincolo.capacita_massima - utilizzo_attuale
+                
+                if spazio_rimanente <= 0:
+                    quantita_massima_fattibile = 0
+                    break
+                
+                # Calcola quantità massima per questo vincolo
+                if vincolo.tipo == TipoCapacita.VOLUME:
+                    if attributi.volume_m3 > 0:
+                        max_per_vincolo = int(spazio_rimanente / attributi.volume_m3)
+                        quantita_massima_fattibile = min(quantita_massima_fattibile, max_per_vincolo)
+                
+                elif vincolo.tipo == TipoCapacita.PESO:
+                    if attributi.peso_kg > 0:
+                        max_per_vincolo = int(spazio_rimanente / attributi.peso_kg)
+                        quantita_massima_fattibile = min(quantita_massima_fattibile, max_per_vincolo)
+                
+                elif vincolo.tipo == TipoCapacita.PALLET_POSITIONS:
+                    if attributi.posizioni_pallet_richieste > 0:
+                        max_per_vincolo = int(spazio_rimanente / attributi.posizioni_pallet_richieste)
+                        quantita_massima_fattibile = min(quantita_massima_fattibile, max_per_vincolo)
+                
+                elif vincolo.tipo == TipoCapacita.BUDGET:
+                    if attributi.costo_unitario > 0:
+                        max_per_vincolo = int(spazio_rimanente / attributi.costo_unitario)
+                        quantita_massima_fattibile = min(quantita_massima_fattibile, max_per_vincolo)
+                
+                elif vincolo.tipo == TipoCapacita.SKU_COUNT:
+                    if spazio_rimanente < 1:
+                        quantita_massima_fattibile = 0
+                    # else mantieni quantità richiesta
+            
+            # Approva quantità fattibile
+            quantita_finale = max(0, quantita_massima_fattibile)
+            quantita_approvate[prodotto_id] = quantita_finale
+            
+            # Aggiorna utilizzi
+            if quantita_finale > 0:
+                for vincolo_id, vincolo in self.vincoli.items():
+                    if vincolo.tipo == TipoCapacita.VOLUME:
+                        utilizzi_capacita[vincolo_id] += quantita_finale * attributi.volume_m3
+                    elif vincolo.tipo == TipoCapacita.PESO:
+                        utilizzi_capacita[vincolo_id] += quantita_finale * attributi.peso_kg
+                    elif vincolo.tipo == TipoCapacita.PALLET_POSITIONS:
+                        utilizzi_capacita[vincolo_id] += quantita_finale * attributi.posizioni_pallet_richieste
+                    elif vincolo.tipo == TipoCapacita.BUDGET:
+                        utilizzi_capacita[vincolo_id] += quantita_finale * attributi.costo_unitario
+                    elif vincolo.tipo == TipoCapacita.SKU_COUNT:
+                        utilizzi_capacita[vincolo_id] += 1
+        
+        # Calcola metriche risultato
+        quantita_totale_richiesta = sum(richieste_riordino.values())
+        quantita_totale_approvata = sum(quantita_approvate.values())
+        fill_rate = quantita_totale_approvata / quantita_totale_richiesta if quantita_totale_richiesta > 0 else 0
+        
+        prodotti_rifiutati = [
+            pid for pid, qty in quantita_approvate.items() 
+            if qty < richieste_riordino[pid]
+        ]
+        
+        return {
+            'quantita_approvate': quantita_approvate,
+            'fill_rate': fill_rate,
+            'utilizzi_finali': utilizzi_capacita,
+            'prodotti_completamente_rifiutati': [
+                pid for pid, qty in quantita_approvate.items() if qty == 0
+            ],
+            'prodotti_parzialmente_approvati': [
+                pid for pid, qty in quantita_approvate.items() 
+                if 0 < qty < richieste_riordino[pid]
+            ],
+            'vincoli_saturati': [
+                vid for vid, utilizzo in utilizzi_capacita.items()
+                if utilizzo >= self.vincoli[vid].capacita_massima * 0.95
+            ]
+        }
+    
+    def suggerisci_espansione_capacita(
+        self,
+        richieste_non_soddisfatte: Dict[str, int],
+        orizzonte_mesi: int = 12
+    ) -> Dict[str, Any]:
+        """
+        Suggerisce espansioni di capacità per soddisfare domanda non evasa
+        """
+        espansioni_necessarie = {}
+        
+        # Calcola capacità extra necessaria per tipo
+        for vincolo_id, vincolo in self.vincoli.items():
+            capacita_extra_necessaria = 0.0
+            
+            for prodotto_id, quantita_mancante in richieste_non_soddisfatte.items():
+                if prodotto_id not in self.prodotti_attributi:
+                    continue
+                
+                attributi = self.prodotti_attributi[prodotto_id]
+                
+                if vincolo.tipo == TipoCapacita.VOLUME:
+                    capacita_extra_necessaria += quantita_mancante * attributi.volume_m3
+                elif vincolo.tipo == TipoCapacita.PESO:
+                    capacita_extra_necessaria += quantita_mancante * attributi.peso_kg
+                elif vincolo.tipo == TipoCapacita.PALLET_POSITIONS:
+                    capacita_extra_necessaria += quantita_mancante * attributi.posizioni_pallet_richieste
+                elif vincolo.tipo == TipoCapacita.BUDGET:
+                    capacita_extra_necessaria += quantita_mancante * attributi.costo_unitario
+            
+            if capacita_extra_necessaria > 0:
+                # Calcola ROI investimento
+                costo_espansione = capacita_extra_necessaria * vincolo.costo_per_unita
+                valore_vendite_abilitate = sum(
+                    richieste_non_soddisfatte[pid] * self.prodotti_attributi[pid].costo_unitario * 0.3  # 30% margine stimato
+                    for pid in richieste_non_soddisfatte
+                    if pid in self.prodotti_attributi
+                )
+                
+                payback_mesi = (costo_espansione / valore_vendite_abilitate * orizzonte_mesi) if valore_vendite_abilitate > 0 else 999
+                
+                espansioni_necessarie[vincolo_id] = {
+                    'capacita_extra_necessaria': capacita_extra_necessaria,
+                    'capacita_attuale': vincolo.capacita_massima,
+                    'aumento_percentuale': capacita_extra_necessaria / vincolo.capacita_massima * 100,
+                    'costo_investimento': costo_espansione,
+                    'valore_vendite_abilitate_annuo': valore_vendite_abilitate,
+                    'payback_mesi': payback_mesi,
+                    'roi_annuo': (valore_vendite_abilitate / costo_espansione * 100) if costo_espansione > 0 else 0
+                }
+        
+        # Ordina per ROI decrescente
+        espansioni_ordinate = dict(
+            sorted(espansioni_necessarie.items(), 
+                  key=lambda x: x[1]['roi_annuo'], 
+                  reverse=True)
+        )
+        
+        return {
+            'espansioni_consigliate': espansioni_ordinate,
+            'investimento_totale': sum(exp['costo_investimento'] for exp in espansioni_necessarie.values()),
+            'roi_medio_ponderato': sum(
+                exp['roi_annuo'] * exp['costo_investimento'] for exp in espansioni_necessarie.values()
+            ) / sum(exp['costo_investimento'] for exp in espansioni_necessarie.values()) if espansioni_necessarie else 0
+        }
+
+
+# =====================================================
+# 4. KITTING & BUNDLE OPTIMIZATION
+# =====================================================
+
+class TipoComponente(Enum):
+    """Tipi di componenti in un kit"""
+    MASTER = ("master", "Componente principale del kit")
+    STANDARD = ("standard", "Componente standard sostituibile")
+    OPTIONAL = ("optional", "Componente opzionale")
+    CONSUMABLE = ("consumable", "Consumabile da rifornire")
+
+
+class ComponenteKit(BaseModel):
+    """Definizione componente di un kit"""
+    componente_id: str
+    nome: str
+    tipo: TipoComponente
+    quantita_per_kit: int
+    costo_unitario: float
+    lead_time: int
+    criticalita: float = 1.0  # 0-1, 1 = critico
+    sostituibili: List[str] = []  # Lista ID componenti sostituibili
+
+
+class DefinzioneKit(BaseModel):
+    """Definizione completa di un kit"""
+    kit_id: str
+    nome: str
+    componenti: List[ComponenteKit]
+    prezzo_vendita_kit: float
+    margine_target: float
+    domanda_storica_kit: List[float]
+    can_sell_components_separately: bool = True
+
+
+class KittingOptimizer:
+    """Ottimizzatore per gestione kit e bundle"""
+    
+    def __init__(self, definizioni_kit: Dict[str, DefinzioneKit]):
+        self.kit_catalog = definizioni_kit
+        self.inventory_componenti: Dict[str, int] = {}  # {componente_id: stock}
+    
+    def aggiorna_inventory_componente(self, componente_id: str, stock: int):
+        """Aggiorna livello stock di un componente"""
+        self.inventory_componenti[componente_id] = stock
+    
+    def calcola_kit_assemblabili(self, kit_id: str) -> Dict[str, Any]:
+        """
+        Calcola quanti kit possono essere assemblati con inventory corrente
+        """
+        if kit_id not in self.kit_catalog:
+            return {'errore': f'Kit {kit_id} non trovato'}
+        
+        kit_def = self.kit_catalog[kit_id]
+        limitazioni = {}
+        kit_max_assemblabili = float('inf')
+        
+        for componente in kit_def.componenti:
+            stock_disponibile = self.inventory_componenti.get(componente.componente_id, 0)
+            kit_possibili_da_componente = stock_disponibile // componente.quantita_per_kit
+            
+            if componente.tipo == TipoComponente.OPTIONAL:
+                # Componenti opzionali non limitano l'assemblaggio
+                continue
+            
+            if kit_possibili_da_componente < kit_max_assemblabili:
+                kit_max_assemblabili = kit_possibili_da_componente
+                limitazioni[componente.componente_id] = {
+                    'stock_disponibile': stock_disponibile,
+                    'quantita_per_kit': componente.quantita_per_kit,
+                    'kit_possibili': kit_possibili_da_componente,
+                    'shortage': max(0, componente.quantita_per_kit - stock_disponibile)
+                }
+        
+        # Considera componenti sostituibili
+        componenti_mancanti = []
+        for comp_id, info in limitazioni.items():
+            if info['kit_possibili'] == 0:
+                componente = next(c for c in kit_def.componenti if c.componente_id == comp_id)
+                if componente.sostituibili:
+                    # Verifica se componenti sostituibili possono risolvere
+                    for sostituto_id in componente.sostituibili:
+                        stock_sostituto = self.inventory_componenti.get(sostituto_id, 0)
+                        if stock_sostituto >= componente.quantita_per_kit:
+                            kit_max_assemblabili = max(1, kit_max_assemblabili)
+                            break
+                    else:
+                        componenti_mancanti.append(comp_id)
+                else:
+                    componenti_mancanti.append(comp_id)
+        
+        if kit_max_assemblabili == float('inf'):
+            kit_max_assemblabili = 1000  # Limite pratico
+        
+        return {
+            'kit_assemblabili': int(max(0, kit_max_assemblabili)),
+            'componente_limitante': min(limitazioni.items(), key=lambda x: x[1]['kit_possibili'])[0] if limitazioni else None,
+            'componenti_mancanti': componenti_mancanti,
+            'limitazioni_dettaglio': limitazioni,
+            'valore_inventory_impegnato': sum(
+                comp.quantita_per_kit * comp.costo_unitario * kit_max_assemblabili
+                for comp in kit_def.componenti
+                if comp.tipo != TipoComponente.OPTIONAL
+            )
+        }
+    
+    def ottimizza_kit_vs_componenti(
+        self,
+        kit_id: str,
+        forecast_kit: np.ndarray,
+        forecast_componenti_separati: Dict[str, np.ndarray]
+    ) -> Dict[str, Any]:
+        """
+        Decide se conviene vendere come kit o componenti separati
+        basato su profitabilità e disponibilità
+        """
+        kit_def = self.kit_catalog[kit_id]
+        
+        # Calcola profitabilità kit vs componenti separati
+        costo_totale_componenti = sum(comp.costo_unitario * comp.quantita_per_kit for comp in kit_def.componenti)
+        margine_kit = kit_def.prezzo_vendita_kit - costo_totale_componenti
+        margine_kit_pct = margine_kit / kit_def.prezzo_vendita_kit if kit_def.prezzo_vendita_kit > 0 else 0
+        
+        # Calcola ricavi da vendita componenti separati
+        ricavi_componenti_separati = 0
+        margini_componenti_separati = 0
+        
+        for componente in kit_def.componenti:
+            if componente.componente_id in forecast_componenti_separati:
+                domanda_separata = np.mean(forecast_componenti_separati[componente.componente_id])
+                prezzo_vendita_separato = componente.costo_unitario * 1.4  # 40% markup stimato
+                ricavo_annuo = domanda_separata * 365 * prezzo_vendita_separato
+                margine_annuo = ricavo_annuo - (domanda_separata * 365 * componente.costo_unitario)
+                
+                ricavi_componenti_separati += ricavo_annuo
+                margini_componenti_separati += margine_annuo
+        
+        # Calcola ricavi da vendita kit
+        domanda_media_kit = np.mean(forecast_kit)
+        ricavo_kit_annuo = domanda_media_kit * 365 * kit_def.prezzo_vendita_kit
+        margine_kit_annuo = domanda_media_kit * 365 * margine_kit
+        
+        # Analisi disponibilità
+        kit_info = self.calcola_kit_assemblabili(kit_id)
+        
+        # Decisione strategica
+        if margine_kit_annuo > margini_componenti_separati * 1.1:  # 10% premium per kit
+            strategia_consigliata = "Kit preferito"
+            focus_principale = "kit"
+        elif kit_info['kit_assemblabili'] < domanda_media_kit * 30:  # Meno di 1 mese stock
+            strategia_consigliata = "Componenti separati (disponibilità kit limitata)"
+            focus_principale = "componenti"
+        else:
+            strategia_consigliata = "Strategia mista"
+            focus_principale = "misto"
+        
+        return {
+            'strategia_consigliata': strategia_consigliata,
+            'focus_principale': focus_principale,
+            'analisi_finanziaria': {
+                'margine_kit_annuo': margine_kit_annuo,
+                'margine_componenti_annuo': margini_componenti_separati,
+                'differenza_margine': margine_kit_annuo - margini_componenti_separati,
+                'roi_kit_vs_componenti': (margine_kit_annuo / margini_componenti_separati) if margini_componenti_separati > 0 else 0
+            },
+            'analisi_disponibilita': kit_info,
+            'raccomandazioni_procurement': self._genera_raccomandazioni_procurement(kit_id, kit_info, domanda_media_kit)
+        }
+    
+    def _genera_raccomandazioni_procurement(
+        self,
+        kit_id: str,
+        kit_info: Dict,
+        domanda_media_giornaliera: float
+    ) -> List[str]:
+        """Genera raccomandazioni di approvvigionamento per componenti kit"""
+        raccomandazioni = []
+        kit_def = self.kit_catalog[kit_id]
+        
+        giorni_copertura_target = 30
+        
+        for componente in kit_def.componenti:
+            stock_attuale = self.inventory_componenti.get(componente.componente_id, 0)
+            consumo_giornaliero = domanda_media_giornaliera * componente.quantita_per_kit
+            giorni_copertura = stock_attuale / consumo_giornaliero if consumo_giornaliero > 0 else 999
+            
+            if giorni_copertura < 7:
+                raccomandazioni.append(f"URGENTE: Riordinare {componente.nome} (copertura: {giorni_copertura:.1f} giorni)")
+            elif giorni_copertura < 15:
+                raccomandazioni.append(f"ATTENZIONE: Pianificare riordino {componente.nome}")
+            elif componente.tipo == TipoComponente.MASTER and giorni_copertura < giorni_copertura_target:
+                quantita_riordino = (giorni_copertura_target * consumo_giornaliero) - stock_attuale
+                raccomandazioni.append(f"Riordinare {quantita_riordino:.0f} unità di {componente.nome}")
+        
+        # Controllo componenti sostituibili
+        componenti_critici = [c for c in kit_def.componenti if c.criticalita > 0.8]
+        for componente in componenti_critici:
+            if not componente.sostituibili:
+                raccomandazioni.append(f"RISCHIO: {componente.nome} è critico ma non ha sostituibili")
+        
+        return raccomandazioni
+    
+    def pianifica_disassembly(
+        self,
+        kit_id: str,
+        quantita_kit_da_disfare: int,
+        domanda_componenti: Dict[str, float]
+    ) -> Dict[str, Any]:
+        """
+        Pianifica disassemblaggio kit per liberare componenti richiesti
+        """
+        kit_def = self.kit_catalog[kit_id]
+        
+        # Calcola componenti liberati
+        componenti_liberati = {}
+        valore_recuperato = 0
+        
+        for componente in kit_def.componenti:
+            quantita_liberata = quantita_kit_da_disfare * componente.quantita_per_kit
+            componenti_liberati[componente.componente_id] = quantita_liberata
+            
+            # Valore recuperato se il componente ha domanda separata
+            domanda_comp = domanda_componenti.get(componente.componente_id, 0)
+            if domanda_comp > 0:
+                prezzo_vendita_comp = componente.costo_unitario * 1.4  # 40% markup
+                valore_recuperato += min(quantita_liberata, domanda_comp * 365) * prezzo_vendita_comp
+        
+        # Costo opportunità (perdita vendita kit)
+        costo_opportunita = quantita_kit_da_disfare * (kit_def.prezzo_vendita_kit - sum(
+            comp.costo_unitario * comp.quantita_per_kit for comp in kit_def.componenti
+        ))
+        
+        # Analisi convenienza
+        convenienza = valore_recuperato - costo_opportunita
+        
+        return {
+            'componenti_liberati': componenti_liberati,
+            'valore_recuperato': valore_recuperato,
+            'costo_opportunita': costo_opportunita,
+            'convenienza_netta': convenienza,
+            'raccomandazione': 'PROCEDI' if convenienza > 0 else 'SCONSIGLIATO',
+            'ratio_convenienza': valore_recuperato / costo_opportunita if costo_opportunita > 0 else float('inf')
+        }
+
+
+# =====================================================
 # ESEMPIO DI UTILIZZO COMPLETO
 # =====================================================
 
@@ -794,6 +2164,63 @@ def esempio_bilanciamento_completo():
     suggestions = dashboard.generate_improvement_suggestions(kpis)
     for i, sug in enumerate(suggestions, 1):
         print(f"{i}. {sug}")
+    
+    # 10. CLASSIFICAZIONE SLOW/FAST MOVING
+    print("\n[10] ANALISI SLOW/FAST MOVING")
+    print("-" * 40)
+    
+    # Classifica il prodotto
+    classifier = MovementClassifier()
+    turnover = kpis['inventory_turnover']
+    categoria_movimento = classifier.classify_by_movement(turnover)
+    classe_xyz = classifier.classify_xyz(pd.Series(vendite))
+    
+    print(f"Classificazione Movimento: {categoria_movimento.value[1]} (Turnover: {turnover}x)")
+    print(f"Classificazione Variabilità: {classe_xyz.value[1]} (CV: {vendite.std()/vendite.mean():.2f})")
+    
+    # 11. OTTIMIZZAZIONE SLOW/FAST MOVING
+    print("\n[11] OTTIMIZZAZIONE SPECIFICA PER CATEGORIA")
+    print("-" * 40)
+    
+    optimizer = SlowFastOptimizer(costi)
+    
+    # Politica attuale per confronto
+    current_policy = {
+        'safety_stock': safety_results['dynamic_safety_stock'],
+        'eoq': eoq,
+        'reorder_point': reorder_point,
+        'avg_inventory': stock_corrente
+    }
+    
+    # Confronta strategie
+    comparison = optimizer.compare_strategies(
+        vendite[-30:],
+        prodotto['prezzo_unitario'],
+        prodotto['lead_time_giorni'],
+        current_policy
+    )
+    
+    print("\nConfronto Strategie:")
+    print(comparison.to_string(index=False))
+    
+    # 12. STRATEGIA RACCOMANDATA
+    print("\n[12] STRATEGIA RACCOMANDATA PER CATEGORIA")
+    print("-" * 40)
+    
+    # Simula classe ABC (assumiamo classe A per questo esempio)
+    classe_abc = ClassificazioneABC.A
+    
+    strategia = classifier.get_strategy_by_classification(
+        categoria_movimento,
+        classe_abc,
+        classe_xyz
+    )
+    
+    print(f"Strategia: {strategia['strategia']}")
+    print(f"Service Level Target: {strategia['service_level']:.0%}")
+    print(f"Periodo Revisione: {strategia['review_period']}")
+    print(f"Politica Ordini: {strategia['ordering_policy']}")
+    print(f"Fattore Safety Stock: {strategia['safety_stock_factor']}")
     
     print("\n" + "=" * 60)
     print("ANALISI COMPLETATA CON SUCCESSO!")
