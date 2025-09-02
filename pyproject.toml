@@ -43,14 +43,15 @@ dependencies = [
     "scipy>=1.10.0",
     "tqdm>=4.67.1",
     "fastapi>=0.116.1",
-    "scalar-fastapi>=1.0.0",  # API documentation with Scalar
+    "scalar-fastapi>=1.0.0", # API documentation with Scalar
     "nbformat>=5.10.4",
     "jupyter>=1.1.1",
     "tabulate>=0.9.0",
     "quarto-cli>=1.7.33",
     "uvicorn>=0.35.0",
     "prophet>=1.1.5",
-    "python-dotenv>=1.0.0",  # .env file support
+    "python-dotenv>=1.0.0", # .env file support
+    "pytrends>=4.9.2",
 ]
 
 # Dipendenze opzionali

@@ -35,6 +35,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **🌐 Web UI Dashboard**: Interfaccia Streamlit drag-and-drop per business users non tecnici
 - **📊 Real-time Progress**: Tracking avanzamento batch con visualizzazioni live
 - **💾 Multi-format Export**: Export risultati in CSV/Excel/JSON per integrazione ERP
+- **🌍 Demand Sensing**: Sistema avanzato integrazione fattori esterni (meteo, trend, social, economic, eventi)
 
 ### ✨ **Caratteristiche Core**
 
@@ -90,6 +91,14 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   └── auto_selector.py       # 🧠 AutoML Engine - One-Click Model Selection
 │   ├── inventory/                   # 🏭 Sistema Ottimizzazione Magazzino Enterprise
 │   │   └── balance_optimizer.py    # Bilanciamento scorte: Slow/Fast, Perishable, Multi-Echelon, Capacity, Kitting
+│   ├── demand_sensing/              # 🌍 Sistema Demand Sensing Avanzato
+│   │   ├── demand_sensor.py         # Core demand sensing engine
+│   │   ├── weather.py               # Integrazione dati meteo (OpenWeatherMap)
+│   │   ├── trends.py                # Google Trends integration
+│   │   ├── social.py                # Social media sentiment analysis
+│   │   ├── economic.py              # Indicatori economici (PIL, inflazione, etc.)
+│   │   ├── calendar_events.py       # Eventi calendario, festività, fiere
+│   │   └── ensemble.py              # Orchestratore ensemble fattori esterni
 │   ├── utils/                       # Logging, eccezioni, traduzioni, GPU e Advanced Exog Utils
 │   │   ├── gpu_utils.py            # 🚀 GPU/CUDA utilities e array management
 │   │   ├── translations.py         # Sistema traduzioni centralizzato multilingue
@@ -120,6 +129,10 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   └── moretti_dashboard.py   # Dashboard multilingue sistema medicale
 │   ├── slow_fast_moving_demo.py   # 🏭 Demo classificazione e ottimizzazione Slow/Fast Moving
 │   ├── advanced_features_demo.py  # 🏭 Demo completa 4 casistiche avanzate inventory
+│   ├── demand_sensing/             # 🌍 Esempi Demand Sensing per settore
+│   │   ├── basic_example.py        # Esempio base integrazione fattori esterni
+│   │   ├── retail_fashion_example.py  # Caso d'uso fashion con meteo e social
+│   │   └── food_delivery_example.py   # Caso d'uso delivery con eventi e meteo
 │   └── forecasting_base.py        # Esempi base ARIMA/SARIMA
 ├── notebooks/                      # Jupyter notebooks per ricerca e sviluppo
 │   └── research_and_development.ipynb # Ambiente R&D per sperimentazione algoritmi

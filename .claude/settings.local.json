@@ -17,7 +17,9 @@
       "Bash(winget install:*)",
       "Bash(pdflatex:*)",
       "Bash(xelatex:*)",
-      "Read(C:\\Users\\reconditi\\Downloads/**)"
+      "Read(C:\\Users\\reconditi\\Downloads/**)",
+      "Bash(uv add:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],
