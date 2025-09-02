@@ -10,7 +10,14 @@
       "Bash(powershell:*)",
       "Bash(copy:*)",
       "Bash(grep:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(streamlit run:*)",
+      "Bash(winget search:*)",
+      "Bash(winget install:*)",
+      "Bash(pdflatex:*)",
+      "Bash(xelatex:*)",
+      "Read(C:\\Users\\reconditi\\Downloads/**)"
     ],
     "deny": [],
     "ask": [],
