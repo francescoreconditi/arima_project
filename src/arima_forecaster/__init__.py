@@ -22,6 +22,7 @@ from .core.sarimax_selection import SARIMAXModelSelector
 from .core.var_model import VARForecaster
 from .core.prophet_model import ProphetForecaster
 from .core.prophet_selection import ProphetModelSelector
+from .core.intermittent_model import IntermittentForecaster, IntermittentConfig, IntermittentMethod
 from .data.loader import DataLoader
 
 # Data handling
@@ -46,6 +47,9 @@ __all__ = [
     "SARIMAXForecaster",
     "VARForecaster",
     "ProphetForecaster",
+    "IntermittentForecaster",
+    "IntermittentConfig",
+    "IntermittentMethod",
     "ARIMAModelSelector",
     "SARIMAModelSelector",
     "SARIMAXModelSelector",

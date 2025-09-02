@@ -10,6 +10,7 @@ from .var_model import VARForecaster
 from .sarimax_auto_selector import SARIMAXAutoSelector
 from .prophet_model import ProphetForecaster
 from .prophet_selection import ProphetModelSelector
+from .intermittent_model import IntermittentForecaster, IntermittentConfig, IntermittentMethod
 
 # GPU-accelerated selectors (optional import)
 try:
@@ -28,7 +29,10 @@ _base_exports = [
     "SARIMAXAutoSelector",  # Advanced Exog Handling
     "VARForecaster",
     "ProphetForecaster",     # Facebook Prophet
-    "ProphetModelSelector"   # Prophet Auto-Selection
+    "ProphetModelSelector",   # Prophet Auto-Selection
+    "IntermittentForecaster",  # Intermittent Demand (Croston, SBA, TSB)
+    "IntermittentConfig",     # Configuration for Intermittent
+    "IntermittentMethod"      # Available methods enum
 ]
 
 # Add GPU selectors if available

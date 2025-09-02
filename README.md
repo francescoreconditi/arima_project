@@ -29,6 +29,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **🏢 Multi-Echelon**: Ottimizzazione inventory reti distribuite multi-livello
 - **⚖️ Capacity Constraints**: Gestione vincoli capacità (volume, budget, pallet)
 - **🔧 Kitting/Bundle**: Ottimizzazione kit vs componenti separati
+- **🔩 Intermittent Demand**: Forecasting specializzato per spare parts e ricambi (Croston, SBA, TSB)
 
 ### ✨ **Caratteristiche Core**
 
@@ -60,11 +61,14 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   ├── prophet_model.py       # 📈 Facebook Prophet per serie con trend complessi
 │   │   ├── prophet_selection.py   # 📈 Selezione automatica Prophet
 │   │   ├── cold_start.py          # 🔥 Cold Start Problem - Transfer Learning per nuovi prodotti
+│   │   ├── intermittent_model.py  # 🔩 Intermittent Demand - Croston, SBA, TSB per spare parts
 │   │   ├── model_selection.py     # Selezione automatica ARIMA
 │   │   ├── sarima_selection.py    # Selezione automatica SARIMA
 │   │   └── sarimax_selection.py   # Selezione automatica SARIMAX
 │   ├── data/                       # Caricamento dati e preprocessing
 │   ├── evaluation/                 # Metriche valutazione e diagnostica
+│   │   ├── metrics.py             # Metriche standard RMSE, MAPE, etc.
+│   │   └── intermittent_metrics.py # 🔩 Metriche specializzate per spare parts (MASE, Fill Rate)
 │   ├── visualization/              # Grafici e dashboard avanzati
 │   ├── reporting/                  # Sistema reporting Quarto dinamico
 │   │   ├── generator.py           # Generatore report con template automatici
@@ -261,6 +265,18 @@ curl http://localhost:8000/redoc       # ReDoc
 uv run python scripts/run_dashboard.py
 ```
 
+#### 🔩 Installazione Intermittent Demand (Spare Parts)
+
+Il modulo Intermittent Demand è già incluso nell'installazione base:
+
+```bash
+# Verifica installazione Intermittent Demand
+python -c "from arima_forecaster import IntermittentForecaster; print('✅ Intermittent Demand OK!')"
+
+# Test veloce Croston's Method
+uv run python examples/moretti/moretti_intermittent_spare_parts.py --test
+```
+
 #### 📈 Installazione Facebook Prophet
 
 Per utilizzare i modelli Prophet, installa la dipendenza aggiuntiva:
@@ -350,7 +366,44 @@ print("Componenti:", decomposizione.keys())
 forecast_sarima = sarima_model.forecast(steps=24)  # 2 anni
 ```
 
-#### 3. 📈 Forecasting Avanzato con Facebook Prophet (NUOVO)
+#### 3. 🔩 Forecasting Spare Parts con Intermittent Demand (NUOVO)
+
+```python
+from arima_forecaster import IntermittentForecaster, IntermittentConfig, IntermittentMethod
+from arima_forecaster.evaluation import IntermittentEvaluator
+
+# Configura modello per ricambi (domanda sporadica)
+config = IntermittentConfig(
+    method=IntermittentMethod.SBA,  # Croston con bias correction
+    alpha=0.1,                       # Smoothing parameter
+    optimize_alpha=True              # Ottimizzazione automatica
+)
+
+# Addestra su storico ricambi (con molti zeri)
+forecaster = IntermittentForecaster(config)
+forecaster.fit(spare_parts_history)
+
+# Analizza pattern domanda
+pattern = forecaster.pattern_
+print(f"Pattern: {pattern.classification}")  # Smooth/Intermittent/Erratic/Lumpy
+print(f"ADI (giorni tra ordini): {pattern.adi:.1f}")
+print(f"Intermittenza: {pattern.intermittence:.1%}")
+
+# Calcola quantità riordino ottimale
+safety_stock = forecaster.calculate_safety_stock(lead_time=15, service_level=0.95)
+reorder_point = forecaster.calculate_reorder_point(lead_time=15, service_level=0.95)
+
+print(f"Safety Stock: {safety_stock:.0f} unità")
+print(f"Reorder Point: {reorder_point:.0f} unità")
+
+# Valutazione con metriche specifiche
+evaluator = IntermittentEvaluator(holding_cost=10, stockout_cost=100)
+metrics = evaluator.evaluate(test_data, forecast)
+print(f"MASE: {metrics.mase:.3f}")  # Mean Absolute Scaled Error
+print(f"Fill Rate: {metrics.fill_rate:.1f}%")
+```
+
+#### 4. 📈 Forecasting Avanzato con Facebook Prophet
 
 ```python
 from arima_forecaster.core import ProphetForecaster, ProphetModelSelector
