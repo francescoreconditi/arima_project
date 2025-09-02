@@ -30,9 +30,15 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **⚖️ Capacity Constraints**: Gestione vincoli capacità (volume, budget, pallet)
 - **🔧 Kitting/Bundle**: Ottimizzazione kit vs componenti separati
 - **🔩 Intermittent Demand**: Forecasting specializzato per spare parts e ricambi (Croston, SBA, TSB)
+- **🧠 AutoML Engine**: Selezione automatica modello ottimale con spiegazioni intelligenti
+- **⚡ Batch Processing**: Portfolio analysis automatica per grandi volumi con parallelizzazione
+- **🌐 Web UI Dashboard**: Interfaccia Streamlit drag-and-drop per business users non tecnici
+- **📊 Real-time Progress**: Tracking avanzamento batch con visualizzazioni live
+- **💾 Multi-format Export**: Export risultati in CSV/Excel/JSON per integrazione ERP
 
 ### ✨ **Caratteristiche Core**
 
+- **🤖 One-Click Forecasting**: AutoML engine che sceglie automaticamente il modello migliore
 - **🎯 Selezione Automatica Modello**: Grid search intelligente per trovare parametri ottimali
 - **🔧 Preprocessing Avanzato**: Gestione valori mancanti, rimozione outlier, test stazionarietà
 - **📊 Valutazione Completa**: 15+ metriche accuratezza, diagnostica residui, test statistici
@@ -80,7 +86,8 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   ├── dashboard/                  # Dashboard interattiva Streamlit
 │   ├── automl/                     # Auto-ML e ottimizzazione avanzata
 │   │   ├── optimizer.py           # Ottimizzatori con Optuna/Hyperopt
-│   │   └── tuner.py               # Hyperparameter tuning avanzato
+│   │   ├── tuner.py               # Hyperparameter tuning avanzato
+│   │   └── auto_selector.py       # 🧠 AutoML Engine - One-Click Model Selection
 │   ├── inventory/                   # 🏭 Sistema Ottimizzazione Magazzino Enterprise
 │   │   └── balance_optimizer.py    # Bilanciamento scorte: Slow/Fast, Perishable, Multi-Echelon, Capacity, Kitting
 │   ├── utils/                       # Logging, eccezioni, traduzioni, GPU e Advanced Exog Utils
@@ -403,7 +410,39 @@ print(f"MASE: {metrics.mase:.3f}")  # Mean Absolute Scaled Error
 print(f"Fill Rate: {metrics.fill_rate:.1f}%")
 ```
 
-#### 4. 📈 Forecasting Avanzato con Facebook Prophet
+#### 4. 🧠 One-Click AutoML Forecasting (NUOVO)
+
+```python
+from arima_forecaster import AutoForecastSelector
+
+# ✨ UNA RIGA = FORECASTING COMPLETO!
+automl = AutoForecastSelector(verbose=True)
+best_model, explanation = automl.fit(your_data)
+
+# Spiegazione automatica
+print(f"Modello scelto: {explanation.recommended_model}")
+print(f"Confidence: {explanation.confidence_score:.1%}")
+print(f"Perché: {explanation.why_chosen}")
+print(f"Business: {explanation.business_recommendation}")
+print(f"Risk: {explanation.risk_assessment}")
+
+# Forecast immediato
+forecast = best_model.forecast(steps=30)
+
+# Confronto modelli testati
+comparison = automl.get_model_comparison()
+print(comparison)
+
+# Pattern detectati automaticamente:
+# - Regular: Serie standard → ARIMA/SARIMA
+# - Seasonal: Stagionalità → SARIMA/Prophet
+# - Trending: Con trend → Prophet/ARIMA
+# - Intermittent: Spare parts → Croston/SBA/TSB
+# - Volatile: Con outlier → Prophet (robusto)
+# - Short: Dati limitati → ARIMA semplice
+```
+
+#### 5. 📈 Forecasting Avanzato con Facebook Prophet
 
 ```python
 from arima_forecaster.core import ProphetForecaster, ProphetModelSelector

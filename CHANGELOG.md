@@ -8,6 +8,30 @@ e questo progetto aderisce a [Semantic Versioning](https://semver.org/spec/v2.0.
 ## [Unreleased]
 
 ### Aggiunto - 2025-09-02
+- 🧠 **AutoML Engine**: Sistema di selezione automatica modello ottimale (GAME-CHANGER!)
+  - AutoForecastSelector con pattern detection intelligente
+  - 6 tipologie pattern auto-detectate: Regular, Seasonal, Trending, Intermittent, Volatile, Short
+  - Explanation engine con spiegazioni business e confidence scoring
+  - Integrazione automatica con tutti i modelli esistenti (ARIMA, SARIMA, Prophet, Intermittent)
+  - One-click forecasting: `automl.fit(data)` → modello ottimale + spiegazioni
+  - Esempio showcase completo e quickstart per business users
+
+- ⚡ **Batch Processing Engine**: Portfolio analysis automatica per grandi volumi
+  - BatchForecastProcessor per elaborazione parallela centinaia di serie
+  - Progress tracking real-time con ETA intelligente e callback personalizzabili
+  - Parallelizzazione automatica 4-8x speedup con ThreadPoolExecutor/ProcessPoolExecutor
+  - Export multi-formato: CSV/Excel/JSON per integrazione ERP immediata
+  - Error handling robusto con retry automatici e fallback strategies
+  - Cache system per resume job interrotti e ottimizzazione memory usage
+
+- 🌐 **Web UI Dashboard**: Interfaccia Streamlit enterprise per business users
+  - Drag-and-drop CSV upload con supporto file multipli e validazione automatica
+  - Real-time progress monitoring con visualizzazioni interactive Plotly
+  - Dashboard results con drill-down dettagliato e filtri avanzati
+  - Export options integrate: CSV, Excel, HTML Report, JSON API-ready
+  - Configurazione parametri user-friendly per AutoML e parallelizzazione
+  - Launcher script dedicato: `scripts/run_batch_dashboard.py` porta 8502
+  
 - 🔩 **Intermittent Demand Forecasting**: Nuovo modulo completo per spare parts e ricambi
   - Implementazione Croston's Method (1972) originale
   - SBA - Syntetos-Boylan Approximation (2005) con bias correction

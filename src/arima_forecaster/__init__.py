@@ -13,6 +13,8 @@ __author__ = "Il Tuo Nome"
 # Auto-ML
 from .automl.optimizer import ARIMAOptimizer, SARIMAOptimizer, VAROptimizer, optimize_model
 from .automl.tuner import HyperparameterTuner
+from .automl.auto_selector import AutoForecastSelector
+from .automl.batch_processor import BatchForecastProcessor
 from .core.arima_model import ARIMAForecaster
 from .core.model_selection import ARIMAModelSelector
 from .core.sarima_model import SARIMAForecaster
@@ -62,10 +64,12 @@ __all__ = [
     "ForecastPlotter",
     # Auto-ML
     "ARIMAOptimizer",
-    "SARIMAOptimizer",
+    "SARIMAOptimizer", 
     "VAROptimizer",
     "HyperparameterTuner",
     "optimize_model",
+    "AutoForecastSelector",  # One-click AutoML
+    "BatchForecastProcessor", # Portfolio batch processing
 ]
 
 # Add QuartoReportGenerator to __all__ if available
