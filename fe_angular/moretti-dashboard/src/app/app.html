@@ -1,0 +1,155 @@
+<!-- ============================================ -->
+<!-- FILE DI TEST/DEBUG - NON PER PRODUZIONE -->
+<!-- Creato da: Claude Code -->
+<!-- Data: 2025-09-03 -->
+<!-- Scopo: Template HTML dashboard Moretti Angular -->
+<!-- ============================================ -->
+
+<div class="dashboard-container">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <div class="company-info">
+        <h1 class="company-title">[MEDICAL] Moretti S.p.A.</h1>
+        <p class="company-subtitle">Sistema Gestione Scorte Intelligente - Dashboard Personalizzabile</p>
+      </div>
+      <div class="header-controls">        
+        <select [(ngModel)]="selectedLanguage" (change)="onLanguageChange()" class="language-select">
+          <option value="it">Italiano</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="zh">中文</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <h3>Filtri</h3>
+      
+      <div class="filter-group">
+        <label for="category">Categoria</label>
+        <select id="category" [(ngModel)]="selectedCategory" (change)="onCategoryChange()" class="form-select">
+          <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+        </select>
+      </div>
+      
+      <div class="filter-group" *ngIf="selectedCategory !== 'Tutti'">
+        <label for="product">Prodotto</label>
+        <select id="product" [(ngModel)]="selectedProductCode" (change)="onProductChange()" class="form-select">
+          <option value="">Seleziona prodotto...</option>
+          <option *ngFor="let product of filteredProducts" [value]="product.codice">
+            {{ product.nome }} ({{ product.codice }})
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="forecastDays">Giorni Previsione</label>
+        <input 
+          type="range" 
+          id="forecastDays" 
+          [(ngModel)]="forecastDays" 
+          (change)="onForecastDaysChange()"
+          min="7" 
+          max="90" 
+          step="7" 
+          class="range-slider">
+        <span class="range-value">{{ forecastDays }} giorni</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Scenario Analysis</h3>
+      <div class="scenario-controls">
+        <div class="filter-group">
+          <label for="leadTimeModifier">Lead Time (%)</label>
+          <input 
+            type="range" 
+            id="leadTimeModifier" 
+            [(ngModel)]="leadTimeModifier" 
+            (change)="onScenarioChange()"
+            min="50" 
+            max="150" 
+            step="10" 
+            class="range-slider">
+          <span class="range-value">{{ leadTimeModifier }}%</span>
+        </div>
+        
+        <div class="filter-group">
+          <label for="demandModifier">Domanda (%)</label>
+          <input 
+            type="range" 
+            id="demandModifier" 
+            [(ngModel)]="demandModifier" 
+            (change)="onScenarioChange()"
+            min="50" 
+            max="150" 
+            step="10" 
+            class="range-slider">
+          <span class="range-value">{{ demandModifier }}%</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content - Dashboard Nativo -->
+  <main class="main-content">
+    <div class="dashboard-grid-simple">
+      <!-- Row 1: Metriche KPI -->
+      <div class="metrics-row">
+        <div class="metric-card" *ngFor="let widget of getMetricWidgets()">
+          <app-dashboard-widget
+            [widget]="widget"
+            [showHeader]="true"
+            [allowRemove]="false"
+            [chartData]="getChartDataForWidget(widget)"
+            [productData]="selectedProduct"
+            [alertsData]="alerts">
+          </app-dashboard-widget>
+        </div>
+      </div>
+
+      <!-- Row 2: Dettagli Prodotto e Avvisi -->
+      <div class="info-row">
+        <div class="product-info-card">
+          <app-dashboard-widget
+            [widget]="getProductInfoWidget()"
+            [showHeader]="true"
+            [allowRemove]="false"
+            [chartData]="getChartDataForWidget(getProductInfoWidget())"
+            [productData]="selectedProduct"
+            [alertsData]="alerts">
+          </app-dashboard-widget>
+        </div>
+        <div class="alerts-card">
+          <app-dashboard-widget
+            [widget]="getAlertsWidget()"
+            [showHeader]="true"
+            [allowRemove]="false"
+            [chartData]="getChartDataForWidget(getAlertsWidget())"
+            [productData]="selectedProduct"
+            [alertsData]="alerts">
+          </app-dashboard-widget>
+        </div>
+      </div>
+
+      <!-- Row 3: Grafico -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <app-dashboard-widget
+            [widget]="getChartWidget()"
+            [showHeader]="true"
+            [allowRemove]="false"
+            [chartData]="getChartDataForWidget(getChartWidget())"
+            [productData]="selectedProduct"
+            [alertsData]="alerts">
+          </app-dashboard-widget>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

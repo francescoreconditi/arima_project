@@ -31,7 +31,16 @@
       "Bash(rg:*)",
       "Bash(for file in advanced_models.py demand_sensing.py evaluation.py inventory.py)",
       "Bash(do echo \"=== $file ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(ng new:*)",
+      "Bash(ng build:*)",
+      "Read(c:\\temp/**)",
+      "Read(c:\\temp/**)",
+      "Read(c:\\temp/**)",
+      "Read(c:\\temp/**)",
+      "Bash(ng serve:*)"
     ],
     "deny": [],
     "ask": [],

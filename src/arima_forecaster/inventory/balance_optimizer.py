@@ -1053,6 +1053,9 @@ class PerishableManager:
     
     def __init__(self, tipo_scadenza: TipoScadenza = TipoScadenza.FIXED_SHELF_LIFE):
         self.tipo_scadenza = tipo_scadenza
+        self.lotti_tracciati: Dict[str, List[LottoPerishable]] = {}
+        # Integrazione MSL
+        self.msl_manager: Optional[MinimumShelfLifeManager] = None
     
     def analizza_lotti(self, lotti: List[Dict]) -> List[LottoPerishable]:
         """Analizza lotti esistenti e calcola metriche scadenza"""
@@ -1203,6 +1206,401 @@ class PerishableManager:
             'azione_consigliata': azione,
             'urgenza_markdown': len([l for l in lotti_esistenti if l.giorni_residui <= 7])
         }
+    
+    def abilita_msl_integration(self, msl_manager: 'MinimumShelfLifeManager'):
+        """Abilita integrazione con Minimum Shelf Life Manager"""
+        self.msl_manager = msl_manager
+    
+    def ottimizza_fefo_con_msl(
+        self,
+        lotti_esistenti: List[LottoPerishable],
+        domanda_canali: Dict[str, int],
+        prezzo_canali: Dict[str, float]
+    ) -> Dict[str, Any]:
+        """
+        Ottimizzazione FEFO integrata con MSL per allocazione multi-canale
+        Combina logica FEFO tradizionale con requisiti MSL per massimizzare valore
+        """
+        
+        if not self.msl_manager:
+            # Fallback a FEFO standard se MSL non abilitato
+            return self._fefo_standard(lotti_esistenti, sum(domanda_canali.values()))
+        
+        # Usa MSL Manager per allocazione ottimale
+        risultati_msl = self.msl_manager.ottimizza_allocazione_lotti(
+            lotti_disponibili=lotti_esistenti.copy(),
+            domanda_canali=domanda_canali,
+            prezzo_canali=prezzo_canali
+        )
+        
+        # Genera report unificato FEFO + MSL
+        return self._genera_report_fefo_msl(risultati_msl, lotti_esistenti)
+    
+    def _fefo_standard(self, lotti: List[LottoPerishable], domanda_totale: int) -> Dict[str, Any]:
+        """Logica FEFO standard senza MSL"""
+        lotti_ordinati = sorted(lotti, key=lambda l: l.data_scadenza)
+        allocazioni = []
+        quantita_allocata = 0
+        
+        for lotto in lotti_ordinati:
+            if quantita_allocata >= domanda_totale:
+                break
+                
+            quantita_da_lotto = min(lotto.quantita_disponibile, domanda_totale - quantita_allocata)
+            if quantita_da_lotto > 0:
+                allocazioni.append({
+                    "lotto_id": lotto.lotto_id,
+                    "quantita": quantita_da_lotto,
+                    "giorni_residui": lotto.giorni_residui,
+                    "canale": "standard_fefo"
+                })
+                quantita_allocata += quantita_da_lotto
+        
+        return {
+            "tipo_ottimizzazione": "FEFO_STANDARD",
+            "allocazioni": allocazioni,
+            "quantita_totale": quantita_allocata,
+            "utilizzo_lotti": len(allocazioni)
+        }
+    
+    def _genera_report_fefo_msl(
+        self, 
+        risultati_msl: Dict[str, List], 
+        lotti_originali: List[LottoPerishable]
+    ) -> Dict[str, Any]:
+        """Genera report unificato FEFO + MSL"""
+        
+        # Calcola metriche aggregate
+        totale_quantita = sum(
+            sum(a.quantita_allocata for a in allocazioni)
+            for allocazioni in risultati_msl.values()
+        )
+        
+        totale_valore = sum(
+            sum(a.valore_allocato for a in allocazioni) 
+            for allocazioni in risultati_msl.values()
+        )
+        
+        lotti_utilizzati = set()
+        for allocazioni in risultati_msl.values():
+            for alloc in allocazioni:
+                lotti_utilizzati.add(alloc.lotto_id)
+        
+        # Analisi efficienza FEFO vs MSL
+        efficienza_fefo = self._calcola_efficienza_fefo(risultati_msl, lotti_originali)
+        
+        return {
+            "tipo_ottimizzazione": "FEFO_MSL_INTEGRATO",
+            "summary": {
+                "quantita_totale_allocata": totale_quantita,
+                "valore_totale_allocato": round(totale_valore, 2),
+                "numero_lotti_utilizzati": len(lotti_utilizzati),
+                "numero_canali_serviti": len(risultati_msl),
+                "prezzo_medio_realizzo": round(totale_valore / totale_quantita, 2) if totale_quantita > 0 else 0
+            },
+            "allocazioni_per_canale": risultati_msl,
+            "metriche_fefo": efficienza_fefo,
+            "vantaggi_msl": {
+                "differenza_valore_vs_fefo_std": round(
+                    totale_valore - (totale_quantita * 3.0), 2  # Assume prezzo base €3
+                ),
+                "canali_premium_serviti": len([c for c in risultati_msl.keys() if 'premium' in c or 'b2b' in c]),
+                "riduzione_rischio_obsolescenza": self._calcola_riduzione_rischio_obsolescenza(risultati_msl)
+            }
+        }
+    
+    def _calcola_efficienza_fefo(self, risultati_msl, lotti_originali) -> Dict[str, Any]:
+        """Calcola metriche efficienza FEFO"""
+        
+        # Ordina lotti per scadenza (FEFO)
+        lotti_fefo = sorted(lotti_originali, key=lambda l: l.data_scadenza)
+        
+        # Verifica aderenza FEFO
+        allocazioni_flatten = []
+        for allocazioni_canale in risultati_msl.values():
+            allocazioni_flatten.extend(allocazioni_canale)
+        
+        allocazioni_ordinate = sorted(allocazioni_flatten, key=lambda a: a.giorni_shelf_life_residui)
+        
+        violations_fefo = 0
+        for i in range(1, len(allocazioni_ordinate)):
+            if allocazioni_ordinate[i].giorni_shelf_life_residui < allocazioni_ordinate[i-1].giorni_shelf_life_residui:
+                violations_fefo += 1
+        
+        return {
+            "aderenza_fefo_percentuale": round((1 - violations_fefo / max(1, len(allocazioni_ordinate))) * 100, 1),
+            "violazioni_fefo": violations_fefo,
+            "shelf_life_medio_allocato": round(
+                np.mean([a.giorni_shelf_life_residui for a in allocazioni_ordinate]), 1
+            ) if allocazioni_ordinate else 0
+        }
+    
+    def _calcola_riduzione_rischio_obsolescenza(self, risultati_msl) -> float:
+        """Calcola riduzione rischio obsolescenza grazie a MSL"""
+        
+        allocazioni_critiche = []
+        for allocazioni_canale in risultati_msl.values():
+            allocazioni_critiche.extend([a for a in allocazioni_canale if a.urgenza in ["urgente", "critico"]])
+        
+        if not allocazioni_critiche:
+            return 0.0
+        
+        # Stima riduzione rischio basata su margini MSL
+        margini_msl = [a.margine_msl for a in allocazioni_critiche]
+        riduzione_media = sum(max(0, 30 - abs(m)) / 30 * 0.3 for m in margini_msl) / len(margini_msl)
+        
+        return round(riduzione_media * 100, 1)
+
+
+# =====================================================
+# 1.2. MINIMUM SHELF LIFE (MSL) MANAGEMENT  
+# =====================================================
+
+class TipoCanale(Enum):
+    """Tipi di canale di vendita con requisiti MSL"""
+    GDO_PREMIUM = ("gdo_premium", "GDO Premium - MSL 90 giorni", 90)
+    GDO_STANDARD = ("gdo_standard", "GDO Standard - MSL 60 giorni", 60)
+    RETAIL_TRADIZIONALE = ("retail", "Retail Tradizionale - MSL 45 giorni", 45)
+    ONLINE_DIRETTO = ("online", "E-commerce Diretto - MSL 30 giorni", 30)
+    OUTLET_SCONTI = ("outlet", "Outlet/Sconti - MSL 15 giorni", 15)
+    B2B_WHOLESALE = ("b2b", "B2B Wholesale - MSL 120 giorni", 120)
+
+
+class RequisitoMSL(BaseModel):
+    """Requisito MSL specifico per canale-prodotto"""
+    canale: TipoCanale
+    prodotto_codice: str
+    msl_giorni: int
+    priorita: int = Field(1, description="1=alta, 5=bassa priorità")
+    attivo: bool = True
+    note: Optional[str] = None
+
+
+class AllocationResult(BaseModel):
+    """Risultato allocazione lotto a canale"""
+    lotto_id: str
+    canale: TipoCanale
+    quantita_allocata: int
+    giorni_shelf_life_residui: int
+    valore_allocato: float
+    margine_msl: int  # giorni di margine oltre MSL minimo
+    urgenza: str  # "normale", "attenzione", "urgente", "critico"
+
+
+class MinimumShelfLifeManager:
+    """
+    Gestore Minimum Shelf Life (MSL) per allocazione ottimale inventory
+    ai diversi canali di vendita in base alla vita residua prodotti
+    """
+    
+    def __init__(self):
+        self.requisiti_msl: Dict[str, Dict[str, RequisitoMSL]] = {}
+        self.storico_allocazioni: List[AllocationResult] = []
+        
+    def aggiungi_requisito_msl(self, requisito: RequisitoMSL):
+        """Aggiunge o aggiorna requisito MSL per canale-prodotto"""
+        if requisito.prodotto_codice not in self.requisiti_msl:
+            self.requisiti_msl[requisito.prodotto_codice] = {}
+            
+        self.requisiti_msl[requisito.prodotto_codice][requisito.canale.value[0]] = requisito
+        
+    def get_canali_compatibili(self, prodotto_codice: str, giorni_shelf_life_residui: int) -> List[TipoCanale]:
+        """
+        Restituisce lista canali compatibili per prodotto con shelf life residua
+        Ordinati per priorità (canali con MSL più alto = maggior valore)
+        """
+        if prodotto_codice not in self.requisiti_msl:
+            # Se non ci sono requisiti specifici, usa requisiti standard
+            canali_compatibili = []
+            for canale in TipoCanale:
+                if giorni_shelf_life_residui >= canale.value[2]:
+                    canali_compatibili.append(canale)
+        else:
+            # Usa requisiti specifici per prodotto
+            canali_compatibili = []
+            for canale_id, requisito in self.requisiti_msl[prodotto_codice].items():
+                if requisito.attivo and giorni_shelf_life_residui >= requisito.msl_giorni:
+                    canali_compatibili.append(requisito.canale)
+        
+        # Ordina per MSL decrescente (canali più esigenti = maggior valore)
+        return sorted(canali_compatibili, key=lambda c: c.value[2], reverse=True)
+    
+    def calcola_urgenza_allocazione(self, giorni_shelf_life_residui: int, msl_minimo: int) -> str:
+        """Calcola urgenza allocazione basata su margine MSL"""
+        margine = giorni_shelf_life_residui - msl_minimo
+        
+        if margine >= 30:
+            return "normale"
+        elif margine >= 15:
+            return "attenzione"
+        elif margine >= 7:
+            return "urgente"
+        else:
+            return "critico"
+    
+    def ottimizza_allocazione_lotti(
+        self,
+        lotti_disponibili: List[LottoPerishable],
+        domanda_canali: Dict[str, int],  # canale_id -> quantità richiesta
+        prezzo_canali: Dict[str, float]  # canale_id -> prezzo unitario
+    ) -> Dict[str, List[AllocationResult]]:
+        """
+        Ottimizza allocazione lotti ai canali massimizzando valore e rispettando MSL
+        
+        Algoritmo:
+        1. Ordina lotti per FEFO (First Expired, First Out)
+        2. Per ogni lotto, trova canale compatibile con maggior valore
+        3. Alloca quantità massima possibile rispettando domanda
+        4. Traccia margini MSL e urgenze
+        """
+        risultati_per_canale = {}
+        lotti_ordinati = sorted(lotti_disponibili, key=lambda l: l.data_scadenza)
+        domanda_residua = domanda_canali.copy()
+        
+        for lotto in lotti_ordinati:
+            if lotto.quantita <= 0:
+                continue
+                
+            giorni_residui = (lotto.data_scadenza - datetime.now()).days
+            canali_compatibili = self.get_canali_compatibili("YOG001", giorni_residui)  # Temp fix
+            
+            for canale in canali_compatibili:
+                canale_id = canale.value[0]
+                
+                if canale_id not in domanda_residua or domanda_residua[canale_id] <= 0:
+                    continue
+                    
+                # Calcola quantità da allocare
+                quantita_allocare = min(lotto.quantita, domanda_residua[canale_id])
+                
+                if quantita_allocare > 0:
+                    # Crea risultato allocazione
+                    prezzo_unitario = prezzo_canali.get(canale_id, 0.0)
+                    msl_richiesto = canale.value[2]
+                    
+                    risultato = AllocationResult(
+                        lotto_id=lotto.lotto_id,
+                        canale=canale,
+                        quantita_allocata=quantita_allocare,
+                        giorni_shelf_life_residui=giorni_residui,
+                        valore_allocato=quantita_allocare * prezzo_unitario,
+                        margine_msl=giorni_residui - msl_richiesto,
+                        urgenza=self.calcola_urgenza_allocazione(giorni_residui, msl_richiesto)
+                    )
+                    
+                    # Aggiorna tracking
+                    if canale_id not in risultati_per_canale:
+                        risultati_per_canale[canale_id] = []
+                    risultati_per_canale[canale_id].append(risultato)
+                    
+                    # Aggiorna quantità residue
+                    lotto.quantita -= quantita_allocare
+                    domanda_residua[canale_id] -= quantita_allocare
+                    
+                    break  # Passa al lotto successivo
+        
+        return risultati_per_canale
+    
+    def genera_report_allocazioni(
+        self,
+        risultati: Dict[str, List[AllocationResult]]
+    ) -> Dict[str, Any]:
+        """Genera report dettagliato allocazioni MSL"""
+        
+        totale_valore = 0
+        totale_quantita = 0
+        allocazioni_per_urgenza = {"normale": 0, "attenzione": 0, "urgente": 0, "critico": 0}
+        
+        # Metriche per canale
+        metriche_canali = {}
+        
+        for canale_id, allocazioni in risultati.items():
+            valore_canale = sum(a.valore_allocato for a in allocazioni)
+            quantita_canale = sum(a.quantita_allocata for a in allocazioni)
+            margine_medio = np.mean([a.margine_msl for a in allocazioni]) if allocazioni else 0
+            
+            metriche_canali[canale_id] = {
+                "valore_totale": valore_canale,
+                "quantita_totale": quantita_canale,
+                "numero_lotti": len(allocazioni),
+                "margine_msl_medio": round(margine_medio, 1),
+                "valore_medio_unitario": valore_canale / quantita_canale if quantita_canale > 0 else 0
+            }
+            
+            # Aggiorna totali
+            totale_valore += valore_canale
+            totale_quantita += quantita_canale
+            
+            # Conteggio urgenze
+            for allocazione in allocazioni:
+                if allocazione.urgenza in allocazioni_per_urgenza:
+                    allocazioni_per_urgenza[allocazione.urgenza] += 1
+        
+        return {
+            "data_report": datetime.now().isoformat(),
+            "summary": {
+                "valore_totale_allocato": round(totale_valore, 2),
+                "quantita_totale_allocata": totale_quantita,
+                "numero_canali_serviti": len(risultati),
+                "valore_medio_unitario": round(totale_valore / totale_quantita, 2) if totale_quantita > 0 else 0
+            },
+            "distribuzione_urgenze": allocazioni_per_urgenza,
+            "metriche_per_canale": metriche_canali,
+            "canale_maggior_valore": max(metriche_canali.items(), key=lambda x: x[1]["valore_totale"])[0] if metriche_canali else None,
+            "efficienza_allocazione": round(totale_quantita / sum(len(alloc) for alloc in risultati.values()) * 100, 1) if risultati else 0
+        }
+    
+    def suggerisci_azioni_msl(
+        self,
+        risultati: Dict[str, List[AllocationResult]]
+    ) -> List[Dict[str, str]]:
+        """Suggerisce azioni basate sui risultati allocazione MSL"""
+        
+        azioni = []
+        
+        # Analizza allocazioni critiche
+        allocazioni_critiche = []
+        for canale_allocazioni in risultati.values():
+            allocazioni_critiche.extend([a for a in canale_allocazioni if a.urgenza == "critico"])
+        
+        if allocazioni_critiche:
+            azioni.append({
+                "priorita": "ALTA",
+                "tipo": "MSL_CRITICO",
+                "descrizione": f"{len(allocazioni_critiche)} lotti con MSL critico (<7 giorni margine)",
+                "azione": "Implementare sconti urgenti o markdown per accelerare rotazione"
+            })
+        
+        # Analizza efficienza canali
+        canali_vuoti = []
+        for canale in TipoCanale:
+            if canale.value[0] not in risultati:
+                canali_vuoti.append(canale.value[1])
+        
+        if canali_vuoti:
+            azioni.append({
+                "priorita": "MEDIA",
+                "tipo": "CANALI_NON_SERVITI", 
+                "descrizione": f"Canali non serviti: {', '.join(canali_vuoti[:3])}",
+                "azione": "Verificare disponibilità prodotti con shelf life adeguata"
+            })
+        
+        # Analizza concentrazione su singoli canali
+        if risultati:
+            canale_principale = max(risultati.items(), key=lambda x: sum(a.quantita_allocata for a in x[1]))
+            concentrazione = sum(a.quantita_allocata for a in canale_principale[1]) / sum(
+                sum(a.quantita_allocata for a in allocazioni) for allocazioni in risultati.values()
+            ) * 100
+            
+            if concentrazione > 70:
+                azioni.append({
+                    "priorita": "MEDIA",
+                    "tipo": "CONCENTRAZIONE_CANALE",
+                    "descrizione": f"Alta concentrazione su {canale_principale[0]} ({concentrazione:.1f}%)",
+                    "azione": "Diversificare allocazioni per ridurre rischio canale"
+                })
+        
+        return azioni
 
 
 # =====================================================  

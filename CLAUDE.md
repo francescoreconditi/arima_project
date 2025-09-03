@@ -215,10 +215,11 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
 1. **Classificazione**: `MovementClassifier.classify_movement_speed()` per ABC/XYZ
 2. **Ottimizzazione Slow/Fast**: `SlowFastOptimizer.optimize_inventory()`
 3. **Gestione Deperibili**: `PerishableManager.optimize_fefo_quantity()` se applicabile
-4. **Multi-Echelon**: `MultiEchelonOptimizer.optimize_network()` per multi-location
-5. **Vincoli Capacità**: `CapacityConstrainedOptimizer.optimize_with_constraints()`
-6. **Bundle/Kit**: `KittingOptimizer.analyze_kit_strategy()` per componenti
-7. **Integrazione**: Combinazione strategie per raccomandazione finale
+4. **MSL Management**: `MinimumShelfLifeManager.ottimizza_allocazione_lotti()` per canali GDO
+5. **Multi-Echelon**: `MultiEchelonOptimizer.optimize_network()` per multi-location
+6. **Vincoli Capacità**: `CapacityConstrainedOptimizer.optimize_with_constraints()`
+7. **Bundle/Kit**: `KittingOptimizer.analyze_kit_strategy()` per componenti
+8. **Integrazione**: Combinazione strategie per raccomandazione finale
 
 ### Pattern Import Consigliati
 
@@ -242,6 +243,7 @@ from arima_forecaster.inventory.balance_optimizer import (
     MovementClassifier,
     SlowFastOptimizer,
     PerishableManager,
+    MinimumShelfLifeManager,  # NUOVO: MSL Management
     MultiEchelonOptimizer,
     CapacityConstrainedOptimizer,
     KittingOptimizer
@@ -305,6 +307,7 @@ just build       # Build package per distribuzione
 - ✅ Ensemble methods e model stacking
 - ✅ **NUOVO:** Slow/Fast Moving Inventory Classification con ABC/XYZ analysis
 - ✅ **NUOVO:** Perishable/FEFO Management per prodotti deperibili
+- ✅ **NUOVO:** **Minimum Shelf Life (MSL) Management** per allocazione multi-canale GDO
 - ✅ **NUOVO:** Multi-Echelon Optimization con risk pooling
 - ✅ **NUOVO:** Capacity Constraints Management (volume, peso, budget, pallet)
 - ✅ **NUOVO:** Kitting/Bundle Optimization per strategie Make-to-Stock vs Assemble-to-Order

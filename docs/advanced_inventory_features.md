@@ -2,13 +2,14 @@
 
 ## 1. Introduzione
 
-Questo documento fornisce una guida tecnica completa per le quattro nuove funzionalità avanzate implementate nel sistema di gestione magazzino ARIMA:
+Questo documento fornisce una guida tecnica completa per le sei nuove funzionalità avanzate implementate nel sistema di gestione magazzino ARIMA:
 
 1. **Slow/Fast Moving** - Classificazione e ottimizzazione prodotti per velocità di rotazione
-2. **Perishable/FEFO** - Gestione prodotti deperibili con logica First Expired First Out  
-3. **Multi-Echelon** - Ottimizzazione inventario multi-livello con risk pooling
-4. **Capacity Constraints** - Gestione vincoli di capacità (volume, peso, budget, posti pallet)
-5. **Kitting/Bundle** - Ottimizzazione strategie bundle vs componenti singoli
+2. **Perishable/FEFO** - Gestione prodotti deperibili con logica First Expired First Out
+3. **🆕 Minimum Shelf Life (MSL) Management** - Allocazione multi-canale GDO con requisiti MSL
+4. **Multi-Echelon** - Ottimizzazione inventario multi-livello con risk pooling
+5. **Capacity Constraints** - Gestione vincoli di capacità (volume, peso, budget, posti pallet)
+6. **Kitting/Bundle** - Ottimizzazione strategie bundle vs componenti singoli
 
 ## 2. Architettura del Sistema
 
@@ -19,6 +20,7 @@ Questo documento fornisce una guida tecnica completa per le quattro nuove funzio
 MovementClassifier     # Classificazione ABC/XYZ e velocità movimento
 SlowFastOptimizer     # Strategie ottimizzazione slow/fast moving
 PerishableManager     # Gestione prodotti deperibili con FEFO
+MinimumShelfLifeManager # 🆕 Allocazione MSL multi-canale GDO
 MultiEchelonOptimizer # Ottimizzazione multi-livello magazzini
 CapacityConstrainedOptimizer # Gestione vincoli capacità
 KittingOptimizer      # Ottimizzazione bundle e kit
@@ -223,7 +225,163 @@ def classify_perishability(shelf_life_days):
         return PerishabilityType.NON_PERISHABLE
 ```
 
-## 5. Multi-Echelon - Ottimizzazione Multi-Livello
+## 5. 🆕 Minimum Shelf Life (MSL) Management
+
+### 5.1 Panoramica MSL
+
+Il sistema MSL (Minimum Shelf Life) gestisce l'allocazione ottimale di prodotti deperibili ai diversi canali di vendita in base ai requisiti di vita residua minima.
+
+**Problema risolto**: "GDO A richiede prodotti con minimo 60 giorni residui, GDO B richiede minimo 90 giorni"
+
+### 5.2 Tipi di Canale Supportati
+
+```python
+from arima_forecaster.inventory.balance_optimizer import TipoCanale
+
+# Canali predefiniti con MSL
+TipoCanale.GDO_PREMIUM      # MSL: 90 giorni
+TipoCanale.GDO_STANDARD     # MSL: 60 giorni  
+TipoCanale.RETAIL_TRADIZIONALE # MSL: 45 giorni
+TipoCanale.ONLINE_DIRETTO   # MSL: 30 giorni
+TipoCanale.OUTLET_SCONTI    # MSL: 15 giorni
+TipoCanale.B2B_WHOLESALE    # MSL: 120 giorni
+```
+
+### 5.3 Configurazione Requisiti MSL Personalizzati
+
+```python
+from arima_forecaster.inventory.balance_optimizer import (
+    MinimumShelfLifeManager, 
+    RequisitoMSL, 
+    TipoCanale
+)
+
+# Inizializza manager MSL
+msl_manager = MinimumShelfLifeManager()
+
+# Configura requisiti personalizzati per prodotto specifico
+requisito_custom = RequisitoMSL(
+    canale=TipoCanale.GDO_PREMIUM,
+    prodotto_codice="YOGURT_BIO",
+    msl_giorni=100,  # Override default 90 → 100 giorni
+    priorita=1,
+    attivo=True,
+    note="Esselunga richiede 100gg per biologici"
+)
+
+msl_manager.aggiungi_requisito_msl(requisito_custom)
+```
+
+### 5.4 Algoritmo di Ottimizzazione FEFO + MSL
+
+```python
+# Setup lotti e domanda
+lotti_disponibili = [...]  # Lista LottoPerishable
+domanda_canali = {
+    "gdo_premium": 500,
+    "gdo_standard": 800,
+    "retail": 300,
+    "online": 200
+}
+prezzo_canali = {
+    "gdo_premium": 4.50,   # Prezzo più alto
+    "gdo_standard": 3.80,
+    "retail": 3.50,
+    "online": 3.90
+}
+
+# Esegui ottimizzazione
+risultati = msl_manager.ottimizza_allocazione_lotti(
+    lotti_disponibili=lotti_disponibili,
+    domanda_canali=domanda_canali,
+    prezzo_canali=prezzo_canali
+)
+
+# Analisi risultati
+for canale_id, allocazioni in risultati.items():
+    for alloc in allocazioni:
+        print(f"Lotto {alloc.lotto_id} → {canale_id}")
+        print(f"  Quantità: {alloc.quantita_allocata}")
+        print(f"  Shelf life residua: {alloc.giorni_shelf_life_residui}")
+        print(f"  Margine MSL: {alloc.margine_msl} giorni")
+        print(f"  Urgenza: {alloc.urgenza}")
+        print(f"  Valore: €{alloc.valore_allocato}")
+```
+
+### 5.5 Report e Metriche MSL
+
+```python
+# Genera report dettagliato
+report = msl_manager.genera_report_allocazioni(risultati)
+
+print("=== REPORT MSL ===")
+print(f"Valore totale: €{report['summary']['valore_totale_allocato']:,.2f}")
+print(f"Canali serviti: {report['summary']['numero_canali_serviti']}")
+print(f"Efficienza: {report['efficienza_allocazione']}%")
+
+# Distribuzione urgenze
+for urgenza, count in report['distribuzione_urgenze'].items():
+    print(f"{urgenza.capitalize()}: {count} allocazioni")
+
+# Suggerimenti azioni
+azioni = msl_manager.suggerisci_azioni_msl(risultati)
+for azione in azioni:
+    print(f"[{azione['priorita']}] {azione['descrizione']}")
+    print(f"→ {azione['azione']}")
+```
+
+### 5.6 Integrazione con PerishableManager
+
+```python
+# Integrazione FEFO + MSL
+perishable_mgr = PerishableManager()
+perishable_mgr.abilita_msl_integration(msl_manager)
+
+# Ottimizzazione combinata
+risultato_integrato = perishable_mgr.ottimizza_fefo_con_msl(
+    lotti_esistenti=lotti,
+    domanda_canali=domanda_canali,
+    prezzo_canali=prezzo_canali
+)
+
+print("=== FEFO + MSL INTEGRATO ===")
+print(f"Tipo: {risultato_integrato['tipo_ottimizzazione']}")
+print(f"Valore totale: €{risultato_integrato['summary']['valore_totale_allocato']}")
+print(f"Aderenza FEFO: {risultato_integrato['metriche_fefo']['aderenza_fefo_percentuale']}%")
+print(f"Canali premium serviti: {risultato_integrato['vantaggi_msl']['canali_premium_serviti']}")
+```
+
+### 5.7 Analisi What-If Scenari MSL
+
+```python
+# Test diversi scenari MSL
+scenari = {
+    "conservativo": lambda msl: msl + 20,  # +20 giorni MSL
+    "standard": lambda msl: msl,           # MSL default
+    "aggressivo": lambda msl: max(7, msl - 15)  # -15 giorni MSL
+}
+
+for nome, modifica_msl in scenari.items():
+    msl_temp = MinimumShelfLifeManager()
+    
+    # Applica modifica MSL
+    for canale in TipoCanale:
+        requisito = RequisitoMSL(
+            canale=canale,
+            prodotto_codice="TEST",
+            msl_giorni=modifica_msl(canale.value[2]),
+            priorita=1
+        )
+        msl_temp.aggiungi_requisito_msl(requisito)
+    
+    # Ottimizza con nuovo scenario
+    risultati_scenario = msl_temp.ottimizza_allocazione_lotti(lotti, domanda_canali, prezzo_canali)
+    valore_scenario = sum(sum(a.valore_allocato for a in alloc) for alloc in risultati_scenario.values())
+    
+    print(f"Scenario {nome}: €{valore_scenario:,.2f}")
+```
+
+## 6. Multi-Echelon - Ottimizzazione Multi-Livello
 
 ### 5.1 Configurazione Rete Multi-Livello
 

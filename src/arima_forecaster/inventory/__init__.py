@@ -10,12 +10,16 @@ from .balance_optimizer import (
     InventoryAlertSystem,
     InventoryKPIDashboard,
     AdaptiveForecastEngine,
+    MinimumShelfLifeManager,
     
     # Modelli dati
     CostiGiacenza,
     AnalisiRischio,
     AlertLevel,
-    LivelloServizio
+    LivelloServizio,
+    TipoCanale,
+    RequisitoMSL,
+    AllocationResult
 )
 
 __all__ = [
@@ -24,8 +28,12 @@ __all__ = [
     'InventoryAlertSystem',
     'InventoryKPIDashboard',
     'AdaptiveForecastEngine',
+    'MinimumShelfLifeManager',
     'CostiGiacenza',
     'AnalisiRischio',
     'AlertLevel',
-    'LivelloServizio'
+    'LivelloServizio',
+    'TipoCanale',
+    'RequisitoMSL',
+    'AllocationResult'
 ]
