@@ -1,0 +1,135 @@
+/* Global Styles - Moretti Dashboard */
+
+// Import Angular Material theme  
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+// Define CSS variables
+:root {
+  --primary-color: #1976d2;
+  --secondary-color: #424242;
+  --background-primary: #fafafa;
+  --background-secondary: #f5f5f5;
+  --card-background: #ffffff;
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --border-color: #e0e0e0;
+  --border-radius-small: 4px;
+  --border-radius-medium: 8px;
+  --border-radius-large: 12px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --box-shadow-1: 0 2px 4px rgba(0,0,0,0.1);
+  --box-shadow-2: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+// Dashboard specific global styles
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  background-color: #fafafa !important;
+  color: #212121 !important;
+  overflow-x: hidden;
+}
+
+/* Force visible styles with !important */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
+  min-height: 100vh !important;
+}
+
+.dashboard-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+// Gridster customization
+.gridster {
+  background-color: transparent !important;
+  padding: 10px !important;
+  
+  .gridster-item {
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transition: all 0.3s ease !important;
+    
+    .gridster-item-content {
+      padding: 10px !important;
+      height: 100% !important;
+      overflow: visible !important;
+      box-sizing: border-box !important;
+    }
+  }
+}
+
+// Override any gridster item wrapper styles
+gridster-item {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  
+  .gridster-item-wrapper {
+    height: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+// Chart.js responsive container
+.chart-container {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  min-height: 200px;
+}
+
+// Widget placeholder styles - FORCED VISIBILITY
+.widget-placeholder {
+  padding: 16px !important;
+  background-color: white !important;
+  border: 2px solid #2196F3 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3) !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  margin: 4px !important;
+  
+  h3 {
+    margin: 0 0 8px 0 !important;
+    color: #1976d2 !important;
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+  }
+  
+  p {
+    margin: 8px 0 !important;
+    color: #424242 !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+  }
+}
+
+// Force gridster item visibility
+gridster-item {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid #ddd !important;
+  border-radius: 8px !important;
+}

@@ -1,0 +1,25 @@
+<div class="whatif-widget" style="background: white !important; padding: 20px !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin: 0 !important; height: 100% !important; box-sizing: border-box !important;">
+  <h3 style="color: var(--primary-color, #1976d2) !important; font-size: 1.2rem !important; margin: 0 0 20px 0 !important; font-weight: 600 !important; text-align: center !important;">
+    Analisi What-If
+  </h3>
+  
+  <div *ngFor="let scenario of scenarios; let i = index" class="scenario" 
+       style="margin-bottom: 15px !important; padding: 15px !important; border-radius: 8px !important; background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important; border-left: 4px solid var(--primary-color, #1976d2) !important;">
+    <div style="font-weight: 600 !important; color: #333 !important; margin-bottom: 5px !important; font-size: 0.95rem !important;">
+      {{scenario.nome}}
+    </div>
+    <div style="font-size: 0.85rem !important; color: #666 !important;">
+      Previsione: <strong style="color: #1976d2 !important;">{{scenario.previsione}}</strong>
+    </div>
+    <div style="font-size: 0.8rem !important; margin-top: 5px !important;"
+         [style.color]="scenario.impatto === 'positivo' ? '#4caf50' : scenario.impatto === 'negativo' ? '#f44336' : '#666'">
+      Impatto: {{scenario.impatto}}
+    </div>
+  </div>
+  
+  <div *ngIf="!scenarios || scenarios.length === 0" style="text-align: center !important; padding: 30px 20px !important; color: #666 !important;">
+    <div style="font-size: 1.2rem !important; margin-bottom: 10px !important; color: #1976d2 !important;">⚡</div>
+    <div style="font-size: 0.9rem !important;">Simulazioni disponibili</div>
+    <div style="font-size: 0.8rem !important; margin-top: 5px !important; opacity: 0.7 !important;">Configura scenari di analisi</div>
+  </div>
+</div>

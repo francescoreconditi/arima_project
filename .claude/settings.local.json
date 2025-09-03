@@ -40,7 +40,14 @@
       "Read(c:\\temp/**)",
       "Read(c:\\temp/**)",
       "Read(c:\\temp/**)",
-      "Bash(ng serve:*)"
+      "Bash(ng serve:*)",
+      "Bash(ng generate module:*)",
+      "Bash(ng generate component:*)",
+      "Bash(ng generate:*)",
+      "Bash(for component in inventory-table supplier-optimization alerts-panel what-if-analysis)",
+      "Bash(do echo \"Updating $component\")",
+      "Read(c:\\temp/**)",
+      "Read(c:\\temp/**)"
     ],
     "deny": [],
     "ask": [],

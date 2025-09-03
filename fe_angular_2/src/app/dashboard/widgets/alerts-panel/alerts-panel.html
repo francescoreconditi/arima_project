@@ -1,0 +1,20 @@
+<div class="alerts-widget" style="background: white !important; padding: 20px !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; margin: 0 !important; height: 100% !important; box-sizing: border-box !important;">
+  <h3 style="color: var(--primary-color, #1976d2) !important; font-size: 1.2rem !important; margin: 0 0 20px 0 !important; font-weight: 600 !important; text-align: center !important;">
+    Avvisi e Alert
+  </h3>
+  
+  <div class="alert" *ngFor="let alert of alerts" style="margin-bottom: 10px !important; padding: 12px !important; border-radius: 8px !important; border-left: 4px solid !important;"
+       [style.background]="alert.tipo === 'critico' ? '#ffebee' : alert.tipo === 'attenzione' ? '#fff3e0' : alert.tipo === 'info' ? '#e3f2fd' : '#f5f5f5'"
+       [style.border-left-color]="alert.tipo === 'critico' ? '#f44336' : alert.tipo === 'attenzione' ? '#ff9800' : alert.tipo === 'info' ? '#2196f3' : '#666'">
+    <span style="font-size: 0.9rem !important; font-weight: 500 !important;"
+          [style.color]="alert.tipo === 'critico' ? '#c62828' : alert.tipo === 'attenzione' ? '#e65100' : alert.tipo === 'info' ? '#1976d2' : '#333'">
+      {{alert.messaggio}}
+    </span>
+  </div>
+  
+  <div *ngIf="!alerts || alerts.length === 0" style="text-align: center !important; padding: 30px 20px !important; color: #666 !important;">
+    <div style="font-size: 1.5rem !important; margin-bottom: 10px !important; color: #4caf50 !important;">✓</div>
+    <div style="font-size: 0.9rem !important;">Nessun avviso attivo</div>
+    <div style="font-size: 0.8rem !important; margin-top: 5px !important; opacity: 0.7 !important;">Sistema operativo</div>
+  </div>
+</div>
