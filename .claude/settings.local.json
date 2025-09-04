@@ -47,7 +47,9 @@
       "Bash(for component in inventory-table supplier-optimization alerts-panel what-if-analysis)",
       "Bash(do echo \"Updating $component\")",
       "Read(c:\\temp/**)",
-      "Read(c:\\temp/**)"
+      "Read(c:\\temp/**)",
+      "Bash(npm start)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": [],
