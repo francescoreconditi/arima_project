@@ -1,0 +1,264 @@
+// ============================================
+// FIX ULTRA-SPECIFICI PER VINCERE ANGULAR MATERIAL
+// MASSIMA SPECIFICITÀ CSS - APPROCCIO MILITANTE
+// ============================================
+
+// SELETTORI ULTRA-SPECIFICI PER VINCERE OGNI REGOLA MATERIAL
+mat-sidenav-container.dashboard-container mat-sidenav.dashboard-sidenav,
+.dashboard-container mat-sidenav.dashboard-sidenav,
+.dashboard-container .dashboard-sidenav {
+  width: 450px !important;
+  min-width: 450px !important;
+  max-width: 450px !important;
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+// MENU SIDEBAR - SELETTORI MILITANTI
+.dashboard-container .dashboard-sidenav .sidenav-menu mat-nav-list a.mat-mdc-list-item,
+.dashboard-container .dashboard-sidenav .sidenav-menu mat-nav-list a.mat-list-item,
+.dashboard-container mat-sidenav .sidenav-menu mat-nav-list a,
+mat-sidenav-container mat-sidenav mat-nav-list a {
+  height: 56px !important;
+  min-height: 56px !important;
+  max-height: 56px !important;
+  padding: 0 24px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+// TEXT LABELS - FORZA BRUTALE
+.dashboard-container .dashboard-sidenav .sidenav-menu mat-nav-list a .menu-label,
+.dashboard-container mat-sidenav mat-nav-list a span.menu-label,
+mat-sidenav-container mat-sidenav mat-nav-list a span,
+.dashboard-sidenav .menu-label {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  color: inherit !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: none !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin-left: 20px !important;
+  margin-right: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  line-height: normal !important;
+  text-align: left !important;
+  flex: 1 !important;
+  flex-grow: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+// ICONS MENU - FORZA BRUTALE  
+.dashboard-container .dashboard-sidenav .sidenav-menu mat-nav-list a mat-icon.menu-icon,
+.dashboard-container mat-sidenav mat-nav-list a mat-icon,
+mat-sidenav-container mat-sidenav mat-nav-list a mat-icon {
+  font-size: 24px !important;
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  vertical-align: middle !important;
+}
+
+// KPI CARDS - SELETTORI MILITANTI
+.dashboard-container .dashboard-content .kpi-grid app-kpi-card mat-card.kpi-card,
+.dashboard-container .kpi-grid app-kpi-card mat-card,
+.dashboard-content .kpi-grid .kpi-card,
+app-kpi-card mat-card {
+  min-width: 320px !important;
+  width: 100% !important;
+  max-width: none !important;
+  padding: 20px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+// KPI ICON WRAPPER - FORZA MILITANTE
+.dashboard-container .kpi-grid .kpi-card .kpi-icon-wrapper,
+app-kpi-card mat-card .kpi-icon-wrapper,
+.kpi-card .kpi-header .kpi-icon-wrapper {
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+// KPI ICONS - FORZA NUCLEARE
+.dashboard-container .kpi-grid .kpi-card .kpi-icon-wrapper mat-icon.kpi-icon,
+app-kpi-card mat-card .kpi-icon-wrapper mat-icon,
+.kpi-card .kpi-icon-wrapper .kpi-icon,
+.kpi-icon {
+  font-size: 36px !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  word-wrap: normal !important;
+  white-space: nowrap !important;
+  direction: ltr !important;
+  -webkit-font-feature-settings: 'liga' !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+// BUTTONS - FORZA MILITANTE  
+.dashboard-container .dashboard-content mat-card mat-card-content form button.mat-mdc-raised-button,
+.dashboard-content .filters-card button.mat-mdc-raised-button,
+button.mat-mdc-raised-button {
+  min-width: 180px !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  padding: 0 24px !important;
+  margin: 0 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: none !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+// BUTTON ICONS
+.dashboard-container button.mat-mdc-raised-button mat-icon,
+button.mat-mdc-raised-button mat-icon {
+  font-size: 20px !important;
+  width: 20px !important;
+  height: 20px !important;
+  line-height: 20px !important;
+  margin-right: 8px !important;
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  vertical-align: middle !important;
+}
+
+// GRIGLIA KPI - FORZA TOTALE
+.dashboard-container .dashboard-content .kpi-grid,
+.dashboard-content .kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+  gap: 20px !important;
+  margin: 0 0 32px 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+// TOOLBAR - SPECIFICITÁ MASSIMA
+mat-sidenav-container.dashboard-container mat-sidenav-content mat-toolbar.dashboard-toolbar,
+.dashboard-container mat-sidenav-content .dashboard-toolbar,
+mat-toolbar.dashboard-toolbar {
+  min-height: 64px !important;
+  height: 64px !important;
+  max-height: 64px !important;
+  padding: 0 24px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+// TOOLBAR TITLE - FORZA MILITANTE
+.dashboard-container mat-toolbar.dashboard-toolbar .toolbar-title,
+mat-toolbar.dashboard-toolbar .toolbar-title,
+.dashboard-toolbar .toolbar-title {
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  color: inherit !important;
+  margin-left: 20px !important;
+  margin-right: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: none !important;
+  flex: 1 !important;
+  flex-grow: 1 !important;
+  flex-shrink: 0 !important;
+  line-height: normal !important;
+  text-align: left !important;
+}
+
+// RESPONSIVE FIXES
+@media (max-width: 768px) {
+  mat-sidenav-container.dashboard-container mat-sidenav.dashboard-sidenav,
+  .dashboard-container mat-sidenav.dashboard-sidenav {
+    width: 350px !important;
+    min-width: 350px !important;
+    max-width: 350px !important;
+  }
+  
+  .dashboard-container .dashboard-content .kpi-grid,
+  .dashboard-content .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  .dashboard-container .kpi-grid .kpi-card,
+  app-kpi-card mat-card {
+    min-width: 280px !important;
+  }
+}

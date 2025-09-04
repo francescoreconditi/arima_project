@@ -1,0 +1,44 @@
+<!-- ============================================
+     TEMPLATE KPI CARD
+     Creato da: Claude Code
+     Data: 2025-09-04
+     Scopo: Template per KPI card
+     ============================================ -->
+
+<mat-card class="kpi-card" [class.clickable]="clickable" [class.loading]="loading" [class.kpi-primary]="data.color === 'primary' || !data.color" [class.kpi-secondary]="data.color === 'secondary'" [class.kpi-success]="data.color === 'success'" [class.kpi-warning]="data.color === 'warning'" [class.kpi-danger]="data.color === 'danger'" [class.kpi-info]="data.color === 'info'">
+  <mat-card-content>
+    <div class="kpi-header">
+      <div class="kpi-icon-wrapper">
+        <mat-icon class="kpi-icon">{{ getIconName() }}</mat-icon>
+      </div>
+      <div class="kpi-trend" *ngIf="data.trend">
+        <mat-icon [class.trend-up]="data.trend === 'up'" [class.trend-down]="data.trend === 'down'" [class.trend-stable]="data.trend === 'stable'">{{ trendIcon }}</mat-icon>
+        <span class="trend-value" *ngIf="data.changePercent">
+          {{ data.changePercent > 0 ? '+' : '' }}{{ data.changePercent }}%
+        </span>
+      </div>
+    </div>
+
+    <div class="kpi-body" *ngIf="!loading">
+      <h3 class="kpi-title">{{ data.title }}</h3>
+      <div class="kpi-value">{{ formattedValue }}</div>
+      <p class="kpi-subtitle" *ngIf="data.subtitle">{{ data.subtitle }}</p>
+    </div>
+
+    <div class="kpi-loading" *ngIf="loading">
+      <div class="skeleton-title"></div>
+      <div class="skeleton-value"></div>
+      <div class="skeleton-subtitle"></div>
+    </div>
+
+    <div class="kpi-progress" *ngIf="data.target && !loading">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="progressPercent"></div>
+      </div>
+      <div class="progress-label">
+        <span>Target: {{ data.target }}{{ data.unit }}</span>
+        <span>{{ progressPercent.toFixed(0) }}%</span>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>
