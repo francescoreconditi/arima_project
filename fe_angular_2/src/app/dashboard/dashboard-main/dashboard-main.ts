@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { CdkDrag } from '@angular/cdk/drag-drop';
 import { GridsterModule, GridsterConfig, GridsterItem } from 'angular-gridster2';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -22,6 +23,7 @@ import { MorettiDataService } from '../../core/services/moretti-data';
   imports: [
     CommonModule,
     FormsModule,
+    CdkDrag,
     GridsterModule,
     KpiCardsComponent,
     ForecastChartComponent,
@@ -59,7 +61,7 @@ export class DashboardMainComponent implements OnInit, OnDestroy {
     this.options = {
       gridType: 'fit',
       compactType: 'none',
-      margin: 16,
+      margin: 10,
       outerMargin: true,
       outerMarginTop: null,
       outerMarginRight: null,
@@ -67,9 +69,9 @@ export class DashboardMainComponent implements OnInit, OnDestroy {
       outerMarginLeft: null,
       useTransformPositioning: true,
       mobileBreakpoint: 640,
-      minCols: 12,
-      maxCols: 12,
-      minRows: 6,
+      minCols: 1,
+      maxCols: 100,
+      minRows: 1,
       maxRows: 100,
       maxItemCols: 100,
       minItemCols: 1,
@@ -77,8 +79,8 @@ export class DashboardMainComponent implements OnInit, OnDestroy {
       minItemRows: 1,
       maxItemArea: 2500,
       minItemArea: 1,
-      defaultItemCols: 3,
-      defaultItemRows: 2,
+      defaultItemCols: 1,
+      defaultItemRows: 1,
       fixedColWidth: 105,
       fixedRowHeight: 105,
       keepFixedHeightInMobile: false,
@@ -94,10 +96,20 @@ export class DashboardMainComponent implements OnInit, OnDestroy {
       emptyCellDragMaxRows: 50,
       ignoreMarginInRow: false,
       draggable: {
-        enabled: true,
+        enabled: true
       },
       resizable: {
         enabled: true,
+        handles: {
+          s: true,
+          e: true,
+          n: true,
+          w: true,
+          se: true,
+          ne: true,
+          sw: true,
+          nw: true
+        }
       },
       swap: false,
       pushItems: true,
@@ -107,7 +119,13 @@ export class DashboardMainComponent implements OnInit, OnDestroy {
       displayGrid: 'onDrag&Resize',
       disableWindowResize: false,
       disableWarnings: false,
-      scrollToNewItems: false
+      scrollToNewItems: false,
+      itemChangeCallback: (item: any, itemComponent: any) => {
+        console.log('✅ ITEM CHANGED!', item);
+      },
+      itemResizeCallback: (item: any, itemComponent: any) => {
+        console.log('✅ ITEM RESIZED!', item);
+      }
     };
   }
 
@@ -192,4 +210,27 @@ export class DashboardMainComponent implements OnInit, OnDestroy {
   trackByFn(index: number, item: any): any {
     return item.component + index;
   }
+
+  getWidgetTitle(component: string): string {
+    switch (component) {
+      case 'kpi-cards': return 'KPI Principali';
+      case 'forecast-chart': return 'Previsioni Domanda';
+      case 'inventory-table': return 'Stato Inventario';
+      case 'supplier-optimization': return 'Ottimizzazione Fornitori';
+      case 'alerts-panel': return 'Avvisi e Alert';
+      case 'what-if-analysis': return 'Analisi What-If';
+      default: return 'Widget';
+    }
+  }
+
+  onDragStart(event: MouseEvent): void {
+    console.log('Mouse down on drag handle', event);
+    event.stopPropagation();
+  }
+
+  onDragEnd(event: MouseEvent): void {
+    console.log('Mouse up on drag handle', event);
+    event.stopPropagation();
+  }
+
 }

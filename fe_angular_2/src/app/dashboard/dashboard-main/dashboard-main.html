@@ -54,22 +54,57 @@
     </div>
   </div>
 
-  <!-- Dashboard Grid -->
+  <!-- Dashboard Grid with CDK Drag & Drop -->
   <div class="dashboard-content" style="flex: 1 !important; padding: 0 !important; margin: 0 !important;">
-    <gridster [options]="options" style="height: 100% !important; width: 100% !important;">
+    <div cdkDropListGroup class="dashboard-grid" style="display: grid !important; grid-template-columns: repeat(12, 1fr) !important; gap: 10px !important; padding: 10px !important; min-height: 600px !important;">
       
-      <gridster-item 
-        [item]="item" 
+      <div 
+        cdkDrag
         *ngFor="let item of dashboard; trackBy: trackByFn"
-        class="gridster-item-wrapper">
+        class="gridster-item-wrapper dashboard-widget"
+        [style.grid-column]="'span ' + item.cols"
+        [style.grid-row]="'span ' + item.rows"
+        style="background: white !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; min-height: 200px !important; cursor: move !important;"
+        cdkDragBoundary=".dashboard-grid">
         
         <div class="gridster-item-content">
           <!-- Controlli widget -->
-          <div class="widget-header">
+          <div class="widget-header drag-handle" style="display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 8px 12px !important; background: rgba(25, 118, 210, 0.1) !important; border-radius: 8px 8px 0 0 !important; margin: -10px -10px 10px -10px !important; border-bottom: 1px solid #e0e0e0 !important; cursor: move !important; user-select: none !important;">
+            <!-- Drag handle -->
+            <div class="drag-handler" 
+                 style="cursor: move !important; 
+                        color: #1976d2 !important; 
+                        font-size: 1.4rem !important; 
+                        padding: 8px !important; 
+                        user-select: none !important;
+                        background: rgba(25, 118, 210, 0.1) !important;
+                        border-radius: 4px !important;
+                        border: 1px solid rgba(25, 118, 210, 0.2) !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        min-width: 24px !important;
+                        min-height: 24px !important;
+                        z-index: 1000 !important;" 
+                 title="Trascina per spostare"
+                 (mousedown)="onDragStart($event)"
+                 (mouseup)="onDragEnd($event)">
+              <span style="font-weight: bold !important; line-height: 1 !important; pointer-events: none !important;">⋮⋮</span>
+            </div>
+            
+            <!-- Widget title -->
+            <div style="flex: 1 !important; text-align: center !important; font-size: 0.9rem !important; color: #1976d2 !important; font-weight: 600 !important;">
+              {{ getWidgetTitle(item.component) }}
+            </div>
+            
+            <!-- Remove button -->
             <button 
               class="widget-remove-btn"
               (click)="removeItem($event, item)"
-              title="Rimuovi widget">
+              style="background: none !important; border: none !important; color: #666 !important; font-size: 1.2rem !important; cursor: pointer !important; padding: 4px !important; border-radius: 4px !important; transition: all 0.2s ease !important; pointer-events: auto !important; z-index: 1001 !important;"
+              title="Rimuovi widget"
+              (mousedown)="$event.stopPropagation()"
+              (mouseup)="$event.stopPropagation()">
               ×
             </button>
           </div>
@@ -117,9 +152,9 @@
           </app-what-if-analysis>
 
         </div>
-      </gridster-item>
+      </div>
 
-    </gridster>
+    </div>
   </div>
 
   <!-- Footer con informazioni -->
