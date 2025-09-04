@@ -6,6 +6,7 @@
 // ============================================
 
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -42,6 +43,7 @@ import Chart from 'chart.js/auto';
 // Services
 import { ForecastService } from '../../core/services/forecast.service';
 import { InventoryService } from '../../core/services/inventory.service';
+import { TranslationService } from '../../core/services/translation.service';
 
 // Models
 import { Product, InventoryAlert, InventoryKPI } from '../../core/models/inventory.model';
@@ -175,14 +177,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   // Menu items (sidebar)
   menuItems = [
-    { icon: 'dashboard', label: 'Dashboard', route: '/dashboard' },
-    { icon: 'inventory_2', label: 'Inventario', route: '/inventory' },
-    { icon: 'show_chart', label: 'Previsioni', route: '/forecast' },
-    { icon: 'shopping_cart', label: 'Ordini', route: '/orders' },
-    { icon: 'local_shipping', label: 'Fornitori', route: '/suppliers' },
-    { icon: 'analytics', label: 'Analisi', route: '/analytics' },
-    { icon: 'notifications', label: 'Alert', route: '/alerts', badge: 0 },
-    { icon: 'settings', label: 'Impostazioni', route: '/settings' }
+    { icon: 'dashboard', labelKey: 'menu.dashboard', label: 'Dashboard', route: '/dashboard' },
+    { icon: 'inventory_2', labelKey: 'menu.inventory', label: 'Inventario', route: '/inventory' },
+    { icon: 'show_chart', labelKey: 'menu.forecast', label: 'Previsioni', route: '/forecast' },
+    { icon: 'shopping_cart', labelKey: 'menu.orders', label: 'Ordini', route: '/orders' },
+    { icon: 'local_shipping', labelKey: 'menu.suppliers', label: 'Fornitori', route: '/suppliers' },
+    { icon: 'analytics', labelKey: 'menu.analytics', label: 'Analisi', route: '/analytics' },
+    { icon: 'notifications', labelKey: 'menu.alerts', label: 'Alert', route: '/alerts', badge: 0 },
+    { icon: 'settings', labelKey: 'menu.settings', label: 'Impostazioni', route: '/settings' }
   ];
 
   // Languages
@@ -194,26 +196,51 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { code: 'zh', name: '中文', flag: '🇨🇳' }
   ];
 
+  // Current route tracking
+  currentRoute = '/dashboard';
+
   constructor(
     private forecastService: ForecastService,
     private inventoryService: InventoryService,
-    private snackBar: MatSnackBar
-  ) {}
+    private snackBar: MatSnackBar,
+    public translationService: TranslationService,
+    private router: Router
+  ) {
+    // Track route changes for menu highlighting
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        this.currentRoute = event.url;
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.initializeDashboard();
     this.setupFormListeners();
+    // Inizializza traduzioni
+    this.initializeTranslations();
     // Simula dati iniziali per evitare schermata vuota
     this.loadInitialMockData();
     // Carica dati reali dopo un breve ritardo
     setTimeout(() => {
       this.loadData();
     }, 500);
+    // Imposta route corrente
+    this.currentRoute = this.router.url;
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private initializeTranslations(): void {
+    // Inizializza le etichette del menu con le traduzioni correnti
+    this.menuItems.forEach(item => {
+      if (item.labelKey) {
+        item.label = this.translationService.translate(item.labelKey);
+      }
+    });
   }
 
   private initializeDashboard(): void {
@@ -546,7 +573,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   changeLanguage(lang: string): void {
     this.currentLanguage = lang;
-    // Implement translation logic
+    this.translationService.setLanguage(lang);
+    // Aggiorna etichette menu
+    this.menuItems.forEach(item => {
+      if (item.labelKey) {
+        item.label = this.translationService.translate(item.labelKey);
+      }
+    });
     this.showSuccess(`Lingua cambiata: ${this.languages.find(l => l.code === lang)?.name}`);
   }
 
@@ -557,22 +590,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   exportData(): void {
-    this.inventoryService.exportInventoryReport('csv')
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `inventory_${new Date().toISOString().split('T')[0]}.csv`;
-          link.click();
-          window.URL.revokeObjectURL(url);
-          this.showSuccess('Report esportato con successo');
-        },
-        error: () => {
-          this.showError('Errore esportazione report');
-        }
-      });
+    // Mock CSV data generation per demo
+    const csvData = this.generateMockCSV();
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `inventory_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    this.showSuccess('Report esportato con successo');
+  }
+
+  private generateMockCSV(): string {
+    const headers = 'Prodotto,Categoria,Stock,Prezzo,Stato,Ultima Modifica\n';
+    const data = [
+      'Carrozzina Standard,Carrozzine,45,350.00,OK,2025-01-15',
+      'Materasso Antidecubito,Materassi,23,450.00,Basso,2025-01-14',
+      'Saturimetro,Dispositivi Medici,120,75.00,OK,2025-01-15',
+      'Deambulatore,Ausili Mobilità,67,180.00,OK,2025-01-13',
+      'Sollevatore Pazienti,Sollevamento,12,2500.00,Critico,2025-01-12'
+    ].join('\n');
+    return headers + data;
   }
 
   refreshData(): void {
@@ -620,5 +659,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       duration: 5000,
       panelClass: ['error-snackbar']
     });
+  }
+
+  // Navigazione menu
+  navigateTo(route: string): void {
+    this.router.navigate([route]);
+    this.currentRoute = route;
+  }
+
+  // Verifica se menu item è attivo
+  isMenuActive(route: string): boolean {
+    return this.currentRoute === route || this.currentRoute.startsWith(route + '/');
   }
 }

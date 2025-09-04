@@ -62,15 +62,9 @@ export class ForecastService {
     this.currentForecast$.next(mockResult);
     this.isLoading$.next(false);
 
-    // Prova chiamata API in background
-    this.api.post<ForecastResult>('forecast/generate', request).pipe(
-      catchError(() => of(null))
-    ).subscribe(apiResult => {
-      if (apiResult) {
-        this.forecastCache.set(cacheKey, apiResult);
-        this.currentForecast$.next(apiResult);
-      }
-    });
+    // DISABLE API call for demo - using mock data only
+    // Future integration: this.api.post<ForecastResult>(`models/{model_id}/forecast`, request)
+    console.log('🎯 Using mock forecast data for demo purposes');
 
     return of(mockResult);
   }
@@ -81,7 +75,9 @@ export class ForecastService {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
-    return this.api.get<HistoricalData>(`forecast/history/${productId}`, params).pipe(
+    // For demo, return mock data without API call
+    const mockHistory = this.generateMockHistoryData(productId);
+    return of(mockHistory).pipe(
       tap(data => {
         const current = this.historicalData$.value;
         const index = current.findIndex(h => h.productId === productId);
@@ -272,6 +268,37 @@ export class ForecastService {
       },
       timestamp: new Date()
     } as ForecastResult;
+  }
+
+  // Genera dati storici mock
+  private generateMockHistoryData(productId: string): HistoricalData {
+    const data: TimeSeriesPoint[] = [];
+    const baseValue = this.getProductBaseValue(productId);
+    const endDate = new Date();
+    
+    // Genera 12 mesi di dati storici
+    for (let i = 365; i > 0; i--) {
+      const date = new Date(endDate);
+      date.setDate(date.getDate() - i);
+      
+      const seasonalFactor = 1 + Math.sin((i * 2 * Math.PI) / 365) * 0.1;
+      const noiseFactor = 1 + (Math.random() - 0.5) * 0.3;
+      const trendFactor = 1 + (365 - i) / 365 * 0.1; // Trend crescente leggero
+      
+      const value = Math.round(baseValue * seasonalFactor * noiseFactor * trendFactor);
+      
+      data.push({
+        date: date.toISOString(),
+        value: Math.max(1, value) // Minimo 1
+      });
+    }
+    
+    return {
+      productId,
+      productName: this.getProductName(productId),
+      data,
+      statistics: this.getDataStatistics(data)
+    };
   }
 
   // Ottieni valore base per prodotto (per mock)
