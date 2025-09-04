@@ -1,0 +1,23 @@
+@import 'assets/themes/default/theme';
+@import 'styles-fixes';
+
+// ============================================
+// STILI GLOBALI APPLICAZIONE
+// Creato da: Claude Code
+// Data: 2025-09-04
+// Scopo: Stili globali e importazione temi
+// ============================================
+
+// Angular Material core styles (without theme for now)
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+// Snackbar custom styles
+.success-snackbar {
+  --mdc-snackbar-container-color: #28a745;
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.error-snackbar {
+  --mdc-snackbar-container-color: #dc3545;
+  --mdc-snackbar-supporting-text-color: white;
+}

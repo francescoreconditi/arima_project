@@ -1,0 +1,348 @@
+// ============================================
+// TEMA DEFAULT COMPLETO
+// Creato da: Claude Code
+// Data: 2025-09-04
+// Scopo: Tema principale dashboard
+// ============================================
+
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// Root CSS variables for runtime theming
+:root {
+  // Primary colors
+  --primary-color: #{$primary-color};
+  --primary-light: #{$primary-light};
+  --primary-dark: #{$primary-dark};
+  
+  // Secondary colors
+  --secondary-color: #{$secondary-color};
+  --secondary-light: #{$secondary-light};
+  --secondary-dark: #{$secondary-dark};
+  
+  // Semantic colors
+  --success-color: #{$success-color};
+  --warning-color: #{$warning-color};
+  --danger-color: #{$danger-color};
+  --info-color: #{$info-color};
+  
+  // Backgrounds
+  --bg-primary: #{$background-primary};
+  --bg-secondary: #{$background-secondary};
+  --bg-tertiary: #{$background-tertiary};
+  
+  // Text
+  --text-primary: #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-disabled: #{$text-disabled};
+  
+  // Borders
+  --border-color: #{$border-color};
+  
+  // Shadows
+  --shadow-small: #{$shadow-small};
+  --shadow-medium: #{$shadow-medium};
+  --shadow-large: #{$shadow-large};
+  
+  // Dashboard
+  --sidebar-width: #{$sidebar-width};
+  --header-height: #{$header-height};
+}
+
+// Global styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 14px;
+  height: 100%;
+}
+
+body {
+  font-family: $font-family-primary;
+  color: $text-primary;
+  background: $background-secondary;
+  line-height: $line-height-base;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+// Typography
+h1, h2, h3, h4, h5, h6 {
+  font-weight: $font-weight-medium;
+  line-height: $line-height-tight;
+  margin-bottom: $spacing-md;
+  color: $text-primary;
+}
+
+h1 {
+  font-size: $font-size-xxxl;
+  font-weight: $font-weight-light;
+}
+
+h2 {
+  font-size: $font-size-xxl;
+}
+
+h3 {
+  font-size: $font-size-xl;
+}
+
+h4 {
+  font-size: $font-size-lg;
+}
+
+h5 {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+}
+
+h6 {
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+}
+
+p {
+  margin-bottom: $spacing-md;
+}
+
+a {
+  color: $primary-color;
+  text-decoration: none;
+  transition: color $transition-fast;
+  
+  &:hover {
+    color: $primary-dark;
+    text-decoration: underline;
+  }
+}
+
+// Utility classes
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 $spacing-md;
+  
+  @include respond-to('lg') {
+    padding: 0 $spacing-lg;
+  }
+}
+
+.card {
+  @include card;
+}
+
+.btn {
+  @include button-base;
+  
+  &.btn-primary {
+    @include button-variant($primary-color);
+  }
+  
+  &.btn-secondary {
+    @include button-variant($secondary-color);
+  }
+  
+  &.btn-success {
+    @include button-variant($success-color);
+  }
+  
+  &.btn-warning {
+    @include button-variant($warning-color);
+  }
+  
+  &.btn-danger {
+    @include button-variant($danger-color);
+  }
+  
+  &.btn-outline {
+    background: transparent;
+    border: 2px solid $primary-color;
+    color: $primary-color;
+    
+    &:hover {
+      background: $primary-color;
+      color: white;
+    }
+  }
+}
+
+// Layout utilities
+.flex-center {
+  @include flex-center;
+}
+
+.flex-between {
+  @include flex-between;
+}
+
+.flex-column {
+  @include flex-column;
+}
+
+// Spacing utilities
+@each $size, $value in (xs: $spacing-xs, sm: $spacing-sm, md: $spacing-md, lg: $spacing-lg, xl: $spacing-xl) {
+  .m-#{$size} {
+    margin: $value;
+  }
+  .mt-#{$size} {
+    margin-top: $value;
+  }
+  .mb-#{$size} {
+    margin-bottom: $value;
+  }
+  .ml-#{$size} {
+    margin-left: $value;
+  }
+  .mr-#{$size} {
+    margin-right: $value;
+  }
+  .mx-#{$size} {
+    margin-left: $value;
+    margin-right: $value;
+  }
+  .my-#{$size} {
+    margin-top: $value;
+    margin-bottom: $value;
+  }
+  
+  .p-#{$size} {
+    padding: $value;
+  }
+  .pt-#{$size} {
+    padding-top: $value;
+  }
+  .pb-#{$size} {
+    padding-bottom: $value;
+  }
+  .pl-#{$size} {
+    padding-left: $value;
+  }
+  .pr-#{$size} {
+    padding-right: $value;
+  }
+  .px-#{$size} {
+    padding-left: $value;
+    padding-right: $value;
+  }
+  .py-#{$size} {
+    padding-top: $value;
+    padding-bottom: $value;
+  }
+}
+
+// Text utilities
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-primary {
+  color: $primary-color;
+}
+
+.text-secondary {
+  color: $text-secondary;
+}
+
+.text-success {
+  color: $success-color;
+}
+
+.text-warning {
+  color: $warning-color;
+}
+
+.text-danger {
+  color: $danger-color;
+}
+
+.text-muted {
+  color: $text-disabled;
+}
+
+.text-truncate {
+  @include text-truncate;
+}
+
+// Display utilities
+.d-none {
+  display: none;
+}
+
+.d-block {
+  display: block;
+}
+
+.d-inline-block {
+  display: inline-block;
+}
+
+.d-flex {
+  display: flex;
+}
+
+.d-grid {
+  display: grid;
+}
+
+// Loading state
+.loading {
+  @include loading-spinner;
+}
+
+// Tables
+.table {
+  @include table-base;
+}
+
+// Forms
+.form-group {
+  margin-bottom: $spacing-md;
+  
+  label {
+    display: block;
+    margin-bottom: $spacing-xs;
+    font-weight: $font-weight-medium;
+    color: $text-secondary;
+  }
+  
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: $spacing-sm;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-small;
+    font-family: $font-family-primary;
+    font-size: $font-size-base;
+    transition: all $transition-fast;
+    
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+    }
+    
+    &:disabled {
+      background: $gray-100;
+      cursor: not-allowed;
+    }
+  }
+  
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+}

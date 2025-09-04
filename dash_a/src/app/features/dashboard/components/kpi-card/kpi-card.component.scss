@@ -1,0 +1,272 @@
+// ============================================
+// STILI KPI CARD
+// Creato da: Claude Code
+// Data: 2025-09-04
+// Scopo: Stili per KPI card
+// ============================================
+
+@use '../../../../../assets/themes/default/variables' as *;
+@use '../../../../../assets/themes/default/mixins' as *;
+
+.kpi-card {
+  @include card($spacing-md, $shadow-small);
+  height: 100%;
+  min-height: 140px;
+  position: relative;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: $shadow-medium;
+    }
+  }
+
+  &.loading {
+    .kpi-body {
+      opacity: 0.5;
+    }
+  }
+
+  // Color variants
+  &.kpi-primary {
+    border-left: 4px solid $primary-color;
+    
+    .kpi-icon {
+      color: $primary-color;
+    }
+
+    .progress-fill {
+      background: $primary-color;
+    }
+  }
+
+  &.kpi-secondary {
+    border-left: 4px solid $secondary-color;
+    
+    .kpi-icon {
+      color: $secondary-color;
+    }
+
+    .progress-fill {
+      background: $secondary-color;
+    }
+  }
+
+  &.kpi-success {
+    border-left: 4px solid $success-color;
+    
+    .kpi-icon {
+      color: $success-color;
+    }
+
+    .progress-fill {
+      background: $success-color;
+    }
+  }
+
+  &.kpi-warning {
+    border-left: 4px solid $warning-color;
+    
+    .kpi-icon {
+      color: $warning-color;
+    }
+
+    .progress-fill {
+      background: $warning-color;
+    }
+  }
+
+  &.kpi-danger {
+    border-left: 4px solid $danger-color;
+    
+    .kpi-icon {
+      color: $danger-color;
+    }
+
+    .progress-fill {
+      background: $danger-color;
+    }
+  }
+
+  &.kpi-info {
+    border-left: 4px solid $info-color;
+    
+    .kpi-icon {
+      color: $info-color;
+    }
+
+    .progress-fill {
+      background: $info-color;
+    }
+  }
+}
+
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-sm;
+}
+
+.kpi-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: $border-radius-medium;
+  background: rgba($primary-color, 0.1);
+  @include flex-center;
+  flex-shrink: 0;
+}
+
+.kpi-icon {
+  font-size: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.kpi-trend {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-size-sm;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+
+    &.trend-up {
+      color: $success-color;
+    }
+
+    &.trend-down {
+      color: $danger-color;
+    }
+
+    &.trend-stable {
+      color: $gray-500;
+    }
+  }
+
+  .trend-value {
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.kpi-body {
+  .kpi-title {
+    margin: 0;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-regular;
+    color: $text-secondary;
+    margin-bottom: $spacing-xs;
+  }
+
+  .kpi-value {
+    font-size: $font-size-xxl;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+    line-height: 1.2;
+  }
+
+  .kpi-subtitle {
+    margin: $spacing-xs 0 0;
+    font-size: $font-size-xs;
+    color: $text-disabled;
+  }
+}
+
+.kpi-loading {
+  .skeleton-title,
+  .skeleton-value,
+  .skeleton-subtitle {
+    background: linear-gradient(90deg, $gray-200 25%, $gray-100 50%, $gray-200 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: $border-radius-small;
+  }
+
+  .skeleton-title {
+    width: 60%;
+    height: 14px;
+    margin-bottom: $spacing-xs;
+  }
+
+  .skeleton-value {
+    width: 80%;
+    height: 32px;
+    margin-bottom: $spacing-xs;
+  }
+
+  .skeleton-subtitle {
+    width: 40%;
+    height: 12px;
+  }
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.kpi-progress {
+  margin-top: $spacing-md;
+  
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: $gray-200;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: $spacing-xs;
+  }
+
+  .progress-fill {
+    height: 100%;
+    transition: width $transition-base;
+    border-radius: 2px;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: $font-size-xs;
+    color: $text-disabled;
+  }
+}
+
+// Responsive adjustments
+@include respond-to('sm') {
+  .kpi-card {
+    min-height: 120px;
+  }
+
+  .kpi-body {
+    .kpi-value {
+      font-size: $font-size-xl;
+    }
+  }
+}
+
+@include respond-to('md') {
+  .kpi-card {
+    min-height: 140px;
+  }
+
+  .kpi-body {
+    .kpi-value {
+      font-size: $font-size-xxl;
+    }
+  }
+}
