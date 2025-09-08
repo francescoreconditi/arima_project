@@ -248,8 +248,13 @@ def demo_integration_example():
         print("   [OK] Modello addestrato")
         
         # 2. Genera forecast
-        forecast_result = model.predict(steps=7)
-        forecast_values = forecast_result if isinstance(forecast_result, np.ndarray) else [forecast_result]
+        forecast_result = model.forecast(steps=7)
+        if isinstance(forecast_result, dict) and 'forecast' in forecast_result:
+            forecast_values = forecast_result['forecast'].values
+        elif isinstance(forecast_result, pd.Series):
+            forecast_values = forecast_result.values
+        else:
+            forecast_values = forecast_result
         avg_forecast = np.mean(forecast_values)
         print(f"   [FORECAST] Media 7 giorni: {avg_forecast:.2f}")
         
