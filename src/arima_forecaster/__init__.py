@@ -75,3 +75,39 @@ __all__ = [
 # Add QuartoReportGenerator to __all__ if available
 if _has_reporting:
     __all__.append("QuartoReportGenerator")
+
+# Real-Time Streaming (conditional import)
+try:
+    from .streaming import (
+        KafkaForecastProducer,
+        RealtimeForecastService,
+        WebSocketServer,
+        EventProcessor
+    )
+    __all__.extend([
+        "KafkaForecastProducer",
+        "RealtimeForecastService", 
+        "WebSocketServer",
+        "EventProcessor"
+    ])
+    _has_streaming = True
+except ImportError:
+    _has_streaming = False
+
+# Explainable AI (conditional import)  
+try:
+    from .explainability import (
+        SHAPExplainer,
+        FeatureImportanceAnalyzer,
+        AnomalyExplainer,
+        BusinessRulesEngine
+    )
+    __all__.extend([
+        "SHAPExplainer",
+        "FeatureImportanceAnalyzer",
+        "AnomalyExplainer", 
+        "BusinessRulesEngine"
+    ])
+    _has_explainability = True
+except ImportError:
+    _has_explainability = False

@@ -24,6 +24,7 @@ from arima_forecaster.api.models_extra import (
     VARModelInfo
 )
 from arima_forecaster.api.services import ModelManager, ForecastService
+from arima_forecaster.api.examples import ARIMA_TRAINING_EXAMPLES, TRAINING_RESPONSE_EXAMPLES
 from arima_forecaster.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -200,7 +201,28 @@ async def _train_var_background(
         # model_manager.update_model_status(model_id, "failed", error=str(e))
 
 
-@router.post("/train", response_model=ModelInfo)
+@router.post(
+    "/train", 
+    response_model=ModelInfo,
+    responses={
+        200: {
+            "description": "Modello in training",
+            "content": {
+                "application/json": {
+                    "examples": TRAINING_RESPONSE_EXAMPLES
+                }
+            }
+        },
+        400: {
+            "description": "Dati non validi",
+            "content": {
+                "application/json": {
+                    "example": TRAINING_RESPONSE_EXAMPLES["training_error"]
+                }
+            }
+        }
+    }
+)
 async def train_model(
     request: ModelTrainingRequest,
     background_tasks: BackgroundTasks,

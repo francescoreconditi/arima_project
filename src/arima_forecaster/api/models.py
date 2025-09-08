@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, validator
 from datetime import datetime
 import pandas as pd
 from pathlib import Path
+from arima_forecaster.api.examples import TIMESERIES_EXAMPLES, MULTIVARIATE_EXAMPLES
 
 
 class TimeSeriesData(BaseModel):
@@ -54,12 +55,12 @@ class TimeSeriesData(BaseModel):
     timestamps: List[str] = Field(
         ..., 
         description="Lista di timestamp in formato stringa (ISO 8601 raccomandato)",
-        example=["2023-01-01", "2023-01-02", "2023-01-03"]
+        example=TIMESERIES_EXAMPLES["esempio_base"]["value"]["timestamps"][:5]
     )
     values: List[float] = Field(
         ..., 
         description="Lista di valori numerici della serie temporale",
-        example=[100.5, 102.3, 98.7]
+        example=TIMESERIES_EXAMPLES["esempio_base"]["value"]["values"][:5]
     )
     
     @validator('timestamps')
@@ -142,7 +143,7 @@ class MultivariateTimeSeriesData(BaseModel):
     timestamps: List[str] = Field(
         ..., 
         description="Lista di timestamp condivisi tra tutte le variabili",
-        example=["2023-01-01", "2023-01-02", "2023-01-03"]
+        example=MULTIVARIATE_EXAMPLES["esempio_var"]["value"]["timestamps"][:5]
     )
     data: Dict[str, List[float]] = Field(
         ..., 

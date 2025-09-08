@@ -13,6 +13,7 @@ import numpy as np
 from arima_forecaster.api.models import ForecastRequest
 from arima_forecaster.api.models_extra import ForecastResponse
 from arima_forecaster.api.services import ModelManager, ForecastService
+from arima_forecaster.api.examples import FORECAST_REQUEST_EXAMPLES, FORECAST_RESPONSE_EXAMPLES
 from arima_forecaster.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -53,7 +54,29 @@ def get_services():
     return model_manager, forecast_service
 
 
-@router.post("/{model_id}/forecast")
+@router.post(
+    "/{model_id}/forecast",
+    responses={
+        200: {
+            "description": "Previsioni generate con successo",
+            "content": {
+                "application/json": {
+                    "examples": FORECAST_RESPONSE_EXAMPLES
+                }
+            }
+        },
+        404: {
+            "description": "Modello non trovato",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Modello con ID 'model_123' non trovato"
+                    }
+                }
+            }
+        }
+    }
+)
 async def generate_forecast(
     model_id: str,
     request: ForecastRequest,

@@ -86,6 +86,9 @@ uv run python examples/forecasting_base.py
 
 # Selezione automatica modello
 uv run python examples/selezione_automatica.py
+
+# 🆕 Demo Real-Time Streaming + Explainable AI v0.4.0
+uv run python scripts/demo_new_features_ascii.py
 ```
 
 ### ✨ Qualità Codice

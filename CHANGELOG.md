@@ -7,6 +7,64 @@ e questo progetto aderisce a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-01-01
+
+### Aggiunto - 🌊 Real-Time Streaming & 🤖 Explainable AI
+- 📡 **Apache Kafka Integration**: Real-time streaming di forecast per sistemi enterprise
+  - KafkaForecastProducer con fallback automatico a storage locale
+  - StreamingConfig flessibile per connessioni Kafka cluster
+  - Batch processing e error handling robusto
+  - Esempi completi in `scripts/demo_new_features_ascii.py`
+
+- 🔌 **WebSocket Server**: Dashboard real-time con aggiornamenti live
+  - WebSocketServer per push notifications istantanee
+  - Sistema subscriptions per modelli specifici
+  - Heartbeat monitoring e reconnection automatica
+  - Scalabilità Redis per deployment distribuiti
+
+- ⚡ **Real-time Forecaster Service**: Forecasting continuo orchestrato
+  - RealtimeForecastService con registry modelli centralizzato
+  - Scheduling intelligente con detection anomalie integrate
+  - Model versioning e hot-swap per zero-downtime updates
+  - Health checks e monitoring metriche performance
+
+- 🎯 **Event Processing Engine**: Sistema eventi enterprise con priorità
+  - EventProcessor con priority queues e worker threads configurabili
+  - 7+ regole predefinite: logging, alerts, metrics, notifications
+  - Action system estensibile per integrazioni custom
+  - Async processing per high-throughput scenarios
+
+- 🔍 **SHAP Explainable AI**: Spiegazioni model-agnostic per forecast
+  - SHAPExplainer con confidence scoring e feature ranking
+  - Spiegazioni locali (singolo forecast) e globali (pattern dataset)
+  - Visualizzazioni interpretabili con waterfall e force plots
+  - Integration-ready per dashboard e report automatici
+
+- 📊 **Feature Importance Analysis**: Analisi variabili con metodi multipli
+  - FeatureImportanceAnalyzer con 5+ tecniche statistiche
+  - Ranking automatico feature con stability scoring
+  - Comparative analysis tra modelli diversi
+  - Export results per business intelligence tools
+
+- 🚨 **Anomaly Explainer**: Spiegazione automatica anomalie con AI
+  - AnomalyExplainer con severity classification (LOW/MEDIUM/HIGH/CRITICAL)
+  - Raccomandazioni automatiche per azioni correttive
+  - Historical context analysis per pattern recognition
+  - Integration alerts system per notifiche real-time
+
+- 🏢 **Business Rules Engine**: 7+ regole predefinite per vincoli operativi
+  - BusinessRulesEngine con capacity constraints management
+  - Weekend/holiday adjustments automatici
+  - Historical validation con statistical boundaries
+  - Regole custom configurabili per business logic specifici
+
+### Modificato - 2025-01-01
+- Aggiornato pyproject.toml da v0.3.0 a v0.4.0
+- Aggiunte dependencies: kafka-python, websockets, shap, redis
+- Aggiornato `__init__.py` principale con export nuovi moduli
+- Enhanced API documentation con streaming/explainability examples
+- Demo script ASCII-safe per compatibilità Windows console
+
 ### Aggiunto - 2025-09-02
 - 🧠 **AutoML Engine**: Sistema di selezione automatica modello ottimale (GAME-CHANGER!)
   - AutoForecastSelector con pattern detection intelligente
@@ -136,3 +194,11 @@ e questo progetto aderisce a [Semantic Versioning](https://semver.org/spec/v2.0.
 - 📊 Analytics
 - 🌐 Integration
 - 🔧 Maintenance
+- 🌊 Real-Time Streaming
+- 🤖 Explainable AI
+- 📡 Apache Kafka
+- 🔌 WebSocket
+- 🎯 Event Processing
+- 🔍 SHAP Analysis
+- 🚨 Anomaly Detection
+- 🏢 Business Rules

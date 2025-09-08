@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "arima-forecaster"
-version = "0.3.0"
+version = "0.4.0"
 description = "Libreria completa per il forecasting di serie temporali utilizzando modelli ARIMA"
 readme = "README.md"
 license = "MIT"
@@ -53,6 +53,13 @@ dependencies = [
     "python-dotenv>=1.0.0", # .env file support
     "pytrends>=4.9.2",
     "python-multipart>=0.0.20",
+    "openpyxl>=3.1.0",  # Excel file generation and processing
+    "streamlit>=1.28.0",  # Web dashboard framework
+    "plotly>=5.15.0",  # Interactive charts and visualizations
+    "kafka-python>=2.0.2",  # Apache Kafka integration for real-time streaming
+    "websockets>=11.0.2",    # WebSocket server for real-time dashboard updates
+    "shap>=0.42.1",         # SHAP values for explainable AI
+    "redis>=4.6.0",         # Redis for real-time caching
 ]
 
 # Dipendenze opzionali
@@ -261,8 +268,6 @@ markers = [
 ]
 # Configurazione per test API asincroni
 asyncio_mode = "auto"
-# Timeout per test lenti
-timeout = 300
 
 # Configurazione coverage
 [tool.coverage.run]

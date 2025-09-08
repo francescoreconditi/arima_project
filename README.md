@@ -1,12 +1,23 @@
-# ARIMA Forecaster 🚀
+# ARIMA Forecaster 🚀 v0.4.0
 
-## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX, VAR e Prophet
+## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX, VAR, Prophet, Real-Time Streaming e Explainable AI
 
-Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene), VAR (Vector Autoregression) e **Facebook Prophet**. Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
+Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene), VAR (Vector Autoregression) e **Facebook Prophet**. Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), **Real-Time Streaming con Kafka/WebSocket**, **Explainable AI con SHAP**, sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
 
 ---
 
-### 🌟 **Nuove Funzionalità Avanzate**
+### 🆕 **Nuove Funzionalità v0.4.0 (Dicembre 2024)**
+
+- **🌊 Real-Time Streaming**: Streaming forecast via Apache Kafka e WebSocket per dashboard live
+- **🤖 Explainable AI**: Spiegazioni SHAP per ogni predizione con confidence score
+- **📊 Feature Importance**: Analisi automatica importanza features con 4 metodi statistici
+- **🔍 Anomaly Explainer**: Spiegazione dettagliata anomalie con cause e raccomandazioni
+- **📋 Business Rules Engine**: Engine regole business per vincoli operativi e compliance
+- **📡 Event Processing**: Sistema eventi real-time con priorità e retry automatico
+- **🔄 Kafka Integration**: Producer/Consumer per architetture event-driven
+- **🌐 WebSocket Server**: Server WebSocket per aggiornamenti dashboard real-time
+
+### 🌟 **Funzionalità Avanzate Esistenti**
 
 - **🚀 GPU/CUDA Acceleration**: Supporto GPU nativo per training parallelo ad alta velocità (5-15x speedup)
 - **⚙️ Configuration Management**: Sistema configurazione avanzato con .env file e auto-detection hardware
@@ -99,6 +110,16 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   ├── economic.py              # Indicatori economici (PIL, inflazione, etc.)
 │   │   ├── calendar_events.py       # Eventi calendario, festività, fiere
 │   │   └── ensemble.py              # Orchestratore ensemble fattori esterni
+│   ├── streaming/                   # 🌊 Real-Time Streaming Module (v0.4.0)
+│   │   ├── kafka_producer.py       # Producer Kafka per forecast streaming
+│   │   ├── websocket_server.py     # Server WebSocket per dashboard real-time
+│   │   ├── realtime_forecaster.py  # Servizio forecast real-time principale
+│   │   └── event_processor.py      # Processore eventi con priorità e regole
+│   ├── explainability/             # 🤖 Explainable AI Module (v0.4.0)
+│   │   ├── shap_explainer.py       # SHAP values per spiegazioni forecast
+│   │   ├── feature_importance.py   # Analisi importanza features multi-metodo
+│   │   ├── anomaly_explainer.py    # Spiegazione dettagliata anomalie
+│   │   └── business_rules.py       # Engine regole business e vincoli
 │   ├── utils/                       # Logging, eccezioni, traduzioni, GPU e Advanced Exog Utils
 │   │   ├── gpu_utils.py            # 🚀 GPU/CUDA utilities e array management
 │   │   ├── translations.py         # Sistema traduzioni centralizzato multilingue
@@ -297,6 +318,53 @@ python -c "from arima_forecaster import IntermittentForecaster; print('✅ Inter
 uv run python examples/moretti/moretti_intermittent_spare_parts.py --test
 ```
 
+#### 🌊 Installazione Real-Time Streaming (v0.4.0)
+
+Per utilizzare le funzionalità di streaming real-time con Kafka e WebSocket:
+
+```bash
+# Installa dipendenze streaming
+pip install kafka-python websockets redis
+
+# Avvia Kafka (richiede Docker)
+docker run -d --name kafka -p 9092:9092 apache/kafka:latest
+
+# Test Kafka Producer
+python -c "from arima_forecaster.streaming import KafkaForecastProducer; print('✅ Kafka OK!')"
+
+# Avvia WebSocket Server (per dashboard real-time)
+python -c "
+from arima_forecaster.streaming import WebSocketServer, WebSocketConfig
+config = WebSocketConfig(port=8765)
+print(f'WebSocket ready on ws://localhost:{config.port}')
+"
+
+# Demo streaming completo
+uv run python scripts/demo_new_features_ascii.py
+```
+
+#### 🤖 Installazione Explainable AI (v0.4.0)
+
+Per utilizzare le funzionalità di Explainable AI con SHAP:
+
+```bash
+# Installa SHAP per spiegazioni AI
+pip install shap scikit-learn
+
+# Test SHAP Explainer
+python -c "from arima_forecaster.explainability import SHAPExplainer; print('✅ SHAP OK!')"
+
+# Test Business Rules Engine
+python -c "
+from arima_forecaster.explainability import BusinessRulesEngine
+engine = BusinessRulesEngine()
+print(f'✅ Business Rules Engine OK - {len(engine.rules)} regole predefinite')
+"
+
+# Demo Explainable AI completo
+uv run python scripts/demo_new_features_ascii.py
+```
+
 #### 📈 Installazione Facebook Prophet
 
 Per utilizzare i modelli Prophet, installa la dipendenza aggiuntiva:
@@ -423,7 +491,84 @@ print(f"MASE: {metrics.mase:.3f}")  # Mean Absolute Scaled Error
 print(f"Fill Rate: {metrics.fill_rate:.1f}%")
 ```
 
-#### 4. 🧠 One-Click AutoML Forecasting (NUOVO)
+#### 4. 🌊 Real-Time Streaming con Kafka (v0.4.0)
+
+```python
+from arima_forecaster.streaming import (
+    KafkaForecastProducer, 
+    StreamingConfig,
+    RealtimeForecastService
+)
+from arima_forecaster import ARIMAForecaster
+
+# Configura streaming Kafka
+config = StreamingConfig(
+    bootstrap_servers=["localhost:9092"],
+    topic="forecast-stream"
+)
+
+# Crea producer Kafka
+producer = KafkaForecastProducer(config)
+
+# Servizio real-time
+service = RealtimeForecastService()
+
+# Registra modello per streaming
+model = ARIMAForecaster(order=(2,1,1))
+model.fit(sales_data)
+service.add_model("sales_model", model, {"product": "Widget A"})
+
+# Avvia streaming (async)
+import asyncio
+asyncio.run(service.start_service())
+
+# I forecast vengono automaticamente:
+# - Generati ogni 60 secondi
+# - Inviati via Kafka
+# - Disponibili via WebSocket per dashboard
+```
+
+#### 5. 🤖 Explainable AI con SHAP (v0.4.0)
+
+```python
+from arima_forecaster.explainability import (
+    SHAPExplainer,
+    FeatureImportanceAnalyzer,
+    BusinessRulesEngine,
+    BusinessContext
+)
+
+# SHAP Explainer per forecast
+explainer = SHAPExplainer()
+features, feature_names = create_forecast_features(series_data)
+explainer.fit(model, features, feature_names)
+
+# Spiega singola predizione
+explanation = explainer.explain_instance(features[-1])
+print(f"Top 3 features: {explanation['feature_ranking'][:3]}")
+print(f"Confidenza: {explanation['confidence_factors']['overall']:.2%}")
+
+# Business Rules Engine
+engine = BusinessRulesEngine()
+context = BusinessContext(
+    model_id="product_001",
+    forecast_date=datetime.now(),
+    max_capacity=1000,
+    is_weekend=False
+)
+
+# Applica regole business
+forecast_value = 1200
+final_value, results = engine.apply_rules(forecast_value, context)
+print(f"Forecast: {forecast_value} -> {final_value} (dopo regole)")
+
+# Feature Importance Analysis
+analyzer = FeatureImportanceAnalyzer()
+importance = analyzer.analyze_features(X, y, feature_names)
+print(f"Features importanti: {importance['top_features']['top_features_list']}")
+```
+
+#### 6. 🧠 One-Click AutoML Forecasting
 
 ```python
 from arima_forecaster import AutoForecastSelector

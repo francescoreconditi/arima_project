@@ -106,7 +106,8 @@
       "Read(/C:\\ZCS_PRG\\arima_project\\dash_a\\src/**)",
       "Read(/C:\\ZCS_PRG\\arima_project/**)",
       "Read(/C:\\ZCS_PRG\\arima_project\\dash_a/**)",
-      "Read(/C:\\ZCS_PRG\\arima_project\\dash_a\\src\\app\\core\\models/**)"
+      "Read(/C:\\ZCS_PRG\\arima_project\\dash_a\\src\\app\\core\\models/**)",
+      "Read(//c/temp/**)"
     ],
     "deny": [],
     "ask": [],

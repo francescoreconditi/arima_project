@@ -78,7 +78,21 @@ Quando possibile SEMPRE scrivere commenti nei sorgenti in Italiano.
 
 ## Panoramica del Progetto
 
-Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), reporting dinamico con Quarto e sistema traduzioni centralizzato.
+Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva multilingue (5 lingue), reporting dinamico con Quarto, sistema traduzioni centralizzato, **Real-Time Streaming** con Apache Kafka e WebSocket, ed **Explainable AI** con SHAP e Business Rules Engine.
+
+### 🆕 NUOVE FUNZIONALITÀ v0.4.0
+
+#### 🌊 Real-Time Streaming
+- **Apache Kafka Producer**: Streaming forecast in tempo reale
+- **WebSocket Server**: Aggiornamenti live per dashboard
+- **Event Processing**: Sistema eventi con priorità e regole
+- **Real-time Forecaster**: Servizio forecasting continuo con registry modelli
+
+#### 🤖 Explainable AI  
+- **SHAP Explanations**: Spiegazioni model-agnostic per forecast
+- **Feature Importance**: Analisi importanza variabili con metodi multipli
+- **Anomaly Explainer**: Spiegazione automatica anomalie con raccomandazioni
+- **Business Rules Engine**: 7+ regole predefinite per vincoli operativi
 
 ## Comandi di Sviluppo Essenziali
 
@@ -136,11 +150,19 @@ uv run python scripts/run_api.py
 uv run python scripts/run_dashboard.py
 # URL: http://localhost:8501
 
+# Demo Nuove Funzionalità v0.4.0
+uv run python scripts/demo_new_features_ascii.py
+# Demo Real-Time Streaming + Explainable AI
+
 # Script training
 uv run python scripts/train.py --data path/to/data.csv --model sarima
 
 # Script forecasting
 uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
+
+# Kafka Streaming (opzionale)
+docker run -p 9092:9092 apache/kafka:latest
+# Guida completa: docs/kafka_streaming_guide.md
 ```
 
 ## Architettura del Codice
@@ -189,6 +211,18 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
   - Capacity Constraints Management (volume, peso, budget, pallet)
   - Kitting/Bundle Optimization per Make-to-Stock vs Assemble-to-Order
 
+#### Real-Time Streaming (`src/arima_forecaster/streaming/`) - 🆕 v0.4.0
+- **KafkaForecastProducer** (`kafka_producer.py`): Producer Apache Kafka con fallback locale
+- **WebSocketServer** (`websocket_server.py`): Server WebSocket per dashboard real-time
+- **RealtimeForecastService** (`realtime_forecaster.py`): Servizio forecasting continuo
+- **EventProcessor** (`event_processor.py`): Sistema eventi con priorità e regole
+
+#### Explainable AI (`src/arima_forecaster/explainability/`) - 🆕 v0.4.0
+- **SHAPExplainer** (`shap_explainer.py`): Spiegazioni SHAP model-agnostic
+- **FeatureImportanceAnalyzer** (`feature_importance.py`): Analisi importanza variabili
+- **AnomalyExplainer** (`anomaly_explainer.py`): Spiegazione automatica anomalie
+- **BusinessRulesEngine** (`business_rules.py`): 7+ regole predefinite per vincoli
+
 #### Utils & Traduzioni (`src/arima_forecaster/utils/`)
 - **TranslationManager** (`translations.py`): Sistema traduzioni centralizzato multilingue
 - **Logger** (`logger.py`): Logging configurabile per debugging e monitoraggio  
@@ -221,6 +255,26 @@ uv run python scripts/forecast.py --model path/to/model.pkl --steps 30
 7. **Bundle/Kit**: `KittingOptimizer.analyze_kit_strategy()` per componenti
 8. **Integrazione**: Combinazione strategie per raccomandazione finale
 
+#### Pipeline Real-Time Streaming (🆕 v0.4.0):
+1. **Setup Kafka**: `StreamingConfig` con bootstrap servers e topic
+2. **Producer Setup**: `KafkaForecastProducer` con fallback locale se Kafka down
+3. **WebSocket Server**: `WebSocketServer` per dashboard real-time
+4. **Servizio Real-time**: `RealtimeForecastService` con registry modelli
+5. **Event Processing**: `EventProcessor` con regole e priorità eventi
+6. **Streaming Forecast**: Pubblicazione continua `ForecastMessage`
+7. **Dashboard Update**: Aggiornamenti live via WebSocket
+8. **Monitoring**: Metriche e health check sistema
+
+#### Pipeline Explainable AI (🆕 v0.4.0):
+1. **SHAP Analysis**: `SHAPExplainer.explain_instance()` per singolo forecast
+2. **Feature Importance**: `FeatureImportanceAnalyzer.analyze_features()` 
+3. **Anomaly Detection**: `AnomalyExplainer.explain_anomaly()` con raccomandazioni
+4. **Business Rules**: `BusinessRulesEngine.apply_rules()` per vincoli operativi
+5. **Global Explanation**: Analisi feature importance dataset completo
+6. **Model Interpretation**: Spiegazioni comparative tra modelli diversi
+7. **Report Generation**: Integrazione spiegazioni nei report Quarto
+8. **Dashboard Integration**: Visualizzazione spiegazioni in UI
+
 ### Pattern Import Consigliati
 
 ```python
@@ -251,6 +305,34 @@ from arima_forecaster.inventory.balance_optimizer import (
 
 # Import traduzioni
 from arima_forecaster.utils.translations import translate as _, get_all_translations
+
+# Import Real-Time Streaming (NUOVO v0.4.0!)
+from arima_forecaster.streaming import (
+    KafkaForecastProducer, 
+    StreamingConfig,
+    ForecastMessage,
+    WebSocketServer,
+    WebSocketConfig,
+    RealtimeForecastService,
+    EventProcessor,
+    ForecastEvent,
+    EventType,
+    EventPriority
+)
+
+# Import Explainable AI (NUOVO v0.4.0!)
+from arima_forecaster.explainability import (
+    SHAPExplainer,
+    SHAPConfig,
+    FeatureImportanceAnalyzer,
+    AnomalyExplainer,
+    AnomalyExplanation,
+    BusinessRulesEngine,
+    BusinessContext,
+    Rule,
+    RuleAction,
+    RuleType
+)
 ```
 
 ### Gestione Errori
@@ -311,6 +393,10 @@ just build       # Build package per distribuzione
 - ✅ **NUOVO:** Multi-Echelon Optimization con risk pooling
 - ✅ **NUOVO:** Capacity Constraints Management (volume, peso, budget, pallet)
 - ✅ **NUOVO:** Kitting/Bundle Optimization per strategie Make-to-Stock vs Assemble-to-Order
+- ✅ **NUOVO v0.4.0:** Real-Time Streaming con Apache Kafka e WebSocket
+- ✅ **NUOVO v0.4.0:** Explainable AI con SHAP e Business Rules Engine
+- ✅ **NUOVO v0.4.0:** Event Processing con priorità e regole configurabili
+- ✅ **NUOVO v0.4.0:** Anomaly Explanation con raccomandazioni automatiche
 
 ### Directory Output
 - `outputs/models/`: Modelli serializzati (.pkl)
@@ -320,6 +406,7 @@ just build       # Build package per distribuzione
 
 ## Dipendenze Chiave
 
+### Core Dependencies
 - **statsmodels**: Implementazione modelli ARIMA/SARIMA/VAR
 - **pandas/numpy**: Manipolazione dati e calcoli
 - **matplotlib/seaborn/plotly**: Visualizzazioni
@@ -327,6 +414,14 @@ just build       # Build package per distribuzione
 - **streamlit**: Dashboard web
 - **quarto**: Report dinamici (opzionale)
 - **optuna/hyperopt**: Auto-ML (opzionale)
+
+### Nuove Dependencies v0.4.0
+- **kafka-python**: Apache Kafka client per Real-Time Streaming
+- **websockets**: Server WebSocket per dashboard real-time
+- **shap**: SHAP values per Explainable AI
+- **redis**: Cache e scaling per Event Processing (opzionale)
+- **scikit-learn**: Machine learning utilities per feature importance
+- **asyncio**: Programmazione asincrona per servizi real-time
 
 ---
 
