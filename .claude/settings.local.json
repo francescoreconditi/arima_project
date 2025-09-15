@@ -108,7 +108,10 @@
       "Read(/C:\\ZCS_PRG\\arima_project\\dash_a/**)",
       "Read(/C:\\ZCS_PRG\\arima_project\\dash_a\\src\\app\\core\\models/**)",
       "Read(//c/temp/**)",
-      "Bash(for file in src/arima_forecaster/demand_sensing/*.py)"
+      "Bash(for file in src/arima_forecaster/demand_sensing/*.py)",
+      "Bash(arima-forecast:*)",
+      "Bash(uv build:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": [],

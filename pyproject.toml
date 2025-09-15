@@ -61,6 +61,7 @@ dependencies = [
     "shap>=0.42.1",         # SHAP values for explainable AI
     "redis>=4.6.0",         # Redis for real-time caching
     "psutil>=5.9.0",        # System and process utilities for monitoring
+    "rich>=13.0.0",         # Rich text and beautiful formatting for CLI
 ]
 
 # Dipendenze opzionali
