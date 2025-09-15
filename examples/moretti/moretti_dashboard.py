@@ -499,6 +499,106 @@ def carica_dati_simulati(lead_time_mod=100, domanda_mod=100, language='Italiano'
     return carica_dati_da_csv(lead_time_mod, domanda_mod, language)
 
 
+def carica_parametri_bilanciamento():
+    """Carica parametri di bilanciamento da CSV"""
+    data_dir = Path(__file__).parent / "data"
+    param_path = data_dir / "parametri_bilanciamento.csv"
+
+    if param_path.exists():
+        try:
+            param_df = pd.read_csv(param_path)
+            # Converti in dizionario per facile accesso con conversione tipi
+            param_dict = {}
+            for _, row in param_df.iterrows():
+                valore = row['valore']
+                # Converti i valori numerici nei tipi appropriati
+                try:
+                    # Prima prova come float
+                    if '.' in str(valore):
+                        valore = float(valore)
+                    else:
+                        valore = int(valore)
+                except ValueError:
+                    # Mantieni come stringa se non è numerico
+                    pass
+                param_dict[row['parametro']] = valore
+            return param_dict
+        except Exception as e:
+            st.warning(f"Errore caricamento parametri: {e}")
+
+    # Fallback con valori default
+    return {
+        'service_level_default': 0.95,
+        'lead_time_default': 15,
+        'criticality_factor_default': 1.2,
+        'inventory_turnover_target': 9.5,
+        'days_of_supply_target': 50,
+        'overstock_threshold': 150,
+        'stockout_risk_threshold': 20,
+        'min_reorder_quantity': 10,
+        'max_stock_multiplier': 2,
+        'safety_stock_method': 'dynamic',
+        'forecast_horizon': 30,
+        'seasonality_factor': 1.1,
+        'alert_days_before_stockout': 7,
+        'review_period': 7,
+        'holding_cost_rate': 0.25
+    }
+
+
+def carica_configurazione_depositi():
+    """Carica configurazione depositi da CSV"""
+    data_dir = Path(__file__).parent / "data"
+    depositi_path = data_dir / "depositi_config.csv"
+
+    if depositi_path.exists():
+        try:
+            return pd.read_csv(depositi_path)
+        except Exception as e:
+            st.warning(f"Errore caricamento depositi: {e}")
+
+    # Fallback con dati di default
+    return pd.DataFrame({
+        'deposito_nome': ['Centrale Milano', 'Filiale Roma', 'Filiale Napoli', 'Hub Logistico Bologna'],
+        'deposito_id': ['DEP_MI_01', 'DEP_RM_01', 'DEP_NA_01', 'DEP_BO_01'],
+        'tipo': ['Hub Principale', 'Filiale', 'Filiale', 'Hub Secondario'],
+        'regione': ['Lombardia', 'Lazio', 'Campania', 'Emilia-Romagna'],
+        'capacita_max': [10000, 5000, 4000, 8000],
+        'stock_CRZ001': [302, 180, 120, 250],
+        'stock_MAT001': [242, 150, 100, 200],
+        'stock_ELT001': [94, 60, 40, 80],
+        'lead_time_interno': [1, 2, 2, 1],
+        'costo_stoccaggio_m3': [12.50, 15.00, 14.00, 11.00]
+    })
+
+
+def get_stock_levels_for_deposito(depositi_df, deposito_nome, prodotti_codes):
+    """Estrae stock levels per un deposito specifico"""
+    if depositi_df.empty:
+        return {}
+
+    deposito_row = depositi_df[depositi_df['deposito_nome'] == deposito_nome]
+    if deposito_row.empty:
+        return {}
+
+    stock_levels = {}
+    deposito = deposito_row.iloc[0]
+
+    for code in prodotti_codes:
+        stock_col = f'stock_{code}'
+        if stock_col in deposito_row.columns:
+            stock_levels[code] = deposito[stock_col]
+
+    return stock_levels
+
+
+def get_service_level_options(parametri_dict):
+    """Ottiene le opzioni di service level dalle configurazioni"""
+    base_level = parametri_dict.get('service_level_default', 0.95)
+    # Genera opzioni intorno al valore di default
+    return [0.85, 0.90, base_level, 0.98, 0.99]
+
+
 # =====================================================
 # TRADUZIONI - Sistema Centralizzato
 # =====================================================
@@ -1772,34 +1872,43 @@ def main():
     with tab4:
         # TAB DEPOSITI - BILANCIAMENTO SCORTE
         st.subheader("🏪 Gestione Depositi e Bilanciamento Scorte")
-        
+
         if INVENTORY_OPTIMIZER_AVAILABLE:
+            # Carica configurazioni esterne
+            parametri = carica_parametri_bilanciamento()
+            depositi_df = carica_configurazione_depositi()
+
             col1, col2 = st.columns([2, 1])
-            
+
             with col2:
                 st.subheader("⚙️ Configurazione")
-                
-                # Parametri configurabili
+
+                # Service level da configurazione
+                service_level_options = get_service_level_options(parametri)
+                default_level = parametri.get('service_level_default', 0.95)
+                try:
+                    default_index = service_level_options.index(default_level)
+                except ValueError:
+                    default_index = 2  # Fallback
+
                 service_level = st.selectbox(
                     "Livello Servizio Target",
-                    options=[0.85, 0.90, 0.95, 0.99],
-                    index=2,
+                    options=service_level_options,
+                    index=default_index,
                     format_func=lambda x: f"{x:.0%}"
                 )
-                
+
+                # Depositi da configurazione CSV
+                deposito_options = depositi_df['deposito_nome'].tolist()
                 deposito_sel = st.selectbox(
                     "Deposito",
-                    options=["Centrale Milano", "Filiale Roma", "Filiale Napoli", "Hub Logistico Bologna"],
+                    options=deposito_options,
                     index=0
                 )
-                
-                # Simula dati deposito
-                np.random.seed(42)
-                stock_levels = {
-                    "CRZ001": np.random.randint(200, 400),
-                    "MAT001": np.random.randint(150, 300),
-                    "ELT001": np.random.randint(80, 150)
-                }
+
+                # Stock levels da CSV per deposito selezionato
+                prodotti_codes = ['CRZ001', 'MAT001', 'ELT001']
+                stock_levels = get_stock_levels_for_deposito(depositi_df, deposito_sel, prodotti_codes)
                 
                 st.markdown("### 📊 Stock Correnti")
                 for codice, stock in stock_levels.items():
@@ -1821,31 +1930,36 @@ def main():
                     if codice in vendite.columns and codice in stock_levels:
                         serie_vendite = vendite[codice].dropna()
                         stock_corrente = stock_levels[codice]
-                        
+
+                        # Usa parametri da CSV
+                        lead_time_days = parametri.get('lead_time_default', 15)
+                        criticality_factor = parametri.get('criticality_factor_default', 1.2)
+                        max_stock_multiplier = parametri.get('max_stock_multiplier', 2)
+
                         # Calcola safety stock
                         safety_stock = calculator.calculate_dynamic_safety_stock(
                             demand_mean=serie_vendite.mean(),
                             demand_std=serie_vendite.std(),
-                            lead_time_days=15,  # Default lead time
+                            lead_time_days=lead_time_days,
                             service_level=service_level,
-                            criticality_factor=1.2
+                            criticality_factor=criticality_factor
                         )
-                        
+
                         # Calcola reorder point
                         reorder_point = calculator.calculate_reorder_point(
                             demand_mean=serie_vendite.mean(),
-                            lead_time_days=15,
+                            lead_time_days=lead_time_days,
                             safety_stock=safety_stock['dynamic_safety_stock']
                         )
-                        
+
                         # Analisi rischio
                         analisi = alert_system.check_inventory_status(
                             current_stock=stock_corrente,
                             safety_stock=safety_stock['dynamic_safety_stock'],
                             reorder_point=reorder_point,
-                            max_stock=stock_corrente * 2,  # Simulated max
+                            max_stock=stock_corrente * max_stock_multiplier,
                             daily_demand=serie_vendite.mean(),
-                            lead_time_days=15
+                            lead_time_days=lead_time_days
                         )
                         
                         results_data.append({
@@ -2143,7 +2257,9 @@ def main():
             'ordini_attivi.csv': 'Ordini in corso con fornitori',
             'fornitori_dettaglio.csv': 'Database fornitori e condizioni',
             'scenari_whatif.csv': 'Scenari predefiniti per analisi',
-            'categorie_config.csv': 'Configurazione categorie prodotti'
+            'categorie_config.csv': 'Configurazione categorie prodotti',
+            'depositi_config.csv': 'Configurazione depositi e stock correnti per bilanciamento',
+            'parametri_bilanciamento.csv': 'Parametri operativi per calcoli inventory e analisi rischio'
         }
         
         for filename, description in data_files.items():
