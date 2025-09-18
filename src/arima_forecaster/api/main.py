@@ -22,20 +22,20 @@ from scalar_fastapi import get_scalar_api_reference
 
 # Importa tutti i routers
 from arima_forecaster.api.routers import (
+    advanced_models_router,
+    automl_router,
+    data_management_router,
+    demand_sensing_router,
     diagnostics_router,
+    enterprise_router,
+    evaluation_router,
     forecasting_router,
     health_router,
+    inventory_router,
     models_router,
     reports_router,
     training_router,
-    inventory_router,
-    demand_sensing_router,
-    advanced_models_router,
-    evaluation_router,
-    automl_router,
     visualization_router,
-    data_management_router,
-    enterprise_router,
 )
 from arima_forecaster.utils.logger import get_logger
 
@@ -94,7 +94,7 @@ def create_app(
             "description": "🎨 Addestramento Modelli Time Series<br><br>Training avanzato di modelli statistici per forecasting:<br><br>• ARIMA/SARIMA/SARIMAX: Modelli univariati con stagionalità<br>• VAR: Modelli multivariati per serie correlate<br>• Auto-ML: Selezione automatica parametri ottimali<br>• Background Processing: Training asincrono non bloccante<br>• Validazione Dati: Controlli automatici qualità input",
         },
         {
-            "name": "Forecasting", 
+            "name": "Forecasting",
             "description": "📈 Generazione Previsioni<br><br>Creazione di previsioni accurate da modelli addestrati:<br><br>• Previsioni Puntuali: Valori futuri stimati<br>• Intervalli Confidenza: Range di incertezza personalizzabili<br>• Variabili Esogene: Supporto regressori esterni per SARIMAX<br>• Timestamp Automatici: Generazione date future intelligente",
         },
         {
@@ -114,7 +114,7 @@ def create_app(
             "description": "[CART] Ottimizzazione Inventory Management<br><br>Sistema completo per ottimizzazione scorte enterprise:<br><br>• Classificazione ABC/XYZ: Movement analysis automatico<br>• Slow/Fast Moving Optimization: Strategie differentiate<br>• Safety Stock Dinamico: Calcolo con demand uncertainty<br>• EOQ Optimization: Economic Order Quantity con sconti<br>• Multi-Echelon: Risk pooling e network optimization<br>• Capacity Constraints: Vincoli volume/peso/budget<br>• Bundle/Kitting Analysis: Make-to-Stock vs Assemble-to-Order",
         },
         {
-            "name": "Demand Sensing", 
+            "name": "Demand Sensing",
             "description": "[WEATHER] Demand Sensing Avanzato<br><br>Integrazione fattori esterni per forecast accuracy:<br><br>• Weather Integration: Previsioni meteo business-calibrate<br>• Google Trends Analysis: Pattern ricerche e correlazioni<br>• Social Sentiment: Sentiment analysis multi-platform<br>• Economic Indicators: Macro data per forecast context<br>• Calendar Events: Festività e eventi business impact<br>• Ensemble Forecasting: Combinazione multi-source weighted<br>• Sensitivity Analysis: Ottimizzazione pesi automatica",
         },
         {
@@ -126,7 +126,7 @@ def create_app(
             "description": "[MAGNIFY] Valutazione e Diagnostica Avanzata<br><br>Testing approfondito e validazione modelli:<br><br>• Cross-Validation: Time series split e walk-forward<br>• Residual Analysis: Test normalità, autocorrelazione, eteroschedasticità<br>• Model Comparison: Statistical tests di significatività<br>• Performance Metrics: 15+ metriche specializzate forecasting<br>• Diagnostic Plots: QQ-plot, ACF/PACF, residui analysis<br>• Backtesting: Simulazione performance storica realistica",
         },
         {
-            "name": "AutoML & Optimization", 
+            "name": "AutoML & Optimization",
             "description": "[ROBOT] AutoML e Ottimizzazione Automatica<br><br>Selezione e tuning automatico modelli:<br><br>• Optuna Integration: Bayesian optimization hyperparameters<br>• Hyperopt TPE: Tree-structured Parzen Estimator<br>• Scikit-optimize: Gaussian Process optimization<br>• Multi-objective: Ottimizzazione Pareto accuracy vs complexity<br>• Ensemble Methods: Stacking, voting, bagging automatico<br>• Grid Search: Parallel hyperparameter exploration",
         },
         {
@@ -142,7 +142,7 @@ def create_app(
             "description": "[GLOBE] Enterprise e Multi-lingua<br><br>Funzionalità enterprise production-ready:<br><br>• Multi-language: Traduzioni automatiche 8 lingue<br>• Enterprise Config: Scaling, security, governance<br>• Production Deployment: Blue/green, canary, rollback<br>• Compliance Audit: GDPR, SOC2, ISO27001<br>• Integration Testing: API, database, message queue<br>• Security Audit: Vulnerability scanning e penetration test",
         },
     ]
-    
+
     # Crea l'istanza FastAPI con metadati completi
     app = FastAPI(
         title="ARIMA Forecaster API",
