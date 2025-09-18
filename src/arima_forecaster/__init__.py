@@ -64,12 +64,12 @@ __all__ = [
     "ForecastPlotter",
     # Auto-ML
     "ARIMAOptimizer",
-    "SARIMAOptimizer", 
+    "SARIMAOptimizer",
     "VAROptimizer",
     "HyperparameterTuner",
     "optimize_model",
     "AutoForecastSelector",  # One-click AutoML
-    "BatchForecastProcessor", # Portfolio batch processing
+    "BatchForecastProcessor",  # Portfolio batch processing
 ]
 
 # Add QuartoReportGenerator to __all__ if available
@@ -82,32 +82,28 @@ try:
         KafkaForecastProducer,
         RealtimeForecastService,
         WebSocketServer,
-        EventProcessor
+        EventProcessor,
     )
-    __all__.extend([
-        "KafkaForecastProducer",
-        "RealtimeForecastService", 
-        "WebSocketServer",
-        "EventProcessor"
-    ])
+
+    __all__.extend(
+        ["KafkaForecastProducer", "RealtimeForecastService", "WebSocketServer", "EventProcessor"]
+    )
     _has_streaming = True
 except ImportError:
     _has_streaming = False
 
-# Explainable AI (conditional import)  
+# Explainable AI (conditional import)
 try:
     from .explainability import (
         SHAPExplainer,
         FeatureImportanceAnalyzer,
         AnomalyExplainer,
-        BusinessRulesEngine
+        BusinessRulesEngine,
     )
-    __all__.extend([
-        "SHAPExplainer",
-        "FeatureImportanceAnalyzer",
-        "AnomalyExplainer", 
-        "BusinessRulesEngine"
-    ])
+
+    __all__.extend(
+        ["SHAPExplainer", "FeatureImportanceAnalyzer", "AnomalyExplainer", "BusinessRulesEngine"]
+    )
     _has_explainability = True
 except ImportError:
     _has_explainability = False

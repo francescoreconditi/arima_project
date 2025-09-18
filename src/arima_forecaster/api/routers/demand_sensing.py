@@ -21,9 +21,7 @@ logger = get_logger(__name__)
 
 # Crea router con prefix e tags
 router = APIRouter(
-    prefix="/demand-sensing",
-    tags=["Demand Sensing"],
-    responses={404: {"description": "Not found"}}
+    prefix="/demand-sensing", tags=["Demand Sensing"], responses={404: {"description": "Not found"}}
 )
 
 """
@@ -52,23 +50,29 @@ Caratteristiche:
 # MODELLI RICHIESTA E RISPOSTA
 # =============================================================================
 
+
 class WeatherForecastRequest(BaseModel):
     """Richiesta integrazione previsioni meteo."""
+
     location: str = Field(..., description="Location (città, paese) es: 'Rome,IT'")
     forecast_days: int = Field(7, description="Giorni previsioni meteo")
     weather_sensitivity: Dict[str, float] = Field(
         default={
-            "temperature": 0.05,    # 5% impatto per grado
+            "temperature": 0.05,  # 5% impatto per grado
             "precipitation": 0.15,  # 15% impatto pioggia
-            "wind_speed": 0.02,     # 2% impatto vento
-            "humidity": 0.01        # 1% impatto umidità  
+            "wind_speed": 0.02,  # 2% impatto vento
+            "humidity": 0.01,  # 1% impatto umidità
         },
-        description="Sensibilità domanda per fattore meteo"
+        description="Sensibilità domanda per fattore meteo",
     )
-    business_type: Optional[str] = Field("general", description="Tipo business per calibrare sensibilità")
+    business_type: Optional[str] = Field(
+        "general", description="Tipo business per calibrare sensibilità"
+    )
+
 
 class WeatherFactor(BaseModel):
     """Singolo fattore meteo."""
+
     date: datetime = Field(..., description="Data previsione")
     temperature: float = Field(..., description="Temperatura °C")
     precipitation: float = Field(..., description="Precipitazioni mm")
@@ -78,26 +82,36 @@ class WeatherFactor(BaseModel):
     impact_score: float = Field(..., description="Score impatto sulla domanda (-1 a +1)")
     confidence: float = Field(..., description="Confidenza previsione (0-1)")
 
+
 class WeatherForecastResponse(BaseModel):
     """Risposta previsioni meteo."""
+
     location: str
     forecast_period: str
     weather_factors: List[WeatherFactor] = Field(..., description="Fattori meteo per periodo")
-    business_calibration: Dict[str, float] = Field(..., description="Calibrazione per business type")
+    business_calibration: Dict[str, float] = Field(
+        ..., description="Calibrazione per business type"
+    )
     summary_impact: Dict[str, float] = Field(..., description="Impatto aggregato per tipo")
     recommendations: List[str] = Field(..., description="Raccomandazioni operative")
+
 
 # Google Trends Analysis
 class TrendsAnalysisRequest(BaseModel):
     """Richiesta analisi Google Trends."""
+
     keywords: List[str] = Field(..., description="Keywords da monitorare")
     geo_location: Optional[str] = Field("", description="Location geografica (ES, IT, US)")
     timeframe: str = Field("today 1-m", description="Timeframe trends (today 1-m, today 3-m, etc)")
     category: Optional[int] = Field(0, description="Categoria Google Trends")
-    correlation_baseline: Optional[List[float]] = Field(None, description="Serie storica per correlazione")
+    correlation_baseline: Optional[List[float]] = Field(
+        None, description="Serie storica per correlazione"
+    )
+
 
 class TrendsFactor(BaseModel):
     """Singolo fattore trends."""
+
     date: datetime
     keyword: str
     search_volume: float = Field(..., description="Volume ricerche normalizzato 0-100")
@@ -106,61 +120,81 @@ class TrendsFactor(BaseModel):
     impact_score: float = Field(..., description="Score impatto domanda")
     confidence: float = Field(..., description="Confidenza dato")
 
+
 class TrendsAnalysisResponse(BaseModel):
     """Risposta analisi trends."""
+
     keywords_analyzed: List[str]
     analysis_period: str
     trends_factors: List[TrendsFactor]
-    correlation_analysis: Dict[str, float] = Field(..., description="Correlazione keywords vs domanda")
+    correlation_analysis: Dict[str, float] = Field(
+        ..., description="Correlazione keywords vs domanda"
+    )
     seasonal_patterns: Dict[str, Any] = Field(..., description="Pattern stagionali identificati")
     forecast_impact: Dict[str, float] = Field(..., description="Impatto forecast per keyword")
 
-# Social Sentiment Analysis  
+
+# Social Sentiment Analysis
 class SocialSentimentRequest(BaseModel):
     """Richiesta analisi social sentiment."""
+
     brand_keywords: List[str] = Field(..., description="Keywords brand da monitorare")
     product_keywords: List[str] = Field(..., description="Keywords prodotti")
-    platforms: List[str] = Field(default=["twitter", "instagram", "facebook"], description="Platform sociali")
+    platforms: List[str] = Field(
+        default=["twitter", "instagram", "facebook"], description="Platform sociali"
+    )
     sentiment_weights: Dict[str, float] = Field(
         default={"positive": 0.1, "negative": -0.15, "neutral": 0.0},
-        description="Pesi impatto sentiment sulla domanda"
+        description="Pesi impatto sentiment sulla domanda",
     )
     analysis_days: int = Field(7, description="Giorni analisi sentiment")
 
+
 class SentimentFactor(BaseModel):
     """Singolo fattore sentiment."""
+
     date: datetime
     platform: str
     keyword: str
     sentiment_score: float = Field(..., description="Score sentiment (-1 negativo, +1 positivo)")
     post_volume: int = Field(..., description="Numero post analizzati")
     engagement_rate: float = Field(..., description="Tasso engagement medio")
-    impact_score: float = Field(..., description="Impatto stimato sulla domanda") 
+    impact_score: float = Field(..., description="Impatto stimato sulla domanda")
     confidence: float = Field(..., description="Confidenza analisi")
+
 
 class SocialSentimentResponse(BaseModel):
     """Risposta analisi sentiment."""
+
     analysis_period: str
     platforms_analyzed: List[str]
     sentiment_factors: List[SentimentFactor]
-    aggregate_sentiment: Dict[str, float] = Field(..., description="Sentiment aggregato per keyword")
+    aggregate_sentiment: Dict[str, float] = Field(
+        ..., description="Sentiment aggregato per keyword"
+    )
     trend_analysis: Dict[str, str] = Field(..., description="Trend sentiment nel periodo")
     alert_triggers: List[str] = Field(..., description="Alert per sentiment critici")
+
 
 # Economic Indicators
 class EconomicIndicatorsRequest(BaseModel):
     """Richiesta indicatori economici."""
+
     country_code: str = Field("IT", description="Codice paese (IT, US, DE, etc)")
     indicators: List[str] = Field(
         default=["gdp", "unemployment", "inflation", "consumer_confidence"],
-        description="Indicatori da monitorare"
+        description="Indicatori da monitorare",
     )
-    business_sector: str = Field("consumer_goods", description="Settore business per calibrare sensitivity")
+    business_sector: str = Field(
+        "consumer_goods", description="Settore business per calibrare sensitivity"
+    )
     forecast_horizon: int = Field(30, description="Giorni forecast")
+
 
 class EconomicFactor(BaseModel):
     """Singolo indicatore economico."""
-    date: datetime  
+
+    date: datetime
     indicator: str = Field(..., description="Nome indicatore")
     value: float = Field(..., description="Valore indicatore")
     change_percent: float = Field(..., description="Cambio percentuale vs periodo precedente")
@@ -168,29 +202,37 @@ class EconomicFactor(BaseModel):
     confidence: float = Field(..., description="Confidenza dato")
     data_source: str = Field(..., description="Fonte dato")
 
+
 class EconomicIndicatorsResponse(BaseModel):
     """Risposta indicatori economici."""
+
     country: str
-    analysis_period: str  
+    analysis_period: str
     economic_factors: List[EconomicFactor]
     sector_calibration: Dict[str, float] = Field(..., description="Calibrazione per settore")
     leading_indicators: List[str] = Field(..., description="Indicatori leading identificati")
     forecast_impact: Dict[str, float] = Field(..., description="Impatto forecast per indicatore")
 
+
 # Calendar Events
 class CalendarEventsRequest(BaseModel):
     """Richiesta eventi calendario."""
+
     country_code: str = Field("IT", description="Codice paese per festività")
-    custom_events: Optional[List[Dict[str, Any]]] = Field(None, description="Eventi custom business")
+    custom_events: Optional[List[Dict[str, Any]]] = Field(
+        None, description="Eventi custom business"
+    )
     event_types: List[str] = Field(
         default=["holidays", "sports", "cultural", "business"],
-        description="Tipi eventi da considerare"
+        description="Tipi eventi da considerare",
     )
     impact_radius_days: int = Field(3, description="Giorni impatto pre/post evento")
     forecast_days: int = Field(30, description="Giorni forecast eventi")
 
+
 class CalendarEvent(BaseModel):
     """Singolo evento calendario."""
+
     date: datetime
     event_name: str = Field(..., description="Nome evento")
     event_type: str = Field(..., description="Tipo evento")
@@ -200,8 +242,10 @@ class CalendarEvent(BaseModel):
     post_impact_days: int = Field(..., description="Giorni post-impatto")
     confidence: float = Field(..., description="Confidenza impatto")
 
+
 class CalendarEventsResponse(BaseModel):
     """Risposta eventi calendario."""
+
     country: str
     forecast_period: str
     calendar_events: List[CalendarEvent]
@@ -209,23 +253,36 @@ class CalendarEventsResponse(BaseModel):
     seasonal_adjustments: Dict[str, float] = Field(..., description="Aggiustamenti stagionali")
     high_impact_dates: List[str] = Field(..., description="Date alto impatto identificate")
 
+
 # Ensemble Forecasting
 class EnsembleForecastRequest(BaseModel):
     """Richiesta ensemble forecasting con fattori esterni."""
+
     base_forecast: List[float] = Field(..., description="Forecast base (ARIMA/SARIMA)")
     forecast_dates: List[str] = Field(..., description="Date forecast")
     weather_factors: Optional[List[WeatherFactor]] = Field(None, description="Fattori meteo")
     trends_factors: Optional[List[TrendsFactor]] = Field(None, description="Fattori trends")
-    sentiment_factors: Optional[List[SentimentFactor]] = Field(None, description="Fattori sentiment") 
+    sentiment_factors: Optional[List[SentimentFactor]] = Field(
+        None, description="Fattori sentiment"
+    )
     economic_factors: Optional[List[EconomicFactor]] = Field(None, description="Fattori economici")
     calendar_events: Optional[List[CalendarEvent]] = Field(None, description="Eventi calendario")
     ensemble_weights: Optional[Dict[str, float]] = Field(
-        default={"base": 0.4, "weather": 0.2, "trends": 0.15, "sentiment": 0.1, "economic": 0.1, "calendar": 0.05},
-        description="Pesi ensemble per fonte"
+        default={
+            "base": 0.4,
+            "weather": 0.2,
+            "trends": 0.15,
+            "sentiment": 0.1,
+            "economic": 0.1,
+            "calendar": 0.05,
+        },
+        description="Pesi ensemble per fonte",
     )
+
 
 class EnsembleForecastResponse(BaseModel):
     """Risposta ensemble forecasting."""
+
     forecast_id: str = Field(..., description="ID forecast")
     base_forecast: List[float] = Field(..., description="Forecast originale")
     adjusted_forecast: List[float] = Field(..., description="Forecast aggiustato ensemble")
@@ -236,36 +293,52 @@ class EnsembleForecastResponse(BaseModel):
     confidence_score: float = Field(..., description="Score confidenza ensemble")
     details: Dict[str, Any] = Field(..., description="Dettagli fattori e calcoli")
 
+
 # Factor Contributions Analysis
 class FactorContributionsResponse(BaseModel):
     """Risposta analisi contributi fattori."""
+
     analysis_id: str
     forecast_period: str
-    contributions_by_source: Dict[str, Dict[str, float]] = Field(..., description="Contributi per fonte e metrica")
-    correlation_matrix: Dict[str, Dict[str, float]] = Field(..., description="Correlazioni tra fattori")
+    contributions_by_source: Dict[str, Dict[str, float]] = Field(
+        ..., description="Contributi per fonte e metrica"
+    )
+    correlation_matrix: Dict[str, Dict[str, float]] = Field(
+        ..., description="Correlazioni tra fattori"
+    )
     importance_ranking: List[Dict[str, Any]] = Field(..., description="Ranking importanza fattori")
     optimization_suggestions: List[str] = Field(..., description="Suggerimenti ottimizzazione pesi")
+
 
 # Sensitivity Analysis
 class SensitivityAnalysisRequest(BaseModel):
     """Richiesta analisi sensibilità."""
-    historical_forecasts: List[Dict[str, Any]] = Field(..., description="Forecast storici con fattori")
-    actual_values: List[float] = Field(..., description="Valori reali per validazione") 
+
+    historical_forecasts: List[Dict[str, Any]] = Field(
+        ..., description="Forecast storici con fattori"
+    )
+    actual_values: List[float] = Field(..., description="Valori reali per validazione")
     sensitivity_range: float = Field(0.2, description="Range sensibilità (+/- 20%)")
     factors_to_test: List[str] = Field(..., description="Fattori da testare")
 
+
 class SensitivityAnalysisResponse(BaseModel):
     """Risposta analisi sensibilità."""
+
     analysis_id: str
     optimal_weights: Dict[str, float] = Field(..., description="Pesi ottimali identificati")
     sensitivity_scores: Dict[str, float] = Field(..., description="Score sensibilità per fattore")
     forecast_improvement: float = Field(..., description="Miglioramento accuracy %")
-    weight_adjustments: Dict[str, Dict[str, float]] = Field(..., description="Aggiustamenti pesi raccomandati")
+    weight_adjustments: Dict[str, Dict[str, float]] = Field(
+        ..., description="Aggiustamenti pesi raccomandati"
+    )
     validation_metrics: Dict[str, float] = Field(..., description="Metriche validazione")
 
+
 # =============================================================================
-# DEPENDENCY INJECTION  
+# DEPENDENCY INJECTION
 # =============================================================================
+
 
 def get_demand_sensing_services():
     """Dependency per ottenere i servizi demand sensing."""
@@ -276,31 +349,33 @@ def get_demand_sensing_services():
             GoogleTrendsIntegration,
             SocialSentimentAnalyzer,
             EconomicIndicators,
-            CalendarEvents
+            CalendarEvents,
         )
+
         return {
             "ensemble": EnsembleDemandSensor,
             "weather": WeatherIntegration,
             "trends": GoogleTrendsIntegration,
             "sentiment": SocialSentimentAnalyzer,
             "economic": EconomicIndicators,
-            "calendar": CalendarEvents
+            "calendar": CalendarEvents,
         }
     except ImportError:
         return None
+
 
 # =============================================================================
 # ENDPOINT IMPLEMENTATIONS
 # =============================================================================
 
+
 @router.post("/weather-forecast", response_model=WeatherForecastResponse)
 async def integrate_weather_forecast(
-    request: WeatherForecastRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    request: WeatherForecastRequest, services: Optional[Dict] = Depends(get_demand_sensing_services)
 ):
     """
     Integra previsioni meteo per demand sensing con calibrazioni business-specific.
-    
+
     <h4>Impatto Meteo per Business Type:</h4>
     <table >
         <tr><th>Business Type</th><th>Fattori Chiave</th><th>Sensibilità</th></tr>
@@ -310,7 +385,7 @@ async def integrate_weather_forecast(
         <tr><td>Umbrella</td><td>Pioggia: +200%, Neve: +100%</td><td>Estrema</td></tr>
         <tr><td>Energy</td><td>Temperatura: +5% per grado</td><td>Lineare</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -368,53 +443,55 @@ async def integrate_weather_forecast(
                 "temperature_sensitivity": 0.08,  # 8% per grado
                 "precipitation_boost": 1.5,  # 150% boost pioggia
                 "wind_sensitivity": 0.05,
-                "humidity_impact": 0.02
+                "humidity_impact": 0.02,
             },
             "fashion_retail": {
                 "temperature_base": 20.0,
                 "temperature_sensitivity": 0.03,
                 "precipitation_boost": -0.2,  # Pioggia riduce shopping
                 "wind_sensitivity": 0.01,
-                "humidity_impact": 0.01
+                "humidity_impact": 0.01,
             },
             "ice_cream": {
                 "temperature_base": 15.0,
                 "temperature_sensitivity": 0.15,  # Molto sensibile
                 "precipitation_boost": -0.8,  # Pioggia dannosa
                 "wind_sensitivity": 0.02,
-                "humidity_impact": -0.03  # Umidità riduce appeal
+                "humidity_impact": -0.03,  # Umidità riduce appeal
             },
             "general": {
                 "temperature_base": 18.0,
                 "temperature_sensitivity": 0.02,
                 "precipitation_boost": 0.1,
                 "wind_sensitivity": 0.01,
-                "humidity_impact": 0.01
-            }
+                "humidity_impact": 0.01,
+            },
         }
-        
-        calibration = business_calibrations.get(request.business_type, business_calibrations["general"])
-        
+
+        calibration = business_calibrations.get(
+            request.business_type, business_calibrations["general"]
+        )
+
         # Genera previsioni meteo demo (in produzione useremmo API reale)
         weather_factors = []
         base_date = datetime.now()
-        
+
         # Simuliamo dati meteo realistici per il periodo
         np.random.seed(42)  # Per risultati riproducibili
-        
+
         high_demand_days = 0
         total_impact = 0
         max_daily_impact = 0
-        
+
         for day in range(request.forecast_days):
             forecast_date = base_date + timedelta(days=day)
-            
+
             # Genera dati meteo casuali ma realistici
             base_temp = 25.0 + np.random.normal(0, 3)  # Roma estate
             precipitation = max(0, np.random.exponential(2.0))  # Media 2mm
             humidity = 50 + np.random.normal(0, 15)
             wind_speed = max(0, np.random.normal(10, 5))
-            
+
             # Determina condizione meteo
             if precipitation > 10:
                 weather_condition = "Heavy Rain"
@@ -431,75 +508,94 @@ async def integrate_weather_forecast(
             else:
                 weather_condition = "Partly Cloudy"
                 confidence = 0.90
-            
+
             # Calcola impatto sulla domanda
-            temp_impact = (base_temp - calibration["temperature_base"]) * calibration["temperature_sensitivity"] / 100
-            precip_impact = precipitation * calibration["precipitation_boost"] * 0.01 if precipitation > 0.5 else 0
+            temp_impact = (
+                (base_temp - calibration["temperature_base"])
+                * calibration["temperature_sensitivity"]
+                / 100
+            )
+            precip_impact = (
+                precipitation * calibration["precipitation_boost"] * 0.01
+                if precipitation > 0.5
+                else 0
+            )
             wind_impact = (wind_speed - 10) * calibration["wind_sensitivity"] / 100
             humidity_impact = (humidity - 60) * calibration["humidity_impact"] / 100
-            
+
             total_impact_score = temp_impact + precip_impact + wind_impact + humidity_impact
-            
+
             # Limita impact score a range ragionevole
             impact_score = max(-0.5, min(0.5, total_impact_score))
-            
+
             if impact_score > 0.1:
                 high_demand_days += 1
-            
+
             total_impact += impact_score
             max_daily_impact = max(max_daily_impact, impact_score)
-            
-            weather_factors.append(WeatherFactor(
-                date=forecast_date,
-                temperature=round(base_temp, 1),
-                precipitation=round(precipitation, 1),
-                humidity=round(humidity, 1),
-                wind_speed=round(wind_speed, 1),
-                weather_condition=weather_condition,
-                impact_score=round(impact_score, 3),
-                confidence=round(confidence, 2)
-            ))
-        
+
+            weather_factors.append(
+                WeatherFactor(
+                    date=forecast_date,
+                    temperature=round(base_temp, 1),
+                    precipitation=round(precipitation, 1),
+                    humidity=round(humidity, 1),
+                    wind_speed=round(wind_speed, 1),
+                    weather_condition=weather_condition,
+                    impact_score=round(impact_score, 3),
+                    confidence=round(confidence, 2),
+                )
+            )
+
         # Business calibration response
         business_calibration = {
-            "temperature_multiplier": calibration["temperature_sensitivity"] / request.weather_sensitivity["temperature"],
+            "temperature_multiplier": calibration["temperature_sensitivity"]
+            / request.weather_sensitivity["temperature"],
             "precipitation_boost": calibration["precipitation_boost"],
-            "seasonal_adjustment": 1.0 if datetime.now().month in [6,7,8] else 0.9,  # Estate boost
-            "business_type_modifier": 1.2 if request.business_type == "food_delivery" else 1.0
+            "seasonal_adjustment": 1.0
+            if datetime.now().month in [6, 7, 8]
+            else 0.9,  # Estate boost
+            "business_type_modifier": 1.2 if request.business_type == "food_delivery" else 1.0,
         }
-        
+
         # Summary impact
         summary_impact = {
             "high_demand_days": high_demand_days,
             "average_impact": round(total_impact / request.forecast_days, 3),
             "max_daily_impact": round(max_daily_impact, 3),
-            "total_adjustment_percent": round((total_impact / request.forecast_days) * 100, 1)
+            "total_adjustment_percent": round((total_impact / request.forecast_days) * 100, 1),
         }
-        
+
         # Genera raccomandazioni operative
         recommendations = []
-        
+
         for factor in weather_factors:
             if factor.impact_score > 0.15:
                 if factor.precipitation > 5:
-                    recommendations.append(f"Day {factor.date.strftime('%Y-%m-%d')}: Rain expected ({factor.impact_score:+.0%} demand) - increase delivery staff")
+                    recommendations.append(
+                        f"Day {factor.date.strftime('%Y-%m-%d')}: Rain expected ({factor.impact_score:+.0%} demand) - increase delivery staff"
+                    )
                 elif factor.temperature > 30:
-                    recommendations.append(f"Day {factor.date.strftime('%Y-%m-%d')}: Hot weather ({factor.temperature}°C) - prepare cooling products")
+                    recommendations.append(
+                        f"Day {factor.date.strftime('%Y-%m-%d')}: Hot weather ({factor.temperature}°C) - prepare cooling products"
+                    )
             elif factor.impact_score < -0.1:
-                recommendations.append(f"Day {factor.date.strftime('%Y-%m-%d')}: Lower demand expected ({factor.impact_score:+.0%}) - reduce inventory")
-        
+                recommendations.append(
+                    f"Day {factor.date.strftime('%Y-%m-%d')}: Lower demand expected ({factor.impact_score:+.0%}) - reduce inventory"
+                )
+
         if not recommendations:
             recommendations.append("Weather conditions appear stable - maintain normal operations")
-        
+
         return WeatherForecastResponse(
             location=request.location,
-            forecast_period=f"{base_date.strftime('%Y-%m-%d')} to {(base_date + timedelta(days=request.forecast_days-1)).strftime('%Y-%m-%d')}",
+            forecast_period=f"{base_date.strftime('%Y-%m-%d')} to {(base_date + timedelta(days=request.forecast_days - 1)).strftime('%Y-%m-%d')}",
             weather_factors=weather_factors,
             business_calibration=business_calibration,
             summary_impact=summary_impact,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore integrazione meteo: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore weather forecast: {str(e)}")
@@ -507,12 +603,11 @@ async def integrate_weather_forecast(
 
 @router.post("/trends-analysis", response_model=TrendsAnalysisResponse)
 async def analyze_google_trends(
-    request: TrendsAnalysisRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    request: TrendsAnalysisRequest, services: Optional[Dict] = Depends(get_demand_sensing_services)
 ):
     """
     Analizza Google Trends per identificare pattern di domanda e correlazioni.
-    
+
     <h4>Google Trends Insights per Business:</h4>
     <table >
         <tr><th>Keyword Pattern</th><th>Interpretazione</th><th>Azione Suggerita</th></tr>
@@ -521,7 +616,7 @@ async def analyze_google_trends(
         <tr><td>Picco anomalo</td><td>Evento virale o trend emergente</td><td>Capitalizza rapidamente</td></tr>
         <tr><td>Declino graduale</td><td>Interesse calante</td><td>Riduci inventory, diversifica</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -569,36 +664,38 @@ async def analyze_google_trends(
         # Genera dati trends demo realistici
         np.random.seed(42)
         base_date = datetime.now() - timedelta(days=30)
-        
+
         trends_factors = []
         correlation_scores = {}
-        
+
         for keyword in request.keywords:
             keyword_correlation = 0
             keyword_factors = []
-            
+
             # Genera serie temporale per keyword
             for day in range(31):  # Ultimo mese
                 trend_date = base_date + timedelta(days=day)
-                
+
                 # Simula search volume con pattern realistici
                 base_volume = np.random.normal(60, 15)
-                
+
                 # Aggiungi pattern settimanali (weekend boost per food delivery)
                 if trend_date.weekday() >= 5:  # Weekend
                     base_volume *= 1.25
-                
+
                 # Aggiungi trend generale
                 growth_trend = day * 0.5  # Crescita graduale
                 search_volume = max(0, min(100, base_volume + growth_trend))
-                
+
                 # Calcola cambiamento relativo
                 if day > 0:
                     prev_volume = keyword_factors[-1].search_volume
-                    relative_change = (search_volume - prev_volume) / prev_volume if prev_volume > 0 else 0
+                    relative_change = (
+                        (search_volume - prev_volume) / prev_volume if prev_volume > 0 else 0
+                    )
                 else:
                     relative_change = 0
-                
+
                 # Determina direzione trend
                 if relative_change > 0.05:
                     trend_direction = "up"
@@ -606,14 +703,14 @@ async def analyze_google_trends(
                     trend_direction = "down"
                 else:
                     trend_direction = "stable"
-                
+
                 # Calcola impact score (correlazione con domanda)
                 impact_score = relative_change * 0.3  # 30% di correlazione base
-                
+
                 # Confidenza basata su volatilità
                 volatility = abs(relative_change)
                 confidence = max(0.5, 0.9 - volatility * 2)
-                
+
                 factor = TrendsFactor(
                     date=trend_date,
                     keyword=keyword,
@@ -621,63 +718,74 @@ async def analyze_google_trends(
                     relative_change=round(relative_change, 3),
                     trend_direction=trend_direction,
                     impact_score=round(impact_score, 3),
-                    confidence=round(confidence, 2)
+                    confidence=round(confidence, 2),
                 )
-                
+
                 keyword_factors.append(factor)
                 trends_factors.append(factor)
-            
+
             # Calcola correlazione con baseline se fornita
             if request.correlation_baseline:
                 # Prendi ultimi N valori per correlazione
-                search_volumes = [f.search_volume for f in keyword_factors[-len(request.correlation_baseline):]]
+                search_volumes = [
+                    f.search_volume for f in keyword_factors[-len(request.correlation_baseline) :]
+                ]
                 if len(search_volumes) == len(request.correlation_baseline):
-                    correlation = np.corrcoef(search_volumes, request.correlation_baseline)[0,1]
+                    correlation = np.corrcoef(search_volumes, request.correlation_baseline)[0, 1]
                     correlation_scores[keyword] = round(correlation, 3)
                 else:
                     correlation_scores[keyword] = 0.5  # Default neutro
             else:
-                # Stima correlazione basata su keyword relevance  
+                # Stima correlazione basata su keyword relevance
                 relevance_scores = {
                     "pizza": 0.75,
-                    "delivery": 0.70, 
+                    "delivery": 0.70,
                     "food": 0.68,
                     "restaurant": 0.65,
-                    "ordering": 0.60
+                    "ordering": 0.60,
                 }
                 keyword_lower = keyword.lower()
-                correlation = max([score for term, score in relevance_scores.items() if term in keyword_lower], default=0.5)
+                correlation = max(
+                    [score for term, score in relevance_scores.items() if term in keyword_lower],
+                    default=0.5,
+                )
                 correlation_scores[keyword] = correlation
-        
+
         # Analisi pattern stagionali
         weekend_volumes = [f.search_volume for f in trends_factors if f.date.weekday() >= 5]
         weekday_volumes = [f.search_volume for f in trends_factors if f.date.weekday() < 5]
-        
-        weekend_boost = np.mean(weekend_volumes) / np.mean(weekday_volumes) if weekday_volumes else 1.0
-        
+
+        weekend_boost = (
+            np.mean(weekend_volumes) / np.mean(weekday_volumes) if weekday_volumes else 1.0
+        )
+
         seasonal_patterns = {
             "weekend_boost": round(weekend_boost, 2),
             "evening_peak": 1.4,  # Simulato
             "weather_correlation": 0.45,  # Simulato
-            "monthly_trend": round(np.mean([f.relative_change for f in trends_factors[-7:]]), 3)  # Trend ultima settimana
+            "monthly_trend": round(
+                np.mean([f.relative_change for f in trends_factors[-7:]]), 3
+            ),  # Trend ultima settimana
         }
-        
+
         # Calcola impatto forecast per keyword
         forecast_impact = {}
         for keyword in request.keywords:
             keyword_factors = [f for f in trends_factors if f.keyword == keyword]
-            recent_trend = np.mean([f.impact_score for f in keyword_factors[-7:]])  # Ultima settimana
+            recent_trend = np.mean(
+                [f.impact_score for f in keyword_factors[-7:]]
+            )  # Ultima settimana
             forecast_impact[keyword] = round(recent_trend, 3)
-        
+
         return TrendsAnalysisResponse(
             keywords_analyzed=request.keywords,
             analysis_period=f"{base_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}",
             trends_factors=trends_factors,
             correlation_analysis=correlation_scores,
             seasonal_patterns=seasonal_patterns,
-            forecast_impact=forecast_impact
+            forecast_impact=forecast_impact,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore analisi trends: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore trends analysis: {str(e)}")
@@ -685,12 +793,11 @@ async def analyze_google_trends(
 
 @router.post("/social-sentiment", response_model=SocialSentimentResponse)
 async def analyze_social_sentiment(
-    request: SocialSentimentRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    request: SocialSentimentRequest, services: Optional[Dict] = Depends(get_demand_sensing_services)
 ):
     """
     Analizza sentiment sui social media per previsioni demand-aware.
-    
+
     <h4>Sentiment Impact su Domanda:</h4>
     <table >
         <tr><th>Sentiment Score</th><th>Interpretazione</th><th>Impatto Domanda</th></tr>
@@ -700,7 +807,7 @@ async def analyze_social_sentiment(
         <tr><td>-0.6 to -0.2</td><td>Negativo</td><td>-5-10% riduzione</td></tr>
         <tr><td><-0.6</td><td>Molto Negativo</td><td>-15-25% riduzione</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -751,18 +858,18 @@ async def analyze_social_sentiment(
         # Genera dati sentiment demo realistici
         np.random.seed(42)
         base_date = datetime.now() - timedelta(days=request.analysis_days)
-        
+
         sentiment_factors = []
         all_keywords = request.brand_keywords + request.product_keywords
-        
+
         for day in range(request.analysis_days):
             analysis_date = base_date + timedelta(days=day)
-            
+
             for platform in request.platforms:
                 for keyword in all_keywords:
                     # Genera sentiment score realistico
                     base_sentiment = np.random.normal(0.1, 0.3)  # Leggermente positivo di default
-                    
+
                     # Aggiungi variabilità per brand vs prodotti
                     if keyword in request.brand_keywords:
                         # Brand tende ad avere sentiment più stabile
@@ -770,59 +877,81 @@ async def analyze_social_sentiment(
                     else:
                         # Prodotti possono avere sentiment più volatile
                         sentiment_score = np.clip(base_sentiment * 1.2, -0.9, 0.9)
-                    
+
                     # Volume post variabile per platform
-                    platform_multipliers = {"twitter": 3.0, "instagram": 2.0, "facebook": 1.5, "linkedin": 0.5}
-                    base_volume = int(np.random.poisson(50) * platform_multipliers.get(platform, 1.0))
-                    
+                    platform_multipliers = {
+                        "twitter": 3.0,
+                        "instagram": 2.0,
+                        "facebook": 1.5,
+                        "linkedin": 0.5,
+                    }
+                    base_volume = int(
+                        np.random.poisson(50) * platform_multipliers.get(platform, 1.0)
+                    )
+
                     # Engagement rate variabile per sentiment
                     base_engagement = 0.03
                     if sentiment_score > 0.3:
                         engagement_rate = base_engagement * 1.5  # Contenuto positivo più engaging
                     elif sentiment_score < -0.3:
-                        engagement_rate = base_engagement * 1.8  # Contenuto negativo genera discussioni
+                        engagement_rate = (
+                            base_engagement * 1.8
+                        )  # Contenuto negativo genera discussioni
                     else:
                         engagement_rate = base_engagement
-                    
+
                     # Calcola impact score basato su sentiment e volume
                     volume_weight = min(1.0, base_volume / 100)  # Normalizza volume
                     sentiment_weight = request.sentiment_weights.get(
-                        "positive" if sentiment_score > 0.1 else "negative" if sentiment_score < -0.1 else "neutral",
-                        0.0
+                        "positive"
+                        if sentiment_score > 0.1
+                        else "negative"
+                        if sentiment_score < -0.1
+                        else "neutral",
+                        0.0,
                     )
-                    
+
                     impact_score = sentiment_score * sentiment_weight * volume_weight
-                    
+
                     # Confidenza basata su volume e coerenza sentiment
-                    confidence = min(0.95, 0.5 + (volume_weight * 0.3) + (abs(sentiment_score) * 0.15))
-                    
-                    sentiment_factors.append(SentimentFactor(
-                        date=analysis_date,
-                        platform=platform,
-                        keyword=keyword,
-                        sentiment_score=round(sentiment_score, 3),
-                        post_volume=base_volume,
-                        engagement_rate=round(engagement_rate, 3),
-                        impact_score=round(impact_score, 3),
-                        confidence=round(confidence, 2)
-                    ))
-        
+                    confidence = min(
+                        0.95, 0.5 + (volume_weight * 0.3) + (abs(sentiment_score) * 0.15)
+                    )
+
+                    sentiment_factors.append(
+                        SentimentFactor(
+                            date=analysis_date,
+                            platform=platform,
+                            keyword=keyword,
+                            sentiment_score=round(sentiment_score, 3),
+                            post_volume=base_volume,
+                            engagement_rate=round(engagement_rate, 3),
+                            impact_score=round(impact_score, 3),
+                            confidence=round(confidence, 2),
+                        )
+                    )
+
         # Calcola sentiment aggregato per keyword
         aggregate_sentiment = {}
         for keyword in all_keywords:
-            keyword_sentiments = [f.sentiment_score for f in sentiment_factors if f.keyword == keyword]
+            keyword_sentiments = [
+                f.sentiment_score for f in sentiment_factors if f.keyword == keyword
+            ]
             if keyword_sentiments:
                 # Media pesata per volume
                 keyword_factors = [f for f in sentiment_factors if f.keyword == keyword]
                 total_volume = sum([f.post_volume for f in keyword_factors])
                 if total_volume > 0:
-                    weighted_sentiment = sum([f.sentiment_score * f.post_volume for f in keyword_factors]) / total_volume
+                    weighted_sentiment = (
+                        sum([f.sentiment_score * f.post_volume for f in keyword_factors])
+                        / total_volume
+                    )
                 else:
                     weighted_sentiment = np.mean(keyword_sentiments)
                 aggregate_sentiment[keyword] = round(weighted_sentiment, 3)
             else:
                 aggregate_sentiment[keyword] = 0.0
-        
+
         # Analisi trend sentiment
         trend_analysis = {}
         for keyword in all_keywords:
@@ -832,7 +961,7 @@ async def analyze_social_sentiment(
                 mid_point = len(keyword_factors) // 2
                 early_sentiment = np.mean([f.sentiment_score for f in keyword_factors[:mid_point]])
                 late_sentiment = np.mean([f.sentiment_score for f in keyword_factors[mid_point:]])
-                
+
                 change = late_sentiment - early_sentiment
                 if change > 0.1:
                     trend_analysis[keyword] = "Improving - positive trend in recent period"
@@ -842,33 +971,41 @@ async def analyze_social_sentiment(
                     trend_analysis[keyword] = "Stable - consistent sentiment"
             else:
                 trend_analysis[keyword] = "Insufficient data for trend analysis"
-        
+
         # Generate alert triggers
         alert_triggers = []
         for keyword, sentiment in aggregate_sentiment.items():
             if sentiment < -0.4:
-                alert_triggers.append(f"Negative spike detected for '{keyword}' - investigate customer issues")
+                alert_triggers.append(
+                    f"Negative spike detected for '{keyword}' - investigate customer issues"
+                )
             elif sentiment > 0.6:
-                alert_triggers.append(f"Very positive sentiment for '{keyword}' - consider promotional campaign")
-        
+                alert_triggers.append(
+                    f"Very positive sentiment for '{keyword}' - consider promotional campaign"
+                )
+
         # Controlla volatilità
         for keyword in all_keywords:
-            keyword_sentiments = [f.sentiment_score for f in sentiment_factors if f.keyword == keyword]
+            keyword_sentiments = [
+                f.sentiment_score for f in sentiment_factors if f.keyword == keyword
+            ]
             if keyword_sentiments and np.std(keyword_sentiments) > 0.4:
-                alert_triggers.append(f"High sentiment volatility for '{keyword}' - monitor closely")
-        
+                alert_triggers.append(
+                    f"High sentiment volatility for '{keyword}' - monitor closely"
+                )
+
         if not alert_triggers:
             alert_triggers.append("No significant sentiment alerts - normal monitoring continues")
-        
+
         return SocialSentimentResponse(
             analysis_period=f"{base_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}",
             platforms_analyzed=request.platforms,
             sentiment_factors=sentiment_factors,
             aggregate_sentiment=aggregate_sentiment,
             trend_analysis=trend_analysis,
-            alert_triggers=alert_triggers
+            alert_triggers=alert_triggers,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore analisi sentiment: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore social sentiment: {str(e)}")
@@ -877,11 +1014,11 @@ async def analyze_social_sentiment(
 @router.post("/economic-indicators", response_model=EconomicIndicatorsResponse)
 async def analyze_economic_indicators(
     request: EconomicIndicatorsRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    services: Optional[Dict] = Depends(get_demand_sensing_services),
 ):
     """
     Analizza indicatori economici per forecasting macro-economico della domanda.
-    
+
     <h4>Indicatori Economici per Settore:</h4>
     <table >
         <tr><th>Settore</th><th>Indicatori Chiave</th><th>Sensibilità</th></tr>
@@ -891,7 +1028,7 @@ async def analyze_economic_indicators(
         <tr><td>Real Estate</td><td>Interest Rates, Employment</td><td>Estrema</td></tr>
         <tr><td>Technology</td><td>Business Investment, Innovation Index</td><td>Media</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -938,36 +1075,38 @@ async def analyze_economic_indicators(
                 "gdp_sensitivity": 0.12,
                 "unemployment_sensitivity": -0.08,
                 "inflation_sensitivity": -0.05,
-                "confidence_sensitivity": 0.15
+                "confidence_sensitivity": 0.15,
             },
             "luxury": {
                 "gdp_sensitivity": 0.25,
                 "unemployment_sensitivity": -0.15,
                 "inflation_sensitivity": -0.08,
-                "confidence_sensitivity": 0.20
+                "confidence_sensitivity": 0.20,
             },
             "essential": {
                 "gdp_sensitivity": 0.05,
                 "unemployment_sensitivity": -0.03,
                 "inflation_sensitivity": -0.12,  # Più sensibile all'inflazione
-                "confidence_sensitivity": 0.08
+                "confidence_sensitivity": 0.08,
             },
             "technology": {
                 "gdp_sensitivity": 0.18,
                 "unemployment_sensitivity": -0.06,
                 "inflation_sensitivity": -0.04,
-                "confidence_sensitivity": 0.12
-            }
+                "confidence_sensitivity": 0.12,
+            },
         }
-        
-        calibration = sector_calibrations.get(request.business_sector, sector_calibrations["consumer_goods"])
-        
-        # Genera dati economici demo realistici  
+
+        calibration = sector_calibrations.get(
+            request.business_sector, sector_calibrations["consumer_goods"]
+        )
+
+        # Genera dati economici demo realistici
         np.random.seed(42)
         base_date = datetime.now() - timedelta(days=30)
-        
+
         economic_factors = []
-        
+
         # Valori base per indicatori (Italia 2024)
         indicator_baselines = {
             "gdp": {"value": 101.2, "volatility": 0.5, "source": "ISTAT"},
@@ -975,27 +1114,31 @@ async def analyze_economic_indicators(
             "inflation": {"value": 1.9, "volatility": 0.3, "source": "ISTAT"},
             "consumer_confidence": {"value": 100.5, "volatility": 2.0, "source": "ISTAT"},
             "retail_sales": {"value": 102.8, "volatility": 1.5, "source": "ISTAT"},
-            "industrial_production": {"value": 99.2, "volatility": 1.8, "source": "ISTAT"}
+            "industrial_production": {"value": 99.2, "volatility": 1.8, "source": "ISTAT"},
         }
-        
+
         # Genera serie temporali per indicatori
         for indicator in request.indicators:
             if indicator not in indicator_baselines:
                 continue
-                
+
             baseline = indicator_baselines[indicator]
             previous_value = baseline["value"]
-            
+
             for week in range(5):  # 5 settimane
                 factor_date = base_date + timedelta(weeks=week)
-                
+
                 # Simula cambiamento realistico
                 change = np.random.normal(0, baseline["volatility"])
                 new_value = previous_value + change
-                
+
                 # Calcola change percent
-                change_percent = (new_value - previous_value) / previous_value * 100 if previous_value != 0 else 0
-                
+                change_percent = (
+                    (new_value - previous_value) / previous_value * 100
+                    if previous_value != 0
+                    else 0
+                )
+
                 # Calcola impact score basato su calibrazione settoriale
                 if indicator == "gdp":
                     impact_score = change_percent * calibration["gdp_sensitivity"] / 100
@@ -1007,24 +1150,26 @@ async def analyze_economic_indicators(
                     impact_score = change_percent * calibration["confidence_sensitivity"] / 100
                 else:
                     impact_score = change_percent * 0.05 / 100  # Default sensitivity
-                
+
                 # Confidenza basata su source e volatilità
                 confidence = 0.95 if baseline["source"] == "ISTAT" else 0.85
                 if abs(change_percent) > baseline["volatility"] * 2:  # Cambio anomalo
                     confidence *= 0.8
-                
-                economic_factors.append(EconomicFactor(
-                    date=factor_date,
-                    indicator=indicator,
-                    value=round(new_value, 2),
-                    change_percent=round(change_percent, 2),
-                    impact_score=round(impact_score, 4),
-                    confidence=round(confidence, 2),
-                    data_source=baseline["source"]
-                ))
-                
+
+                economic_factors.append(
+                    EconomicFactor(
+                        date=factor_date,
+                        indicator=indicator,
+                        value=round(new_value, 2),
+                        change_percent=round(change_percent, 2),
+                        impact_score=round(impact_score, 4),
+                        confidence=round(confidence, 2),
+                        data_source=baseline["source"],
+                    )
+                )
+
                 previous_value = new_value
-        
+
         # Identifica leading indicators (quelli con maggiore correlazione)
         leading_indicators = []
         for indicator in request.indicators:
@@ -1032,39 +1177,45 @@ async def analyze_economic_indicators(
             avg_impact = np.mean([abs(f.impact_score) for f in indicator_factors])
             if avg_impact > 0.01:  # Soglia significatività
                 leading_indicators.append(indicator)
-        
+
         # Se nessuno supera la soglia, prendi i top 2
         if not leading_indicators and economic_factors:
             impact_by_indicator = {}
             for indicator in request.indicators:
                 indicator_factors = [f for f in economic_factors if f.indicator == indicator]
                 if indicator_factors:
-                    impact_by_indicator[indicator] = np.mean([abs(f.impact_score) for f in indicator_factors])
-            
-            leading_indicators = sorted(impact_by_indicator.keys(), 
-                                       key=lambda x: impact_by_indicator[x], reverse=True)[:2]
-        
+                    impact_by_indicator[indicator] = np.mean(
+                        [abs(f.impact_score) for f in indicator_factors]
+                    )
+
+            leading_indicators = sorted(
+                impact_by_indicator.keys(), key=lambda x: impact_by_indicator[x], reverse=True
+            )[:2]
+
         # Calcola forecast impact per indicatore
         forecast_impact = {}
         for indicator in request.indicators:
-            recent_factors = [f for f in economic_factors if f.indicator == indicator][-2:]  # Ultimi 2 punti
+            recent_factors = [f for f in economic_factors if f.indicator == indicator][
+                -2:
+            ]  # Ultimi 2 punti
             if recent_factors:
-                forecast_impact[indicator] = round(np.mean([f.impact_score for f in recent_factors]), 4)
+                forecast_impact[indicator] = round(
+                    np.mean([f.impact_score for f in recent_factors]), 4
+                )
             else:
                 forecast_impact[indicator] = 0.0
-        
+
         return EconomicIndicatorsResponse(
             country=request.country_code,
             analysis_period=f"{base_date.strftime('%Y-%m-%d')} to {(base_date + timedelta(days=35)).strftime('%Y-%m-%d')}",
             economic_factors=economic_factors,
             sector_calibration={
-                f"{k.replace('_sensitivity', '')}_sensitivity": v 
-                for k, v in calibration.items()
+                f"{k.replace('_sensitivity', '')}_sensitivity": v for k, v in calibration.items()
             },
             leading_indicators=leading_indicators,
-            forecast_impact=forecast_impact
+            forecast_impact=forecast_impact,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore analisi indicatori economici: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore economic indicators: {str(e)}")
@@ -1072,12 +1223,11 @@ async def analyze_economic_indicators(
 
 @router.post("/calendar-events", response_model=CalendarEventsResponse)
 async def analyze_calendar_events(
-    request: CalendarEventsRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    request: CalendarEventsRequest, services: Optional[Dict] = Depends(get_demand_sensing_services)
 ):
     """
     Analizza eventi calendario per identificare impatti su domanda (festività, eventi sportivi, etc).
-    
+
     <h4>Tipi Eventi e Impatto Tipico:</h4>
     <table >
         <tr><th>Tipo Evento</th><th>Durata Impatto</th><th>Variazione Domanda</th></tr>
@@ -1087,7 +1237,7 @@ async def analyze_calendar_events(
         <tr><td>Concerti/Festival</td><td>1-2 giorni</td><td>+25-50% hospitality locale</td></tr>
         <tr><td>Meteo Estremo</td><td>1-3 giorni</td><td>-30-80% mobilità dipendente</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -1158,62 +1308,68 @@ async def analyze_calendar_events(
             "DE": [
                 {"name": "Oktoberfest", "date": "09-16", "impact": 0.40, "type": "cultural"},
                 {"name": "Christmas Markets", "date": "12-01", "impact": 0.20, "type": "cultural"},
-            ]
+            ],
         }
-        
+
         # Eventi sportivi ricorrenti
         sports_events = [
             {"name": "Champions League Final", "month": 6, "impact": 0.25, "duration": 1},
-            {"name": "World Cup Final", "month": 7, "impact": 0.40, "duration": 1},  
+            {"name": "World Cup Final", "month": 7, "impact": 0.40, "duration": 1},
             {"name": "Super Bowl", "month": 2, "impact": 0.35, "duration": 1},
             {"name": "Olympics Opening", "month": 8, "impact": 0.20, "duration": 16},
         ]
-        
+
         base_date = datetime.now()
         calendar_events = []
-        
+
         # Processa festività del paese
         holidays = country_holidays.get(request.country_code, [])
         current_year = base_date.year
-        
+
         for holiday in holidays:
             # Converte data da MM-DD a datetime dell'anno corrente/prossimo
             month, day = map(int, holiday["date"].split("-"))
             event_date = datetime(current_year, month, day)
-            
+
             # Se data già passata, usa anno prossimo
             if event_date < base_date:
                 event_date = datetime(current_year + 1, month, day)
-            
+
             # Controlla se rientra nel forecast period
             if event_date <= base_date + timedelta(days=request.forecast_days):
-                calendar_events.append(CalendarEvent(
-                    date=event_date,
-                    event_name=holiday["name"],
-                    event_type=holiday["type"],
-                    impact_score=holiday["impact"],
-                    duration_days=1,
-                    pre_impact_days=request.impact_radius_days,
-                    post_impact_days=request.impact_radius_days // 2,
-                    confidence=0.95  # Alta confidenza per festività ufficiali
-                ))
-        
+                calendar_events.append(
+                    CalendarEvent(
+                        date=event_date,
+                        event_name=holiday["name"],
+                        event_type=holiday["type"],
+                        impact_score=holiday["impact"],
+                        duration_days=1,
+                        pre_impact_days=request.impact_radius_days,
+                        post_impact_days=request.impact_radius_days // 2,
+                        confidence=0.95,  # Alta confidenza per festività ufficiali
+                    )
+                )
+
         # Aggiungi eventi custom se forniti
         if request.custom_events:
             for custom_event in request.custom_events:
-                event_date = datetime.fromisoformat(custom_event["date"].replace("Z", "+00:00")).replace(tzinfo=None)
+                event_date = datetime.fromisoformat(
+                    custom_event["date"].replace("Z", "+00:00")
+                ).replace(tzinfo=None)
                 if base_date <= event_date <= base_date + timedelta(days=request.forecast_days):
-                    calendar_events.append(CalendarEvent(
-                        date=event_date,
-                        event_name=custom_event["name"],
-                        event_type=custom_event.get("type", "custom"),
-                        impact_score=custom_event.get("impact_score", 0.1),
-                        duration_days=custom_event.get("duration_days", 1),
-                        pre_impact_days=request.impact_radius_days,
-                        post_impact_days=request.impact_radius_days // 2,
-                        confidence=0.80  # Confidenza media per eventi custom
-                    ))
-        
+                    calendar_events.append(
+                        CalendarEvent(
+                            date=event_date,
+                            event_name=custom_event["name"],
+                            event_type=custom_event.get("type", "custom"),
+                            impact_score=custom_event.get("impact_score", 0.1),
+                            duration_days=custom_event.get("duration_days", 1),
+                            pre_impact_days=request.impact_radius_days,
+                            post_impact_days=request.impact_radius_days // 2,
+                            confidence=0.80,  # Confidenza media per eventi custom
+                        )
+                    )
+
         # Aggiungi eventi sportivi se richiesti e nel periodo
         if "sports" in request.event_types:
             for sport_event in sports_events:
@@ -1221,31 +1377,37 @@ async def analyze_calendar_events(
                 if sport_event["month"] in range(base_date.month, base_date.month + 2):
                     # Stima data (semplificata)
                     event_date = base_date.replace(month=sport_event["month"], day=15)
-                    if event_date >= base_date and event_date <= base_date + timedelta(days=request.forecast_days):
-                        calendar_events.append(CalendarEvent(
-                            date=event_date,
-                            event_name=sport_event["name"],
-                            event_type="sports",
-                            impact_score=sport_event["impact"],
-                            duration_days=sport_event["duration"],
-                            pre_impact_days=1,
-                            post_impact_days=1,
-                            confidence=0.70  # Confidenza media - date possono variare
-                        ))
-        
+                    if event_date >= base_date and event_date <= base_date + timedelta(
+                        days=request.forecast_days
+                    ):
+                        calendar_events.append(
+                            CalendarEvent(
+                                date=event_date,
+                                event_name=sport_event["name"],
+                                event_type="sports",
+                                impact_score=sport_event["impact"],
+                                duration_days=sport_event["duration"],
+                                pre_impact_days=1,
+                                post_impact_days=1,
+                                confidence=0.70,  # Confidenza media - date possono variare
+                            )
+                        )
+
         # Analisi impatto festività
         holiday_events = [e for e in calendar_events if e.event_type == "holiday"]
         holiday_impact_analysis = {
             "total_holiday_days": len(holiday_events),
-            "avg_impact_per_holiday": round(np.mean([e.impact_score for e in holiday_events]), 3) if holiday_events else 0.0,
+            "avg_impact_per_holiday": round(np.mean([e.impact_score for e in holiday_events]), 3)
+            if holiday_events
+            else 0.0,
             "business_closure_days": len([e for e in holiday_events if e.impact_score < -0.3]),
-            "positive_impact_holidays": len([e for e in holiday_events if e.impact_score > 0])
+            "positive_impact_holidays": len([e for e in holiday_events if e.impact_score > 0]),
         }
-        
+
         # Aggiustamenti stagionali basati su mese
         current_month = base_date.month
         seasonal_adjustments = {}
-        
+
         if current_month in [6, 7, 8]:  # Estate
             seasonal_adjustments["summer_vacation_factor"] = 0.80
             seasonal_adjustments["tourism_boost"] = 1.25
@@ -1258,25 +1420,25 @@ async def analyze_calendar_events(
         else:  # Primavera
             seasonal_adjustments["spring_revival"] = 1.10
             seasonal_adjustments["post_holiday_normalization"] = 1.00
-        
+
         # Identifica date alto impatto
         high_impact_dates = []
         for event in calendar_events:
             if abs(event.impact_score) > 0.15:  # Soglia significatività
                 high_impact_dates.append(event.date.strftime("%Y-%m-%d"))
-        
+
         # Ordina eventi per data
         calendar_events.sort(key=lambda x: x.date)
-        
+
         return CalendarEventsResponse(
             country=request.country_code,
             forecast_period=f"{base_date.strftime('%Y-%m-%d')} to {(base_date + timedelta(days=request.forecast_days)).strftime('%Y-%m-%d')}",
             calendar_events=calendar_events,
             holiday_impact_analysis=holiday_impact_analysis,
             seasonal_adjustments=seasonal_adjustments,
-            high_impact_dates=high_impact_dates
+            high_impact_dates=high_impact_dates,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore analisi eventi calendario: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore calendar events: {str(e)}")
@@ -1285,11 +1447,11 @@ async def analyze_calendar_events(
 @router.post("/ensemble-forecast", response_model=EnsembleForecastResponse)
 async def generate_ensemble_forecast(
     request: EnsembleForecastRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    services: Optional[Dict] = Depends(get_demand_sensing_services),
 ):
     """
     Genera previsioni ensemble combinando forecast base con fattori esterni multi-source.
-    
+
     <h4>Algoritmo Ensemble Weighting:</h4>
     <table >
         <tr><th>Fonte</th><th>Peso Default</th><th>Condizioni Boost</th></tr>
@@ -1300,7 +1462,7 @@ async def generate_ensemble_forecast(
         <tr><td>Economic</td><td>10%</td><td>Luxury goods, economic sensitivity</td></tr>
         <tr><td>Calendar</td><td>5%</td><td>Eventi high-impact identificati</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -1351,13 +1513,16 @@ async def generate_ensemble_forecast(
     """
     try:
         forecast_id = f"ens-{uuid.uuid4().hex[:8]}"
-        
+
         if len(request.base_forecast) != len(request.forecast_dates):
-            raise HTTPException(status_code=400, detail="Base forecast e forecast dates devono avere stessa lunghezza")
-        
+            raise HTTPException(
+                status_code=400,
+                detail="Base forecast e forecast dates devono avere stessa lunghezza",
+            )
+
         # Converte date string in datetime
         forecast_dates_dt = [datetime.fromisoformat(date) for date in request.forecast_dates]
-        
+
         # Inizializza adjustment factors e contributions
         adjustment_factors = [1.0] * len(request.base_forecast)
         factor_contributions = {
@@ -1365,9 +1530,9 @@ async def generate_ensemble_forecast(
             "trends": [0.0] * len(request.base_forecast),
             "sentiment": [0.0] * len(request.base_forecast),
             "economic": [0.0] * len(request.base_forecast),
-            "calendar": [0.0] * len(request.base_forecast)
+            "calendar": [0.0] * len(request.base_forecast),
         }
-        
+
         # Processa fattori meteo
         if request.weather_factors:
             weather_weight = request.ensemble_weights.get("weather", 0.2)
@@ -1376,10 +1541,12 @@ async def generate_ensemble_forecast(
                 weather_date = weather_factor.date.date()
                 for i, forecast_date in enumerate(forecast_dates_dt):
                     if forecast_date.date() == weather_date:
-                        impact = weather_factor.impact_score * weather_factor.confidence * weather_weight
+                        impact = (
+                            weather_factor.impact_score * weather_factor.confidence * weather_weight
+                        )
                         adjustment_factors[i] += impact
                         factor_contributions["weather"][i] = impact * request.base_forecast[i]
-        
+
         # Processa fattori trends
         if request.trends_factors:
             trends_weight = request.ensemble_weights.get("trends", 0.15)
@@ -1390,7 +1557,7 @@ async def generate_ensemble_forecast(
                         impact = trend_factor.impact_score * trend_factor.confidence * trends_weight
                         adjustment_factors[i] += impact
                         factor_contributions["trends"][i] = impact * request.base_forecast[i]
-        
+
         # Processa fattori sentiment
         if request.sentiment_factors:
             sentiment_weight = request.ensemble_weights.get("sentiment", 0.1)
@@ -1400,8 +1567,10 @@ async def generate_ensemble_forecast(
                 date_key = sentiment_factor.date.date()
                 if date_key not in daily_sentiment:
                     daily_sentiment[date_key] = []
-                daily_sentiment[date_key].append(sentiment_factor.impact_score * sentiment_factor.confidence)
-            
+                daily_sentiment[date_key].append(
+                    sentiment_factor.impact_score * sentiment_factor.confidence
+                )
+
             for date_key, impacts in daily_sentiment.items():
                 avg_impact = np.mean(impacts)
                 for i, forecast_date in enumerate(forecast_dates_dt):
@@ -1409,7 +1578,7 @@ async def generate_ensemble_forecast(
                         impact = avg_impact * sentiment_weight
                         adjustment_factors[i] += impact
                         factor_contributions["sentiment"][i] = impact * request.base_forecast[i]
-        
+
         # Processa fattori economici
         if request.economic_factors:
             economic_weight = request.ensemble_weights.get("economic", 0.1)
@@ -1418,110 +1587,132 @@ async def generate_ensemble_forecast(
                 impact = economic_factor.impact_score * economic_factor.confidence * economic_weight
                 # Applica impatto a tutti i giorni con decay
                 for i in range(len(request.base_forecast)):
-                    days_diff = abs((forecast_dates_dt[i].date() - economic_factor.date.date()).days)
+                    days_diff = abs(
+                        (forecast_dates_dt[i].date() - economic_factor.date.date()).days
+                    )
                     decay_factor = max(0.1, 1.0 - (days_diff * 0.05))  # Decay 5% per giorno
                     distributed_impact = impact * decay_factor
                     adjustment_factors[i] += distributed_impact
-                    factor_contributions["economic"][i] += distributed_impact * request.base_forecast[i]
-        
+                    factor_contributions["economic"][i] += (
+                        distributed_impact * request.base_forecast[i]
+                    )
+
         # Processa eventi calendario
         if request.calendar_events:
             calendar_weight = request.ensemble_weights.get("calendar", 0.05)
             for calendar_event in request.calendar_events:
-                event_impact = calendar_event.impact_score * calendar_event.confidence * calendar_weight
-                
+                event_impact = (
+                    calendar_event.impact_score * calendar_event.confidence * calendar_weight
+                )
+
                 # Applica impatto su periodo evento + pre/post impact
-                event_start = calendar_event.date.date() - timedelta(days=calendar_event.pre_impact_days)
-                event_end = calendar_event.date.date() + timedelta(days=calendar_event.post_impact_days)
-                
+                event_start = calendar_event.date.date() - timedelta(
+                    days=calendar_event.pre_impact_days
+                )
+                event_end = calendar_event.date.date() + timedelta(
+                    days=calendar_event.post_impact_days
+                )
+
                 for i, forecast_date in enumerate(forecast_dates_dt):
                     if event_start <= forecast_date.date() <= event_end:
                         # Impatto massimo nel giorno evento, decay nei giorni adiacenti
                         if forecast_date.date() == calendar_event.date.date():
                             impact = event_impact
                         else:
-                            days_from_event = abs((forecast_date.date() - calendar_event.date.date()).days)
+                            days_from_event = abs(
+                                (forecast_date.date() - calendar_event.date.date()).days
+                            )
                             impact = event_impact * (1.0 - days_from_event * 0.2)
-                        
+
                         adjustment_factors[i] += impact
                         factor_contributions["calendar"][i] += impact * request.base_forecast[i]
-        
+
         # Calcola forecast aggiustato
         adjusted_forecast = [
-            request.base_forecast[i] * adjustment_factors[i] 
+            request.base_forecast[i] * adjustment_factors[i]
             for i in range(len(request.base_forecast))
         ]
-        
+
         # Calcola confidence intervals
         base_std = np.std(request.base_forecast)
         confidence_intervals = {}
-        
+
         for i, adj_forecast in enumerate(adjusted_forecast):
             # Aumenta uncertainty per aggiustamenti grandi
             uncertainty_multiplier = 1.0 + abs(adjustment_factors[i] - 1.0)
             interval_width = 1.96 * base_std * uncertainty_multiplier  # 95% CI
-            
+
             if "lower_95" not in confidence_intervals:
                 confidence_intervals["lower_95"] = []
                 confidence_intervals["upper_95"] = []
-            
+
             confidence_intervals["lower_95"].append(round(max(0, adj_forecast - interval_width), 1))
             confidence_intervals["upper_95"].append(round(adj_forecast + interval_width, 1))
-        
+
         # Calcola metriche aggregate
         total_base_forecast = sum(request.base_forecast)
         total_adjusted_forecast = sum(adjusted_forecast)
-        total_adjustment = (total_adjusted_forecast - total_base_forecast) / total_base_forecast if total_base_forecast > 0 else 0
-        
+        total_adjustment = (
+            (total_adjusted_forecast - total_base_forecast) / total_base_forecast
+            if total_base_forecast > 0
+            else 0
+        )
+
         # Calcola confidence score
         # Basato su consistency dei fattori e coverage
         factor_consistency_scores = []
-        
+
         for factor_name, contributions in factor_contributions.items():
             if any(c != 0 for c in contributions):
                 factor_std = np.std([c for c in contributions if c != 0])
                 factor_mean = np.mean([abs(c) for c in contributions if c != 0])
                 consistency = 1.0 - min(1.0, factor_std / max(0.01, factor_mean))
                 factor_consistency_scores.append(consistency)
-        
+
         confidence_score = np.mean(factor_consistency_scores) if factor_consistency_scores else 0.5
-        
+
         # Penalizza per aggiustamenti estremi
         max_adjustment = max([abs(af - 1.0) for af in adjustment_factors])
         if max_adjustment > 0.3:  # Aggiustamento >30%
             confidence_score *= 0.8
-        
+
         # Dettagli analysis
         dominant_factors = []
         total_contributions = {}
-        
+
         for factor_name, contributions in factor_contributions.items():
             total_contribution = sum([abs(c) for c in contributions])
             total_contributions[factor_name] = total_contribution
-            
+
         # Ordina fattori per contributo
         sorted_factors = sorted(total_contributions.items(), key=lambda x: x[1], reverse=True)
-        dominant_factors = [factor for factor, contribution in sorted_factors[:2] if contribution > 0]
-        
+        dominant_factors = [
+            factor for factor, contribution in sorted_factors[:2] if contribution > 0
+        ]
+
         low_confidence_days = len([af for af in adjustment_factors if abs(af - 1.0) > 0.2])
-        max_adjustment_idx = adjustment_factors.index(max(adjustment_factors, key=lambda x: abs(x - 1.0)))
+        max_adjustment_idx = adjustment_factors.index(
+            max(adjustment_factors, key=lambda x: abs(x - 1.0))
+        )
         max_adjustment_date = request.forecast_dates[max_adjustment_idx]
-        
+
         details = {
             "dominant_factors": dominant_factors,
             "low_confidence_days": low_confidence_days,
             "max_adjustment_day": max_adjustment_date,
             "total_factors_used": len([f for f, c in total_contributions.items() if c > 0]),
-            "avg_daily_adjustment": round(np.mean([abs(af - 1.0) for af in adjustment_factors]), 3)
+            "avg_daily_adjustment": round(np.mean([abs(af - 1.0) for af in adjustment_factors]), 3),
         }
-        
+
         # Arrotonda risultati per output pulito
         adjusted_forecast = [round(f, 1) for f in adjusted_forecast]
         adjustment_factors = [round(af, 3) for af in adjustment_factors]
-        
+
         for factor_name in factor_contributions:
-            factor_contributions[factor_name] = [round(c, 1) for c in factor_contributions[factor_name]]
-        
+            factor_contributions[factor_name] = [
+                round(c, 1) for c in factor_contributions[factor_name]
+            ]
+
         return EnsembleForecastResponse(
             forecast_id=forecast_id,
             base_forecast=request.base_forecast,
@@ -1531,9 +1722,9 @@ async def generate_ensemble_forecast(
             factor_contributions=factor_contributions,
             total_adjustment=round(total_adjustment, 3),
             confidence_score=round(confidence_score, 2),
-            details=details
+            details=details,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore ensemble forecast: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore ensemble forecast: {str(e)}")
@@ -1543,11 +1734,11 @@ async def generate_ensemble_forecast(
 async def analyze_factor_contributions(
     forecast_id: str,
     period_days: int = Query(30, description="Giorni periodo analisi"),
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    services: Optional[Dict] = Depends(get_demand_sensing_services),
 ):
     """
     Analizza contributi storici dei fattori per ottimizzazione pesi ensemble.
-    
+
     <h4>Analisi Contributi Fattori:</h4>
     <table >
         <tr><th>Metrica</th><th>Descrizione</th><th>Utilizzo</th></tr>
@@ -1556,7 +1747,7 @@ async def analyze_factor_contributions(
         <tr><td>Importance Ranking</td><td>Ranking importanza per business</td><td>Focus prioritario</td></tr>
         <tr><td>Optimization Suggestions</td><td>Raccomandazioni pesi</td><td>Tuning algoritmo</td></tr>
     </table>
-    
+
     <h4>Risposta di Esempio:</h4>
     <pre><code>
     {
@@ -1583,15 +1774,15 @@ async def analyze_factor_contributions(
     """
     try:
         analysis_id = f"contrib-{uuid.uuid4().hex[:8]}"
-        
+
         # Simula analisi contributi storica (in produzione attingeremmo da database)
         np.random.seed(42)
         base_date = datetime.now() - timedelta(days=period_days)
-        
+
         # Simula contributi storici per fattore
         factors = ["weather", "trends", "sentiment", "economic", "calendar"]
         contributions_by_source = {}
-        
+
         for factor in factors:
             # Simula metriche di performance storica
             if factor == "weather":
@@ -1614,14 +1805,14 @@ async def analyze_factor_contributions(
                 accuracy_improvement = 0.12
                 frequency = 0.15  # Pochi giorni ma impact alto
                 avg_magnitude = 0.25
-            
+
             contributions_by_source[factor] = {
                 "accuracy_improvement": accuracy_improvement,
                 "frequency": frequency,
                 "avg_magnitude": avg_magnitude,
-                "total_contribution": round(accuracy_improvement * frequency, 3)
+                "total_contribution": round(accuracy_improvement * frequency, 3),
             }
-        
+
         # Calcola correlation matrix tra fattori
         correlation_matrix = {}
         for i, factor1 in enumerate(factors):
@@ -1633,25 +1824,28 @@ async def analyze_factor_contributions(
                         correlation = 0.25  # Meteo-trends correlazione moderata
                     elif (factor1, factor2) in [("trends", "sentiment"), ("sentiment", "trends")]:
                         correlation = 0.45  # Trends-sentiment alta correlazione
-                    elif (factor1, factor2) in [("economic", "sentiment"), ("sentiment", "economic")]:
+                    elif (factor1, factor2) in [
+                        ("economic", "sentiment"),
+                        ("sentiment", "economic"),
+                    ]:
                         correlation = 0.35  # Economic-sentiment moderata
                     elif (factor1, factor2) in [("weather", "sentiment"), ("sentiment", "weather")]:
                         correlation = -0.10  # Meteo-sentiment lievemente negativa
                     else:
                         correlation = np.random.uniform(-0.1, 0.2)  # Correlazioni casuali basse
-                    
+
                     correlation_matrix[factor1][factor2] = round(correlation, 3)
-        
+
         # Calcola importance ranking
         importance_ranking = []
         for factor in factors:
             contrib = contributions_by_source[factor]
-            
+
             # Score combinato: accuracy * frequency * magnitude
-            importance_score = (contrib["accuracy_improvement"] * 
-                              contrib["frequency"] * 
-                              contrib["avg_magnitude"])
-            
+            importance_score = (
+                contrib["accuracy_improvement"] * contrib["frequency"] * contrib["avg_magnitude"]
+            )
+
             # Determina business impact level
             if importance_score > 0.08:
                 business_impact = "High"
@@ -1659,66 +1853,70 @@ async def analyze_factor_contributions(
                 business_impact = "Medium"
             else:
                 business_impact = "Low"
-            
-            importance_ranking.append({
-                "factor": factor,
-                "importance_score": round(importance_score, 3),
-                "business_impact": business_impact,
-                "rank": 0  # Sarà assegnato dopo sorting
-            })
-        
+
+            importance_ranking.append(
+                {
+                    "factor": factor,
+                    "importance_score": round(importance_score, 3),
+                    "business_impact": business_impact,
+                    "rank": 0,  # Sarà assegnato dopo sorting
+                }
+            )
+
         # Ordina per importance
         importance_ranking.sort(key=lambda x: x["importance_score"], reverse=True)
         for i, item in enumerate(importance_ranking):
             item["rank"] = i + 1
-        
+
         # Genera optimization suggestions
         optimization_suggestions = []
-        
+
         # Top performer - suggerisce aumento peso
         top_factor = importance_ranking[0]
         if top_factor["importance_score"] > 0.08:
             optimization_suggestions.append(
                 f"Increase {top_factor['factor']} weight to 0.25 (+0.05) - consistently high impact"
             )
-        
+
         # Low performer - suggerisce riduzione peso
         low_performers = [item for item in importance_ranking if item["importance_score"] < 0.02]
         for performer in low_performers:
             optimization_suggestions.append(
                 f"Consider reducing {performer['factor']} weight to 0.08 (-0.02) - low recent correlation"
             )
-        
+
         # High correlation - suggerisce consolidamento
         high_correlations = []
         for factor1, correlations in correlation_matrix.items():
             for factor2, corr in correlations.items():
                 if corr > 0.4:
                     high_correlations.append((factor1, factor2, corr))
-        
+
         for factor1, factor2, corr in high_correlations:
             optimization_suggestions.append(
                 f"High correlation between {factor1} and {factor2} ({corr:.2f}) - consider composite factor"
             )
-        
+
         # Business-specific suggestions
         if contributions_by_source["weather"]["frequency"] > 0.7:
             optimization_suggestions.append(
                 "Weather factor active 70%+ days - consider weather-specialized model"
             )
-        
+
         if not optimization_suggestions:
-            optimization_suggestions.append("Current ensemble weights appear well-balanced - no major adjustments needed")
-        
+            optimization_suggestions.append(
+                "Current ensemble weights appear well-balanced - no major adjustments needed"
+            )
+
         return FactorContributionsResponse(
             analysis_id=analysis_id,
             forecast_period=f"{base_date.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}",
             contributions_by_source=contributions_by_source,
             correlation_matrix=correlation_matrix,
             importance_ranking=importance_ranking,
-            optimization_suggestions=optimization_suggestions
+            optimization_suggestions=optimization_suggestions,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore analisi contributi: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore factor contributions: {str(e)}")
@@ -1727,11 +1925,11 @@ async def analyze_factor_contributions(
 @router.post("/sensitivity-analysis", response_model=SensitivityAnalysisResponse)
 async def perform_sensitivity_analysis(
     request: SensitivityAnalysisRequest,
-    services: Optional[Dict] = Depends(get_demand_sensing_services)
+    services: Optional[Dict] = Depends(get_demand_sensing_services),
 ):
     """
     Esegue analisi sensibilità per ottimizzare pesi ensemble e identificare parametri critici.
-    
+
     <h4>Metodologia Sensitivity Analysis:</h4>
     <table >
         <tr><th>Fase</th><th>Descrizione</th><th>Output</th></tr>
@@ -1740,7 +1938,7 @@ async def perform_sensitivity_analysis(
         <tr><td>Optimization</td><td>Identifica pesi ottimali</td><td>Best weights configuration</td></tr>
         <tr><td>Robustness Test</td><td>Testa stabilità configurazione</td><td>Confidence intervals</td></tr>
     </table>
-    
+
     <h4>Esempio Richiesta:</h4>
     <pre><code>
     {
@@ -1787,13 +1985,15 @@ async def perform_sensitivity_analysis(
     """
     try:
         analysis_id = f"sens-{uuid.uuid4().hex[:8]}"
-        
+
         if len(request.historical_forecasts) == 0:
-            raise HTTPException(status_code=400, detail="Servono almeno alcuni forecast storici per l'analisi")
-        
+            raise HTTPException(
+                status_code=400, detail="Servono almeno alcuni forecast storici per l'analisi"
+            )
+
         # Simula sensitivity analysis (in produzione useremmo algoritmo di ottimizzazione)
         np.random.seed(42)
-        
+
         # Pesi correnti (estratti dai forecast storici)
         current_weights = {}
         if request.historical_forecasts:
@@ -1801,27 +2001,27 @@ async def perform_sensitivity_analysis(
             ensemble_weights = first_forecast.get("ensemble_weights", {})
             for factor in request.factors_to_test:
                 current_weights[factor] = ensemble_weights.get(factor, 0.1)
-        
+
         # Testa variazioni pesi nel sensitivity range
         best_weights = {}
         sensitivity_scores = {}
         weight_adjustments = {}
-        
+
         for factor in request.factors_to_test:
             current_weight = current_weights.get(factor, 0.1)
-            
+
             # Test range di pesi
             min_weight = max(0.01, current_weight * (1 - request.sensitivity_range))
             max_weight = min(0.5, current_weight * (1 + request.sensitivity_range))
-            
+
             best_performance = 0
             best_weight = current_weight
-            
+
             # Simula test di diversi pesi
             for test_weight in np.linspace(min_weight, max_weight, 10):
                 # Simula performance con questo peso
                 # In produzione: ricalcoleremmo forecast con nuovo peso e misureremmo accuracy
-                
+
                 if factor == "weather":
                     # Weather tende a performare meglio con pesi più alti
                     performance = 0.5 + (test_weight - 0.1) * 2.0 + np.random.normal(0, 0.05)
@@ -1834,54 +2034,54 @@ async def perform_sensitivity_analysis(
                 else:
                     # Fattori generic
                     performance = 0.5 + np.random.normal(0, 0.1)
-                
+
                 performance = max(0, min(1, performance))  # Clamp 0-1
-                
+
                 if performance > best_performance:
                     best_performance = performance
                     best_weight = test_weight
-            
+
             best_weights[factor] = round(best_weight, 3)
             sensitivity_scores[factor] = round(best_performance, 3)
-            
+
             # Calcola adjustment
             weight_change = best_weight - current_weight
             improvement = (best_performance - 0.5) * 0.3  # Converti in % improvement
-            
+
             weight_adjustments[factor] = {
                 "from": round(current_weight, 3),
                 "to": round(best_weight, 3),
                 "change": round(weight_change, 3),
-                "improvement": round(improvement, 3)
+                "improvement": round(improvement, 3),
             }
-        
+
         # Calcola forecast improvement aggregato
         improvements = [adj["improvement"] for adj in weight_adjustments.values()]
         forecast_improvement = round(np.mean(improvements), 3)
-        
+
         # Simula validation metrics
         # In produzione: applicheremmo pesi ottimali ai dati storici
         base_mae_improvement = forecast_improvement * 0.8
         base_rmse_improvement = forecast_improvement * 1.2
         base_mape_improvement = forecast_improvement * 1.0
-        
+
         validation_metrics = {
             "mae_improvement": round(base_mae_improvement, 3),
             "rmse_improvement": round(base_rmse_improvement, 3),
             "mape_improvement": round(base_mape_improvement, 3),
             "total_forecasts_tested": len(request.historical_forecasts),
-            "avg_accuracy_gain": round(forecast_improvement, 3)
+            "avg_accuracy_gain": round(forecast_improvement, 3),
         }
-        
+
         return SensitivityAnalysisResponse(
             analysis_id=analysis_id,
             optimal_weights=best_weights,
             sensitivity_scores=sensitivity_scores,
             forecast_improvement=round(forecast_improvement, 3),
             weight_adjustments=weight_adjustments,
-            validation_metrics=validation_metrics
+            validation_metrics=validation_metrics,
         )
-        
+
     except Exception as e:
         logger.error(f"Errore sensitivity analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Errore sensitivity analysis: {str(e)}")

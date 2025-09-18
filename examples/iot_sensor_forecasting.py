@@ -492,7 +492,7 @@ def main():
     try:
         # Passa il percorso dell'immagine salvata
         plot_files = {
-            'main_plot': str(plot_path)  # plot_path è definito sopra quando salviamo l'immagine
+            "main_plot": str(plot_path)  # plot_path è definito sopra quando salviamo l'immagine
         }
 
         report_path = model.generate_report(

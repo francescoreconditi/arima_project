@@ -47,7 +47,7 @@ def setup_cli_logger(verbose: bool = False) -> None:
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """Carica configurazione da file JSON"""
     if config_path and Path(config_path).exists():
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
@@ -78,14 +78,14 @@ def train_command(args: argparse.Namespace) -> None:
         config = load_config(args.config)
         model_config = config.get(args.model, {})
 
-        if args.model.lower() == 'arima':
-            order = model_config.get('order', (1, 1, 1))
+        if args.model.lower() == "arima":
+            order = model_config.get("order", (1, 1, 1))
             model = ARIMAForecaster(order=order)
-        elif args.model.lower() == 'sarima':
-            order = model_config.get('order', (1, 1, 1))
-            seasonal_order = model_config.get('seasonal_order', (1, 1, 1, 12))
+        elif args.model.lower() == "sarima":
+            order = model_config.get("order", (1, 1, 1))
+            seasonal_order = model_config.get("seasonal_order", (1, 1, 1, 12))
             model = SARIMAForecaster(order=order, seasonal_order=seasonal_order)
-        elif args.model.lower() == 'var':
+        elif args.model.lower() == "var":
             model = VARForecaster()
         else:
             console.print(f"[red]❌ Modello {args.model} non supportato[/red]")
@@ -136,11 +136,11 @@ def forecast_command(args: argparse.Namespace) -> None:
 
     try:
         # Carica modello
-        if args.model.lower() == 'arima':
+        if args.model.lower() == "arima":
             model = ARIMAForecaster.load_model(args.model_path)
-        elif args.model.lower() == 'sarima':
+        elif args.model.lower() == "sarima":
             model = SARIMAForecaster.load_model(args.model_path)
-        elif args.model.lower() == 'var':
+        elif args.model.lower() == "var":
             model = VARForecaster.load_model(args.model_path)
         else:
             console.print(f"[red]❌ Modello {args.model} non supportato[/red]")
@@ -188,11 +188,11 @@ def evaluate_command(args: argparse.Namespace) -> None:
         # Carica modello e dati
         data = DataLoader().load_data(args.data)
 
-        if args.model.lower() == 'arima':
+        if args.model.lower() == "arima":
             model = ARIMAForecaster.load_model(args.model_path)
-        elif args.model.lower() == 'sarima':
+        elif args.model.lower() == "sarima":
             model = SARIMAForecaster.load_model(args.model_path)
-        elif args.model.lower() == 'var':
+        elif args.model.lower() == "var":
             model = VARForecaster.load_model(args.model_path)
         else:
             console.print(f"[red]❌ Modello {args.model} non supportato[/red]")
@@ -220,7 +220,7 @@ def evaluate_command(args: argparse.Namespace) -> None:
             output_path = Path(args.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(metrics, f, indent=2, default=str)
 
             console.print(f"✅ Metriche salvate: {output_path}")
@@ -249,113 +249,49 @@ Esempi di utilizzo:
   arima-forecast forecast --model-path model.pkl --steps 30 --output forecast.csv
   arima-forecast evaluate --model-path model.pkl --data test.csv
   arima-forecast version
-        """
+        """,
     )
 
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Output verbose"
-    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Output verbose")
 
-    parser.add_argument(
-        "--config",
-        type=str,
-        help="File configurazione JSON"
-    )
+    parser.add_argument("--config", type=str, help="File configurazione JSON")
 
     subparsers = parser.add_subparsers(dest="command", help="Comandi disponibili")
 
     # Command: train
-    train_parser = subparsers.add_parser(
-        "train",
-        help="Training modello"
-    )
+    train_parser = subparsers.add_parser("train", help="Training modello")
+    train_parser.add_argument("--data", "-d", required=True, help="File dati CSV")
     train_parser.add_argument(
-        "--data", "-d",
-        required=True,
-        help="File dati CSV"
+        "--model", "-m", choices=["arima", "sarima", "var"], default="sarima", help="Tipo modello"
     )
+    train_parser.add_argument("--output", "-o", required=True, help="Path output modello")
+    train_parser.add_argument("--preprocess", action="store_true", help="Applica preprocessing")
     train_parser.add_argument(
-        "--model", "-m",
-        choices=["arima", "sarima", "var"],
-        default="sarima",
-        help="Tipo modello"
-    )
-    train_parser.add_argument(
-        "--output", "-o",
-        required=True,
-        help="Path output modello"
-    )
-    train_parser.add_argument(
-        "--preprocess",
-        action="store_true",
-        help="Applica preprocessing"
-    )
-    train_parser.add_argument(
-        "--evaluate",
-        action="store_true",
-        help="Valuta modello dopo training"
+        "--evaluate", action="store_true", help="Valuta modello dopo training"
     )
 
     # Command: forecast
-    forecast_parser = subparsers.add_parser(
-        "forecast",
-        help="Genera forecast"
+    forecast_parser = subparsers.add_parser("forecast", help="Genera forecast")
+    forecast_parser.add_argument("--model-path", "-p", required=True, help="Path modello salvato")
+    forecast_parser.add_argument(
+        "--model", "-m", choices=["arima", "sarima", "var"], default="sarima", help="Tipo modello"
     )
     forecast_parser.add_argument(
-        "--model-path", "-p",
-        required=True,
-        help="Path modello salvato"
+        "--steps", "-s", type=int, default=30, help="Numero periodi forecast"
     )
-    forecast_parser.add_argument(
-        "--model", "-m",
-        choices=["arima", "sarima", "var"],
-        default="sarima",
-        help="Tipo modello"
-    )
-    forecast_parser.add_argument(
-        "--steps", "-s",
-        type=int,
-        default=30,
-        help="Numero periodi forecast"
-    )
-    forecast_parser.add_argument(
-        "--output", "-o",
-        help="File output forecast CSV"
-    )
+    forecast_parser.add_argument("--output", "-o", help="File output forecast CSV")
 
     # Command: evaluate
-    eval_parser = subparsers.add_parser(
-        "evaluate",
-        help="Valuta modello"
-    )
+    eval_parser = subparsers.add_parser("evaluate", help="Valuta modello")
+    eval_parser.add_argument("--model-path", "-p", required=True, help="Path modello salvato")
     eval_parser.add_argument(
-        "--model-path", "-p",
-        required=True,
-        help="Path modello salvato"
+        "--model", "-m", choices=["arima", "sarima", "var"], default="sarima", help="Tipo modello"
     )
-    eval_parser.add_argument(
-        "--model", "-m",
-        choices=["arima", "sarima", "var"],
-        default="sarima",
-        help="Tipo modello"
-    )
-    eval_parser.add_argument(
-        "--data", "-d",
-        required=True,
-        help="File dati test CSV"
-    )
-    eval_parser.add_argument(
-        "--output", "-o",
-        help="File output metriche JSON"
-    )
+    eval_parser.add_argument("--data", "-d", required=True, help="File dati test CSV")
+    eval_parser.add_argument("--output", "-o", help="File output metriche JSON")
 
     # Command: version
-    version_parser = subparsers.add_parser(
-        "version",
-        help="Mostra versione"
-    )
+    version_parser = subparsers.add_parser("version", help="Mostra versione")
 
     # Parse arguments
     args = parser.parse_args()

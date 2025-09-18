@@ -20,18 +20,18 @@ from .data_management import router as data_management_router
 from .enterprise import router as enterprise_router
 
 __all__ = [
-    'health_router',
-    'models_router', 
-    'training_router',
-    'forecasting_router',
-    'diagnostics_router',
-    'reports_router',
-    'inventory_router',
-    'demand_sensing_router',
-    'advanced_models_router',
-    'evaluation_router',
-    'automl_router',
-    'visualization_router',
-    'data_management_router',
-    'enterprise_router'
+    "health_router",
+    "models_router",
+    "training_router",
+    "forecasting_router",
+    "diagnostics_router",
+    "reports_router",
+    "inventory_router",
+    "demand_sensing_router",
+    "advanced_models_router",
+    "evaluation_router",
+    "automl_router",
+    "visualization_router",
+    "data_management_router",
+    "enterprise_router",
 ]

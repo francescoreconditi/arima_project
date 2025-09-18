@@ -12,7 +12,7 @@ from datetime import datetime
 class VARModelInfo(BaseModel):
     """
     Informazioni su un modello VAR addestrato.
-    
+
     <h4>Attributi:</h4>
     - **model_id**: ID univoco del modello
     - **model_type**: Tipo di modello (sempre "var")
@@ -23,6 +23,7 @@ class VARModelInfo(BaseModel):
     - **selected_lag_order**: Ordine di lag selezionato automaticamente
     - **causality_tests**: Risultati dei test di causalità di Granger
     """
+
     model_id: str
     model_type: str = Field(default="var")
     status: str = Field(..., description="Stato: training, completed, failed")
@@ -36,7 +37,7 @@ class VARModelInfo(BaseModel):
 class ForecastResponse(BaseModel):
     """
     Risposta contenente le previsioni generate.
-    
+
     <h4>Attributi:</h4>
     - **forecast**: Lista dei valori previsti
     - **timestamps**: Lista dei timestamp per ogni previsione
@@ -44,6 +45,7 @@ class ForecastResponse(BaseModel):
     - **model_id**: ID del modello utilizzato
     - **forecast_steps**: Numero di passi previsti
     """
+
     forecast: List[float]
     timestamps: List[str]
     confidence_intervals: Optional[Dict[str, List[float]]] = None
@@ -54,12 +56,13 @@ class ForecastResponse(BaseModel):
 class AutoSelectionResult(BaseModel):
     """
     Risultato della selezione automatica dei parametri.
-    
+
     <h4>Attributi:</h4>
     - **best_model**: Parametri del modello migliore trovato
     - **all_models**: Lista di tutti i modelli testati
     - **search_time_seconds**: Tempo totale di ricerca in secondi
     """
+
     best_model: Dict[str, Any]
     all_models: List[Dict[str, Any]]
     search_time_seconds: float
@@ -68,7 +71,7 @@ class AutoSelectionResult(BaseModel):
 class ModelDiagnostics(BaseModel):
     """
     Risultati della diagnostica del modello.
-    
+
     <h4>Attributi:</h4>
     - **residuals_stats**: Statistiche sui residui
     - **ljung_box_test**: Test di Ljung-Box per autocorrelazione
@@ -77,6 +80,7 @@ class ModelDiagnostics(BaseModel):
     - **pacf_values**: Valori di autocorrelazione parziale
     - **performance_metrics**: Metriche di performance
     """
+
     residuals_stats: Dict[str, float]
     ljung_box_test: Dict[str, Any]
     jarque_bera_test: Dict[str, Any]
@@ -88,7 +92,7 @@ class ModelDiagnostics(BaseModel):
 class ReportRequest(BaseModel):
     """
     Richiesta per generazione report.
-    
+
     <h4>Attributi:</h4>
     - **format**: Formato del report (html, pdf, docx)
     - **include_diagnostics**: Se includere diagnostica
@@ -96,6 +100,7 @@ class ReportRequest(BaseModel):
     - **forecast_steps**: Numero di passi da prevedere
     - **template**: Template da utilizzare
     """
+
     format: str = Field(default="html", description="Formato: html, pdf, docx")
     include_diagnostics: bool = Field(default=True)
     include_forecasts: bool = Field(default=True)

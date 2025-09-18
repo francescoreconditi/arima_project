@@ -15,7 +15,7 @@ from arima_forecaster.mlops import (
     DeploymentManager,
     ModelStage,
     EnvironmentType,
-    DeploymentConfig
+    DeploymentConfig,
 )
 
 
@@ -50,14 +50,13 @@ def test_mlops_complete():
 
     # 2. Experiment tracking
     experiment = tracker.create_experiment(
-        name="Test MLOps Integration",
-        description="Test completo integrazione MLOps"
+        name="Test MLOps Integration", description="Test completo integrazione MLOps"
     )
 
     run = tracker.start_run(
         experiment_id=experiment.experiment_id,
         parameters={"order": [1, 1, 1], "test": True},
-        model_type="TEST_ARIMA"
+        model_type="TEST_ARIMA",
     )
 
     # Simula training
@@ -79,17 +78,13 @@ def test_mlops_complete():
         model_type="TEST_ARIMA",
         parameters={"order": model.order},
         performance_metrics=metrics,
-        description="Test model per MLOps"
+        description="Test model per MLOps",
     )
 
     print(f"[OK] Model registry: {metadata.model_name} v{metadata.version}")
 
     # 4. Model promotion
-    promoted = registry.promote_model(
-        "test_arima",
-        "1.0.0",
-        ModelStage.STAGING
-    )
+    promoted = registry.promote_model("test_arima", "1.0.0", ModelStage.STAGING)
 
     print(f"[OK] Model promotion: {promoted.stage}")
 
@@ -98,13 +93,10 @@ def test_mlops_complete():
         environment=EnvironmentType.STAGING,
         model_name="test_arima",
         model_version="1.0.0",
-        replicas=1
+        replicas=1,
     )
 
-    deployment = deployment_manager.create_deployment(
-        config=config,
-        auto_deploy=False
-    )
+    deployment = deployment_manager.create_deployment(config=config, auto_deploy=False)
 
     print(f"[OK] Deployment config: {deployment.status}")
 
@@ -119,7 +111,7 @@ def test_mlops_complete():
     run2 = tracker.start_run(
         experiment_id=experiment.experiment_id,
         parameters={"order": [2, 1, 1], "test": True},
-        model_type="TEST_ARIMA"
+        model_type="TEST_ARIMA",
     )
     tracker.log_metrics(run2.run_id, {"mae": 1.8, "rmse": 2.3})
     tracker.end_run(run2.run_id)
@@ -156,7 +148,7 @@ def test_mlops_complete():
         "deployment_manager": deployment_manager,
         "experiment": experiment,
         "model_metadata": metadata,
-        "deployment": deployment
+        "deployment": deployment,
     }
 
 
@@ -179,4 +171,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[ERROR] Test failed: {e}")
         import traceback
+
         traceback.print_exc()

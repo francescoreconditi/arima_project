@@ -23,7 +23,7 @@ from arima_forecaster.mlops import (
     ExperimentStatus,
     RunStatus,
     DeploymentConfig,
-    EnvironmentType
+    EnvironmentType,
 )
 from arima_forecaster.core import ARIMAForecaster
 
@@ -66,7 +66,7 @@ class TestMLOpsSimple:
             name="simple_test",
             model_type="ARIMA",
             description="Simple test model",
-            performance_metrics={"mae": 0.5}
+            performance_metrics={"mae": 0.5},
         )
 
         assert metadata.model_name == "simple_test"
@@ -82,8 +82,7 @@ class TestMLOpsSimple:
         """Test experiment tracking semplice."""
         # Crea esperimento
         experiment = self.tracker.create_experiment(
-            name="simple_experiment",
-            description="Simple experiment test"
+            name="simple_experiment", description="Simple experiment test"
         )
 
         assert experiment.status == ExperimentStatus.RUNNING
@@ -92,7 +91,7 @@ class TestMLOpsSimple:
         run = self.tracker.start_run(
             experiment_id=experiment.experiment_id,
             parameters={"order": [1, 1, 1]},
-            model_type="ARIMA"
+            model_type="ARIMA",
         )
 
         assert run.status == RunStatus.RUNNING
@@ -110,30 +109,19 @@ class TestMLOpsSimple:
         # Registra modello prima
         model = SimpleModel("deployment_test")
         self.registry.register_model(
-            model=model,
-            name="deploy_model",
-            model_type="ARIMA",
-            stage=ModelStage.PRODUCTION
+            model=model, name="deploy_model", model_type="ARIMA", stage=ModelStage.PRODUCTION
         )
 
         # Setup deployment manager
-        deployment_manager = DeploymentManager(
-            Path(self.temp_dir) / "deployment",
-            self.registry
-        )
+        deployment_manager = DeploymentManager(Path(self.temp_dir) / "deployment", self.registry)
 
         # Crea configurazione
         config = DeploymentConfig(
-            environment=EnvironmentType.STAGING,
-            model_name="deploy_model",
-            model_version="1.0.0"
+            environment=EnvironmentType.STAGING, model_name="deploy_model", model_version="1.0.0"
         )
 
         # Crea deployment (senza auto-deploy)
-        deployment = deployment_manager.create_deployment(
-            config=config,
-            auto_deploy=False
-        )
+        deployment = deployment_manager.create_deployment(config=config, auto_deploy=False)
 
         assert deployment.model_name == "deploy_model"
         assert deployment.environment == EnvironmentType.STAGING
@@ -147,7 +135,7 @@ class TestMLOpsSimple:
         run = self.tracker.start_run(
             experiment_id=experiment.experiment_id,
             parameters={"order": [1, 1, 1]},
-            model_type="ARIMA"
+            model_type="ARIMA",
         )
 
         # 3. Training simulato
@@ -163,7 +151,7 @@ class TestMLOpsSimple:
             model=model,
             name="workflow_model",
             model_type="ARIMA",
-            performance_metrics=completed_run.metrics
+            performance_metrics=completed_run.metrics,
         )
 
         # Verifica workflow
@@ -177,20 +165,13 @@ class TestMLOpsSimple:
 
         # Registra in development
         metadata = self.registry.register_model(
-            model=model,
-            name="promo_model",
-            model_type="ARIMA",
-            stage=ModelStage.DEVELOPMENT
+            model=model, name="promo_model", model_type="ARIMA", stage=ModelStage.DEVELOPMENT
         )
 
         assert metadata.stage == ModelStage.DEVELOPMENT
 
         # Promuovi a staging
-        promoted = self.registry.promote_model(
-            "promo_model",
-            "1.0.0",
-            ModelStage.STAGING
-        )
+        promoted = self.registry.promote_model("promo_model", "1.0.0", ModelStage.STAGING)
 
         assert promoted.stage == ModelStage.STAGING
 
@@ -271,7 +252,7 @@ class TestMLOpsWithRealARIMA:
         np.random.seed(42)
         self.data = pd.Series(
             np.random.randn(100).cumsum() + 100,
-            index=pd.date_range('2023-01-01', periods=100, freq='D')
+            index=pd.date_range("2023-01-01", periods=100, freq="D"),
         )
 
     def test_arima_model_registry(self):
@@ -287,7 +268,7 @@ class TestMLOpsWithRealARIMA:
                 name="real_arima",
                 model_type="ARIMA",
                 parameters={"order": model.order},
-                performance_metrics={"mae": 2.5, "rmse": 3.2}
+                performance_metrics={"mae": 2.5, "rmse": 3.2},
             )
 
             assert metadata.model_name == "real_arima"
@@ -295,7 +276,7 @@ class TestMLOpsWithRealARIMA:
 
             # Carica e testa
             loaded_model, loaded_metadata = self.registry.get_model("real_arima")
-            assert hasattr(loaded_model, 'order')
+            assert hasattr(loaded_model, "order")
             assert loaded_metadata.model_type == "ARIMA"
 
         except Exception as e:

@@ -39,6 +39,7 @@ logger = get_logger(__name__)
 
 class DeploymentStatus(str, Enum):
     """Status di un deployment."""
+
     PENDING = "pending"
     DEPLOYING = "deploying"
     DEPLOYED = "deployed"
@@ -49,6 +50,7 @@ class DeploymentStatus(str, Enum):
 
 class EnvironmentType(str, Enum):
     """Tipo di environment."""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -57,6 +59,7 @@ class EnvironmentType(str, Enum):
 
 class HealthCheckType(str, Enum):
     """Tipo di health check."""
+
     HTTP = "http"
     MODEL_PREDICTION = "model_prediction"
     CUSTOM = "custom"
@@ -65,6 +68,7 @@ class HealthCheckType(str, Enum):
 @dataclass
 class DeploymentConfig:
     """Configurazione per deployment."""
+
     environment: EnvironmentType
     model_name: str
     model_version: str
@@ -81,6 +85,7 @@ class DeploymentConfig:
 @dataclass
 class ModelDeployment:
     """Metadata per un deployment."""
+
     deployment_id: str
     environment: EnvironmentType
     model_name: str
@@ -126,8 +131,9 @@ class HealthCheck:
         """Health check HTTP."""
         try:
             import requests
-            url = self.config.get('url')
-            timeout = self.config.get('timeout', 30)
+
+            url = self.config.get("url")
+            timeout = self.config.get("timeout", 30)
 
             response = requests.get(url, timeout=timeout)
             if response.status_code == 200:
@@ -141,8 +147,8 @@ class HealthCheck:
         """Health check prediction test."""
         try:
             # Carica modello e testa predizione
-            model_path = self.config.get('model_path')
-            test_data = self.config.get('test_data')
+            model_path = self.config.get("model_path")
+            test_data = self.config.get("test_data")
 
             if not model_path or not test_data:
                 return False, "Model path o test data mancanti"
@@ -157,7 +163,7 @@ class HealthCheck:
     def _custom_check(self) -> Tuple[bool, str]:
         """Health check custom."""
         try:
-            check_function = self.config.get('function')
+            check_function = self.config.get("function")
             if callable(check_function):
                 return check_function()
             else:
@@ -182,7 +188,7 @@ class DeploymentManager:
     def __init__(
         self,
         deployment_path: Union[str, Path] = "deployments",
-        model_registry: Optional[ModelRegistry] = None
+        model_registry: Optional[ModelRegistry] = None,
     ):
         """
         Inizializza Deployment Manager.
@@ -256,17 +262,20 @@ class DeploymentManager:
             """)
 
             # Indici
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_deployments_env ON deployments(environment)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_deployments_model ON deployments(model_name)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_deployments_status ON deployments(status)")
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_deployments_env ON deployments(environment)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_deployments_model ON deployments(model_name)"
+            )
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_deployments_status ON deployments(status)"
+            )
 
             conn.commit()
 
     def create_deployment(
-        self,
-        config: DeploymentConfig,
-        deployed_by: str = "system",
-        auto_deploy: bool = True
+        self, config: DeploymentConfig, deployed_by: str = "system", auto_deploy: bool = True
     ) -> ModelDeployment:
         """
         Crea un nuovo deployment.
@@ -298,7 +307,7 @@ class DeploymentManager:
             created_at=now,
             updated_at=now,
             logs=[],
-            metadata=config.metadata
+            metadata=config.metadata,
         )
 
         # Salva in database
@@ -310,7 +319,9 @@ class DeploymentManager:
         if auto_deploy:
             return self.deploy(deployment_id)
 
-        logger.info(f"Deployment creato: {deployment_id} ({config.model_name} v{config.model_version})")
+        logger.info(
+            f"Deployment creato: {deployment_id} ({config.model_name} v{config.model_version})"
+        )
         return deployment
 
     def deploy(self, deployment_id: str) -> ModelDeployment:
@@ -336,11 +347,12 @@ class DeploymentManager:
             # Verifica modello nel registry
             if self.model_registry:
                 model_metadata = self.model_registry.get_model_metadata(
-                    deployment.model_name,
-                    deployment.model_version
+                    deployment.model_name, deployment.model_version
                 )
                 if not model_metadata:
-                    raise ValueError(f"Modello non trovato nel registry: {deployment.model_name} v{deployment.model_version}")
+                    raise ValueError(
+                        f"Modello non trovato nel registry: {deployment.model_name} v{deployment.model_version}"
+                    )
 
             # Esegui deployment strategy
             if deployment.config.deployment_strategy == "rolling":
@@ -359,14 +371,17 @@ class DeploymentManager:
                 health_ok, health_msg = self._run_health_checks(deployment)
                 deployment.health_status = "healthy" if health_ok else "unhealthy"
 
-                self._log_deployment_event(deployment_id, "deployed", {
-                    "success": True,
-                    "health_status": deployment.health_status
-                })
+                self._log_deployment_event(
+                    deployment_id,
+                    "deployed",
+                    {"success": True, "health_status": deployment.health_status},
+                )
 
             else:
                 deployment.status = DeploymentStatus.FAILED
-                self._log_deployment_event(deployment_id, "deploy_failed", {"error": "Deployment failed"})
+                self._log_deployment_event(
+                    deployment_id, "deploy_failed", {"error": "Deployment failed"}
+                )
 
         except Exception as e:
             deployment.status = DeploymentStatus.FAILED
@@ -416,26 +431,32 @@ class DeploymentManager:
                 environment_vars=deployment.config.environment_vars,
                 health_checks=deployment.config.health_checks,
                 deployment_strategy="rolling",  # Rollback sempre rolling
-                timeout_seconds=deployment.config.timeout_seconds
+                timeout_seconds=deployment.config.timeout_seconds,
             )
 
             # Crea nuovo deployment per rollback
             rollback_deployment = self.create_deployment(
                 rollback_config,
                 deployed_by=f"rollback_from_{deployment.model_version}",
-                auto_deploy=True
+                auto_deploy=True,
             )
 
             if rollback_deployment.status == DeploymentStatus.DEPLOYED:
                 deployment.status = DeploymentStatus.ROLLED_BACK
                 deployment.rollback_version = target_version
-                self._log_deployment_event(deployment_id, "rolled_back", {
-                    "target_version": target_version,
-                    "rollback_deployment_id": rollback_deployment.deployment_id
-                })
+                self._log_deployment_event(
+                    deployment_id,
+                    "rolled_back",
+                    {
+                        "target_version": target_version,
+                        "rollback_deployment_id": rollback_deployment.deployment_id,
+                    },
+                )
             else:
                 deployment.status = DeploymentStatus.FAILED
-                self._log_deployment_event(deployment_id, "rollback_failed", {"error": "Rollback deployment failed"})
+                self._log_deployment_event(
+                    deployment_id, "rollback_failed", {"error": "Rollback deployment failed"}
+                )
 
         except Exception as e:
             deployment.status = DeploymentStatus.FAILED
@@ -472,7 +493,7 @@ class DeploymentManager:
         self,
         environment: Optional[EnvironmentType] = None,
         status: Optional[DeploymentStatus] = None,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
     ) -> List[ModelDeployment]:
         """
         Lista deployments.
@@ -554,18 +575,21 @@ class DeploymentManager:
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT event_type, event_data, timestamp
                 FROM deployment_history
                 WHERE deployment_id = ?
                 ORDER BY timestamp DESC
-            """, (deployment_id,))
+            """,
+                (deployment_id,),
+            )
 
             return [
                 {
                     "event_type": row[0],
-                    "event_data": json.loads(row[1] or '{}'),
-                    "timestamp": row[2]
+                    "event_data": json.loads(row[1] or "{}"),
+                    "timestamp": row[2],
                 }
                 for row in cursor.fetchall()
             ]
@@ -584,12 +608,12 @@ class DeploymentManager:
 
             # Deploy graduale delle repliche
             for i in range(deployment.config.replicas):
-                deployment.logs.append(f"Deploying replica {i+1}/{deployment.config.replicas}")
+                deployment.logs.append(f"Deploying replica {i + 1}/{deployment.config.replicas}")
                 time.sleep(1)  # Simulazione tempo deployment
 
                 # Simula health check per replica
                 if not self._simulate_replica_health():
-                    deployment.logs.append(f"Replica {i+1} failed health check")
+                    deployment.logs.append(f"Replica {i + 1} failed health check")
                     return False
 
                 deployment.replicas_ready = i + 1
@@ -649,8 +673,8 @@ class DeploymentManager:
         overall_healthy = True
 
         for check_config in deployment.config.health_checks:
-            check_name = check_config.get('name', 'unnamed')
-            check_type = HealthCheckType(check_config.get('type', 'http'))
+            check_name = check_config.get("name", "unnamed")
+            check_type = HealthCheckType(check_config.get("type", "http"))
 
             health_check = HealthCheck(check_type, check_config)
             success, message = health_check.execute()
@@ -658,7 +682,7 @@ class DeploymentManager:
             results[check_name] = {
                 "success": success,
                 "message": message,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
             if not success:
@@ -670,6 +694,7 @@ class DeploymentManager:
         """Simula health check di una replica."""
         # In implementazione reale, questo farebbe veri health checks
         import random
+
         return random.random() > 0.1  # 90% success rate
 
     def _get_previous_version(self, deployment: ModelDeployment) -> Optional[str]:
@@ -678,7 +703,7 @@ class DeploymentManager:
         deployments = self.list_deployments(
             environment=deployment.environment,
             status=DeploymentStatus.DEPLOYED,
-            model_name=deployment.model_name
+            model_name=deployment.model_name,
         )
 
         for dep in deployments:
@@ -691,35 +716,38 @@ class DeploymentManager:
         """Salva deployment nel database."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO deployments
                 (deployment_id, environment, model_name, model_version, status,
                  config, deployed_at, deployed_by, health_status, endpoint_url,
                  replicas_ready, rollback_version, logs, metadata, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                deployment.deployment_id,
-                deployment.environment.value,
-                deployment.model_name,
-                deployment.model_version,
-                deployment.status.value,
-                json.dumps(asdict(deployment.config)),
-                deployment.deployed_at,
-                deployment.deployed_by,
-                deployment.health_status,
-                deployment.endpoint_url,
-                deployment.replicas_ready,
-                deployment.rollback_version,
-                json.dumps(deployment.logs),
-                json.dumps(deployment.metadata or {}),
-                deployment.created_at,
-                deployment.updated_at
-            ))
+            """,
+                (
+                    deployment.deployment_id,
+                    deployment.environment.value,
+                    deployment.model_name,
+                    deployment.model_version,
+                    deployment.status.value,
+                    json.dumps(asdict(deployment.config)),
+                    deployment.deployed_at,
+                    deployment.deployed_by,
+                    deployment.health_status,
+                    deployment.endpoint_url,
+                    deployment.replicas_ready,
+                    deployment.rollback_version,
+                    json.dumps(deployment.logs),
+                    json.dumps(deployment.metadata or {}),
+                    deployment.created_at,
+                    deployment.updated_at,
+                ),
+            )
             conn.commit()
 
     def _row_to_deployment(self, row: tuple) -> ModelDeployment:
         """Converte riga database in ModelDeployment."""
-        config_dict = json.loads(row[5] or '{}')
+        config_dict = json.loads(row[5] or "{}")
         config = DeploymentConfig(**config_dict) if config_dict else None
 
         return ModelDeployment(
@@ -730,37 +758,37 @@ class DeploymentManager:
             status=DeploymentStatus(row[4]),
             config=config,
             deployed_at=datetime.fromisoformat(row[6]) if row[6] else None,
-            deployed_by=row[7] or 'system',
+            deployed_by=row[7] or "system",
             health_status=row[8],
             endpoint_url=row[9],
             replicas_ready=row[10] or 0,
             rollback_version=row[11],
-            logs=json.loads(row[12] or '[]'),
-            metadata=json.loads(row[13] or '{}'),
+            logs=json.loads(row[12] or "[]"),
+            metadata=json.loads(row[13] or "{}"),
             created_at=datetime.fromisoformat(row[14]) if row[14] else datetime.now(timezone.utc),
-            updated_at=datetime.fromisoformat(row[15]) if row[15] else datetime.now(timezone.utc)
+            updated_at=datetime.fromisoformat(row[15]) if row[15] else datetime.now(timezone.utc),
         )
 
-    def _log_deployment_event(self, deployment_id: str, event_type: str, event_data: Dict[str, Any]) -> None:
+    def _log_deployment_event(
+        self, deployment_id: str, event_type: str, event_data: Dict[str, Any]
+    ) -> None:
         """Logga evento di deployment."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO deployment_history
                 (deployment_id, event_type, event_data, timestamp)
                 VALUES (?, ?, ?, ?)
-            """, (
-                deployment_id,
-                event_type,
-                json.dumps(event_data),
-                datetime.now(timezone.utc)
-            ))
+            """,
+                (deployment_id, event_type, json.dumps(event_data), datetime.now(timezone.utc)),
+            )
             conn.commit()
 
 
 def create_deployment_manager(
     deployment_path: Union[str, Path] = "deployments",
-    model_registry: Optional[ModelRegistry] = None
+    model_registry: Optional[ModelRegistry] = None,
 ) -> DeploymentManager:
     """
     Factory function per creare DeploymentManager.

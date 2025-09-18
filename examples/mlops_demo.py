@@ -30,14 +30,14 @@ from arima_forecaster.mlops import (
     DeploymentConfig,
     create_model_registry,
     create_experiment_tracker,
-    create_deployment_manager
+    create_deployment_manager,
 )
 
 
 class SimpleModel:
     """Modello semplice serializzabile per demo."""
 
-    def __init__(self, name="demo_model", order=(1,1,1)):
+    def __init__(self, name="demo_model", order=(1, 1, 1)):
         self.name = name
         self.order = order
         self.fitted = False
@@ -59,7 +59,7 @@ class SimpleModel:
 def create_sample_data():
     """Crea dati di esempio per demo."""
     np.random.seed(42)
-    dates = pd.date_range('2023-01-01', periods=100, freq='D')
+    dates = pd.date_range("2023-01-01", periods=100, freq="D")
 
     # Serie con trend e stagionalità
     trend = np.linspace(100, 120, 100)
@@ -82,7 +82,7 @@ def demo_experiment_tracking():
         name="ARIMA Model Comparison",
         description="Confronto modelli ARIMA con ordini diversi",
         tags=["demo", "arima", "comparison"],
-        created_by="demo_user"
+        created_by="demo_user",
     )
 
     print(f"[OK] Esperimento creato: {experiment.name} ({experiment.experiment_id})")
@@ -94,7 +94,7 @@ def demo_experiment_tracking():
     models_config = [
         {"order": (1, 1, 1), "name": "ARIMA_111"},
         {"order": (2, 1, 1), "name": "ARIMA_211"},
-        {"order": (1, 1, 2), "name": "ARIMA_112"}
+        {"order": (1, 1, 2), "name": "ARIMA_112"},
     ]
 
     results = []
@@ -105,15 +105,15 @@ def demo_experiment_tracking():
         # Inizia run
         run = tracker.start_run(
             experiment_id=experiment.experiment_id,
-            name=config['name'],
-            parameters={"order": config['order']},
+            name=config["name"],
+            parameters={"order": config["order"]},
             model_type="ARIMA",
-            created_by="demo_user"
+            created_by="demo_user",
         )
 
         try:
             # Training modello
-            model = SimpleModel(config['name'], config['order'])
+            model = SimpleModel(config["name"], config["order"])
             model.fit(data)
 
             # Simula calcolo metriche
@@ -128,12 +128,9 @@ def demo_experiment_tracking():
             # Termina run con successo
             completed_run = tracker.end_run(run.run_id)
 
-            results.append({
-                "run_id": run.run_id,
-                "config": config,
-                "metrics": metrics,
-                "model": model
-            })
+            results.append(
+                {"run_id": run.run_id, "config": config, "metrics": metrics, "model": model}
+            )
 
             print(f"   [OK] {config['name']}: MAE={mae:.2f}, RMSE={rmse:.2f}")
 
@@ -171,13 +168,13 @@ def demo_model_registry(experiment_results):
 
         metadata = registry.register_model(
             model=model,
-            name=config['name'],
+            name=config["name"],
             model_type="ARIMA",
-            parameters={"order": config['order']},
+            parameters={"order": config["order"]},
             performance_metrics=metrics,
             description=f"ARIMA model con order {config['order']}",
             tags=["demo", "arima"],
-            author="demo_user"
+            author="demo_user",
         )
 
         print(f"   [OK] Registrato: v{metadata.version} (Stage: {metadata.stage})")
@@ -191,12 +188,7 @@ def demo_model_registry(experiment_results):
         best_model_name = experiment_results[0]["config"]["name"]  # Prendi il primo per demo
 
         print(f"[PROMOTE] Promuovendo {best_model_name} a STAGING...")
-        promoted = registry.promote_model(
-            best_model_name,
-            "1.0.0",
-            ModelStage.STAGING,
-            "demo_user"
-        )
+        promoted = registry.promote_model(best_model_name, "1.0.0", ModelStage.STAGING, "demo_user")
         print(f"   [OK] {best_model_name} promosso a {promoted.stage}")
 
         # Aggiorna performance
@@ -233,11 +225,11 @@ def demo_deployment_manager(registry, model_name):
                 "name": "basic_health",
                 "type": "http",
                 "url": "http://localhost:8080/health",
-                "timeout": 30
+                "timeout": 30,
             }
         ],
         deployment_strategy="rolling",
-        timeout_seconds=300
+        timeout_seconds=300,
     )
 
     print(f"[CONFIG] Configurazione deployment per {model_name}:")
@@ -249,7 +241,7 @@ def demo_deployment_manager(registry, model_name):
     deployment = deployment_manager.create_deployment(
         config=config,
         deployed_by="demo_user",
-        auto_deploy=False  # Deploy manuale per demo
+        auto_deploy=False,  # Deploy manuale per demo
     )
 
     print(f"[OK] Deployment creato: {deployment.deployment_id}")
@@ -309,7 +301,7 @@ def demo_mlops_workflow():
         "experiment": experiment,
         "registry": registry,
         "deployment_manager": deployment_manager if best_model_name else None,
-        "best_model": best_model_name
+        "best_model": best_model_name,
     }
 
 
@@ -372,6 +364,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[ERROR] Errore durante demo: {e}")
         import traceback
+
         traceback.print_exc()
 
     print("\n[END] Fine demo MLOps!")

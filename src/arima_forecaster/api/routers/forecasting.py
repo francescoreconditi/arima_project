@@ -20,9 +20,7 @@ logger = get_logger(__name__)
 
 # Crea router con prefix e tags
 router = APIRouter(
-    prefix="/models",
-    tags=["Forecasting"],
-    responses={404: {"description": "Not found"}}
+    prefix="/models", tags=["Forecasting"], responses={404: {"description": "Not found"}}
 )
 
 """
@@ -48,6 +46,7 @@ Funzionalità:
 def get_services():
     """Dependency per ottenere i servizi necessari."""
     from pathlib import Path
+
     storage_path = Path("models")
     model_manager = ModelManager(storage_path)
     forecast_service = ForecastService(model_manager)
@@ -59,28 +58,20 @@ def get_services():
     responses={
         200: {
             "description": "Previsioni generate con successo",
-            "content": {
-                "application/json": {
-                    "examples": FORECAST_RESPONSE_EXAMPLES
-                }
-            }
+            "content": {"application/json": {"examples": FORECAST_RESPONSE_EXAMPLES}},
         },
         404: {
             "description": "Modello non trovato",
             "content": {
                 "application/json": {
-                    "example": {
-                        "detail": "Modello con ID 'model_123' non trovato"
-                    }
+                    "example": {"detail": "Modello con ID 'model_123' non trovato"}
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 async def generate_forecast(
-    model_id: str,
-    request: ForecastRequest,
-    services: tuple = Depends(get_services)
+    model_id: str, request: ForecastRequest, services: tuple = Depends(get_services)
 ) -> ForecastResponse:
     """
     Genera previsioni utilizzando un modello addestrato.
@@ -147,24 +138,24 @@ async def generate_forecast(
     </ul>
     """
     model_manager, forecast_service = services
-    
+
     try:
         # Verifica che il modello esista
         if not model_manager.model_exists(model_id):
             raise HTTPException(status_code=404, detail="Model not found")
-        
+
         # Carica il modello
         model = model_manager.load_model(model_id)
-        
+
         # Genera le previsioni
         if request.return_confidence_intervals:
             # Genera previsioni con intervalli di confidenza
             forecast_values = model.forecast(
                 steps=request.steps,
                 confidence_intervals=True,
-                confidence_level=request.confidence_level
+                confidence_level=request.confidence_level,
             )
-            
+
             # Estrai valori e intervalli
             if isinstance(forecast_values, tuple):
                 predictions = forecast_values[0]
@@ -177,42 +168,44 @@ async def generate_forecast(
                 z_score = 1.96 if request.confidence_level == 0.95 else 2.576
                 lower_bound = predictions - z_score * std_error
                 upper_bound = predictions + z_score * std_error
-            
+
             confidence_intervals = {
-                "lower": lower_bound.tolist() if hasattr(lower_bound, 'tolist') else list(lower_bound),
-                "upper": upper_bound.tolist() if hasattr(upper_bound, 'tolist') else list(upper_bound)
+                "lower": lower_bound.tolist()
+                if hasattr(lower_bound, "tolist")
+                else list(lower_bound),
+                "upper": upper_bound.tolist()
+                if hasattr(upper_bound, "tolist")
+                else list(upper_bound),
             }
         else:
             # Genera solo le previsioni puntuali
             predictions = model.forecast(steps=request.steps)
             confidence_intervals = None
-        
+
         # Genera timestamps futuri
         # Assume frequenza giornaliera se non specificata
         last_date = pd.Timestamp.now()
         future_dates = pd.date_range(
-            start=last_date + pd.Timedelta(days=1),
-            periods=request.steps,
-            freq='D'
+            start=last_date + pd.Timedelta(days=1), periods=request.steps, freq="D"
         )
-        timestamps = [date.strftime('%Y-%m-%d') for date in future_dates]
-        
+        timestamps = [date.strftime("%Y-%m-%d") for date in future_dates]
+
         # Converte predictions in lista se necessario
-        if hasattr(predictions, 'tolist'):
+        if hasattr(predictions, "tolist"):
             forecast_list = predictions.tolist()
         elif isinstance(predictions, pd.Series):
             forecast_list = predictions.values.tolist()
         else:
             forecast_list = list(predictions)
-        
+
         return ForecastResponse(
             forecast=forecast_list,
             timestamps=timestamps,
             confidence_intervals=confidence_intervals,
             model_id=model_id,
-            forecast_steps=request.steps
+            forecast_steps=request.steps,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -222,16 +215,14 @@ async def generate_forecast(
 
 @router.post("/{model_id}/forecast/prophet", response_model=Dict[str, Any])
 async def prophet_forecast_with_components(
-    model_id: str,
-    request: ForecastRequest,
-    services: tuple = Depends(get_services)
+    model_id: str, request: ForecastRequest, services: tuple = Depends(get_services)
 ):
     """
     Genera previsioni Prophet con decomposizione completa delle componenti.
-    
+
     Questo endpoint è specifico per modelli Prophet e fornisce decomposizione dettagliata
     di trend, stagionalità e holiday effects che compongono la previsione finale.
-    
+
     <h3>Parametri Request Body:</h3>
     <table>
     <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
@@ -240,7 +231,7 @@ async def prophet_forecast_with_components(
     <tr><td>return_intervals</td><td>bool</td><td>Se restituire intervalli di confidenza (default: true)</td></tr>
     <tr><td>frequency</td><td>str</td><td>Frequenza temporale: "D", "W", "M" (opzionale)</td></tr>
     </table>
-    
+
     <h3>Componenti Prophet nella Risposta:</h3>
     <table>
     <tr><th>Componente</th><th>Tipo</th><th>Descrizione</th></tr>
@@ -252,7 +243,7 @@ async def prophet_forecast_with_components(
     <tr><td>holidays</td><td>List[float]</td><td>Effetti festività (se configurate)</td></tr>
     <tr><td>changepoints</td><td>Dict</td><td>Date e intensità dei cambio trend</td></tr>
     </table>
-    
+
     <h3>Funzionalità Avanzate:</h3>
     <ul>
     <li><b>Trend Decomposition:</b> Componente di trend lineare/logistico isolato</li>
@@ -261,7 +252,7 @@ async def prophet_forecast_with_components(
     <li><b>Changepoints:</b> Punti di cambio trend identificati automaticamente</li>
     <li><b>Uncertainty Intervals:</b> Intervalli di confidenza per ogni componente</li>
     </ul>
-    
+
     <h3>Requisiti:</h3>
     <ul>
     <li>Il modello deve essere di tipo "prophet" o "prophet-auto"</li>
@@ -270,45 +261,45 @@ async def prophet_forecast_with_components(
     </ul>
     """
     model_manager, forecast_service = services
-    
+
     try:
         # Verifica esistenza modello
         if not model_manager.model_exists(model_id):
             raise HTTPException(status_code=404, detail="Model not found")
-        
+
         # Carica il modello
         model = model_manager.load_model(model_id)
         model_info = model_manager.get_model_info(model_id)
-        
+
         # Verifica che sia un modello Prophet
         model_type = model_info.get("model_type", "")
         if not model_type.startswith("prophet"):
             raise HTTPException(
-                status_code=400, 
-                detail=f"This endpoint is only for Prophet models. Model type: {model_type}"
+                status_code=400,
+                detail=f"This endpoint is only for Prophet models. Model type: {model_type}",
             )
-        
+
         # Verifica stato completato
         if model_info.get("status") != "completed":
             status = model_info.get("status", "unknown")
             raise HTTPException(
                 status_code=400,
-                detail=f"Model must be completed for forecasting. Current status: {status}"
+                detail=f"Model must be completed for forecasting. Current status: {status}",
             )
-        
+
         # Genera previsioni standard
         if request.return_intervals:
             forecast_result = model.forecast(
                 steps=request.steps,
                 confidence_intervals=True,
-                confidence_level=request.confidence_level
+                confidence_level=request.confidence_level,
             )
-            
+
             if isinstance(forecast_result, tuple):
                 predictions, confidence_dict = forecast_result
                 confidence_intervals = {
                     "lower": confidence_dict["lower"].tolist(),
-                    "upper": confidence_dict["upper"].tolist()
+                    "upper": confidence_dict["upper"].tolist(),
                 }
             else:
                 predictions = forecast_result
@@ -316,23 +307,25 @@ async def prophet_forecast_with_components(
         else:
             predictions = model.forecast(steps=request.steps)
             confidence_intervals = None
-        
+
         # Ottieni decomposizione componenti Prophet
         prophet_model = model.model  # Accesso al modello Prophet sottostante
-        
+
         # Crea future dataframe per Prophet
         future = prophet_model.make_future_dataframe(periods=request.steps)
         forecast_df = prophet_model.predict(future)
-        
+
         # Estrai gli ultimi steps (le previsioni future)
         future_forecast = forecast_df.tail(request.steps)
-        
+
         # Componenti Prophet
         prophet_components = {
             "trend": future_forecast["trend"].tolist(),
-            "seasonal": future_forecast.get("seasonal", future_forecast.get("additive_terms", [])).tolist()
+            "seasonal": future_forecast.get(
+                "seasonal", future_forecast.get("additive_terms", [])
+            ).tolist(),
         }
-        
+
         # Aggiungi componenti specifiche se presenti
         if "weekly" in future_forecast.columns:
             prophet_components["weekly"] = future_forecast["weekly"].tolist()
@@ -340,27 +333,31 @@ async def prophet_forecast_with_components(
             prophet_components["yearly"] = future_forecast["yearly"].tolist()
         if "holidays" in future_forecast.columns:
             prophet_components["holidays"] = future_forecast["holidays"].tolist()
-        
+
         # Informazioni sui changepoints
         changepoints_info = {}
-        if hasattr(prophet_model, 'changepoints') and len(prophet_model.changepoints) > 0:
+        if hasattr(prophet_model, "changepoints") and len(prophet_model.changepoints) > 0:
             changepoints_info = {
-                "dates": [cp.strftime('%Y-%m-%d') for cp in prophet_model.changepoints],
-                "trend_changes": prophet_model.params['delta'].tolist() if hasattr(prophet_model, 'params') else []
+                "dates": [cp.strftime("%Y-%m-%d") for cp in prophet_model.changepoints],
+                "trend_changes": prophet_model.params["delta"].tolist()
+                if hasattr(prophet_model, "params")
+                else [],
             }
-        
+
         # Genera timestamps futuri basati sull'ultimo timestamp del training
-        last_training_date = future_forecast.index[-1] if hasattr(future_forecast, 'index') else pd.Timestamp.now()
-        future_dates = pd.date_range(
-            start=last_training_date + pd.Timedelta(days=1),
-            periods=request.steps,
-            freq='D'
+        last_training_date = (
+            future_forecast.index[-1] if hasattr(future_forecast, "index") else pd.Timestamp.now()
         )
-        timestamps = [date.strftime('%Y-%m-%d') for date in future_dates]
-        
+        future_dates = pd.date_range(
+            start=last_training_date + pd.Timedelta(days=1), periods=request.steps, freq="D"
+        )
+        timestamps = [date.strftime("%Y-%m-%d") for date in future_dates]
+
         # Risposta completa
         return {
-            "forecast": predictions.tolist() if hasattr(predictions, 'tolist') else list(predictions),
+            "forecast": predictions.tolist()
+            if hasattr(predictions, "tolist")
+            else list(predictions),
             "timestamps": timestamps,
             "confidence_intervals": confidence_intervals,
             "prophet_components": prophet_components,
@@ -370,11 +367,13 @@ async def prophet_forecast_with_components(
             "model_type": model_type,
             "decomposition_info": {
                 "trend_type": model_info.get("parameters", {}).get("growth", "linear"),
-                "seasonality_mode": model_info.get("parameters", {}).get("seasonality_mode", "additive"),
-                "holidays_included": bool(model_info.get("parameters", {}).get("country_holidays"))
-            }
+                "seasonality_mode": model_info.get("parameters", {}).get(
+                    "seasonality_mode", "additive"
+                ),
+                "holidays_included": bool(model_info.get("parameters", {}).get("country_holidays")),
+            },
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

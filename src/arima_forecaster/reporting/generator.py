@@ -19,11 +19,13 @@ class QuartoReportGenerator:
     """
     Generates comprehensive Quarto reports for ARIMA, SARIMA and SARIMAX model analysis.
     """
-    
-    def __init__(self, output_dir: Union[str, Path] = "outputs/reports", template_name: str = "default"):
+
+    def __init__(
+        self, output_dir: Union[str, Path] = "outputs/reports", template_name: str = "default"
+    ):
         """
         Initialize Quarto report generator.
-        
+
         Args:
             output_dir: Directory where reports will be saved (relative to project root)
             template_name: Name of the template to use (default: "default")
@@ -33,68 +35,74 @@ class QuartoReportGenerator:
             # Find project root by looking for pyproject.toml or other indicators
             current_path = Path(__file__).parent
             while current_path.parent != current_path:
-                if (current_path / 'pyproject.toml').exists() or (current_path / 'CLAUDE.md').exists():
+                if (current_path / "pyproject.toml").exists() or (
+                    current_path / "CLAUDE.md"
+                ).exists():
                     project_root = current_path
                     break
                 current_path = current_path.parent
             else:
                 # Fallback to 3 levels up from this file (src/arima_forecaster/reporting/generator.py)
                 project_root = Path(__file__).parent.parent.parent.parent
-            
+
             self.output_dir = project_root / output_dir
         else:
             self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Setup template directory
         self.template_name = template_name
         self.template_dir = Path(__file__).parent / "templates" / template_name
         if not self.template_dir.exists():
-            raise ForecastError(f"Template '{template_name}' not found in {self.template_dir.parent}")
-        
+            raise ForecastError(
+                f"Template '{template_name}' not found in {self.template_dir.parent}"
+            )
+
         # Load template metadata
         self.template_metadata = self._load_template_metadata()
-        
+
         self.logger = get_logger(__name__)
-    
+
     def _load_template_metadata(self) -> Dict[str, Any]:
         """Load template metadata from JSON file."""
         metadata_path = self.template_dir / "metadata.json"
         if not metadata_path.exists():
             self.logger.warning(f"Template metadata not found: {metadata_path}")
             return {}
-        
-        with open(metadata_path, 'r', encoding='utf-8') as f:
+
+        with open(metadata_path, "r", encoding="utf-8") as f:
             return json.load(f)
-    
+
     def _load_template_file(self, filename: str) -> str:
         """Load a template file content."""
         file_path = self.template_dir / filename
         if not file_path.exists():
             raise ForecastError(f"Template file not found: {file_path}")
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
+
+        with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
-    
+
     def _load_format_config(self, format_type: str) -> str:
         """Load format configuration from template."""
         format_configs_path = self.template_dir / "format_configs.json"
         if not format_configs_path.exists():
             # Fallback to default format YAML
             return self._get_default_format_yaml(format_type)
-        
-        with open(format_configs_path, 'r', encoding='utf-8') as f:
+
+        with open(format_configs_path, "r", encoding="utf-8") as f:
             configs = json.load(f)
-        
+
         if format_type in configs:
-            return configs[format_type].get('format_yaml', self._get_default_format_yaml(format_type))
+            return configs[format_type].get(
+                "format_yaml", self._get_default_format_yaml(format_type)
+            )
         else:
             return self._get_default_format_yaml(format_type)
-    
+
     def _get_default_format_yaml(self, format_type: str) -> str:
         """Get default format YAML configuration."""
         if format_type == "html":
-            return '''format:
+            return """format:
   html:
     theme: cosmo
     toc: true
@@ -105,93 +113,93 @@ class QuartoReportGenerator:
     fig-width: 8
     fig-height: 5
     fig-align: center
-    embed-resources: true'''
+    embed-resources: true"""
         elif format_type == "pdf":
-            return '''format:
+            return """format:
   pdf:
     geometry: margin=1in
     toc: true
     number-sections: true
     fig-width: 8
-    fig-height: 6'''
+    fig-height: 6"""
         elif format_type == "docx":
-            return '''format:
+            return """format:
   docx:
     toc: true
     number-sections: true
     fig-width: 8
-    fig-height: 6'''
+    fig-height: 6"""
         else:
-            return '''format:
+            return """format:
   html:
     theme: cosmo
     toc: true
-    embed-resources: true'''
-    
+    embed-resources: true"""
+
     def _copy_template_resources(self, output_dir: Path) -> Dict[str, str]:
         """
         Copy template CSS and other resources to output directory.
-        
+
         Args:
             output_dir: Directory where resources will be copied
-            
+
         Returns:
             Dict with paths to copied resources
         """
         resources = {}
-        
+
         # Copy CSS file from template directory (base styles)
         template_css_source = self.template_dir / "styles.css"
         if template_css_source.exists():
             template_css_dest = output_dir / "template-styles.css"
             shutil.copy2(template_css_source, template_css_dest)
-            resources['template_css_path'] = f"{output_dir.name}/template-styles.css"
+            resources["template_css_path"] = f"{output_dir.name}/template-styles.css"
         else:
             self.logger.warning(f"Template CSS file not found: {template_css_source}")
-            resources['template_css_path'] = ""
-        
+            resources["template_css_path"] = ""
+
         # Copy CSS and JS files from assets directory (advanced styles)
         assets_dir = Path(__file__).parent / "assets"
-        
+
         # Copy main CSS from assets (has zoom, TOC styles, etc.)
         assets_css_source = assets_dir / "styles.css"
         if assets_css_source.exists():
             assets_css_dest = output_dir / "styles.css"
             shutil.copy2(assets_css_source, assets_css_dest)
-            resources['css_path'] = f"{output_dir.name}/styles.css"
+            resources["css_path"] = f"{output_dir.name}/styles.css"
         else:
             self.logger.warning(f"Assets CSS file not found: {assets_css_source}")
-            resources['css_path'] = ""
-        
+            resources["css_path"] = ""
+
         # Copy JS file from assets
         js_source = assets_dir / "scripts.js"
         if js_source.exists():
             js_dest = output_dir / "scripts.js"
             shutil.copy2(js_source, js_dest)
-            resources['js_path'] = f"{output_dir.name}/scripts.js"
+            resources["js_path"] = f"{output_dir.name}/scripts.js"
         else:
-            resources['js_path'] = ""
-            
+            resources["js_path"] = ""
+
         return resources
-        
+
     def generate_model_report(
         self,
         model_results: Dict[str, Any],
         plots_data: Optional[Dict[str, str]] = None,
         report_title: str = "Time Series Model Analysis Report",
         output_filename: str = None,
-        format_type: str = "html"
+        format_type: str = "html",
     ) -> Path:
         """
         Generate comprehensive model analysis report using Quarto.
-        
+
         Args:
             model_results: Dictionary containing model results and metadata
             plots_data: Dictionary with plot file paths or base64 encoded images
             report_title: Title for the report
             output_filename: Custom filename for the report
             format_type: Output format ('html', 'pdf', 'docx')
-            
+
         Returns:
             Path to generated report
         """
@@ -199,43 +207,43 @@ class QuartoReportGenerator:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if output_filename is None:
                 output_filename = f"arima_report_{timestamp}"
-            
+
             # Create report directory
             report_dir = self.output_dir / f"{output_filename}_files"
             report_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Generate Quarto document
             qmd_path = self._create_quarto_document(
                 model_results, plots_data, report_title, report_dir, format_type
             )
-            
+
             # Render report
             output_path = self._render_report(qmd_path, format_type, output_filename)
-            
+
             self.logger.info(f"Report generated successfully: {output_path}")
             return output_path
-            
+
         except Exception as e:
             self.logger.error(f"Failed to generate report: {str(e)}")
             raise ForecastError(f"Report generation failed: {str(e)}")
-    
+
     def _create_quarto_document(
-        self, 
-        model_results: Dict[str, Any], 
-        plots_data: Optional[Dict[str, str]], 
+        self,
+        model_results: Dict[str, Any],
+        plots_data: Optional[Dict[str, str]],
         title: str,
         report_dir: Path,
-        format_type: str = "html"
+        format_type: str = "html",
     ) -> Path:
         """Create Quarto markdown document with model analysis."""
-        
+
         # Save model results as JSON for data processing
         results_path = report_dir / "model_results.json"
-        with open(results_path, 'w') as f:
+        with open(results_path, "w") as f:
             # Convert numpy arrays to lists for JSON serialization
             serializable_results = self._make_json_serializable(model_results)
             json.dump(serializable_results, f, indent=2)
-        
+
         # Copy plot files to report directory
         plot_files = {}
         if plots_data:
@@ -245,18 +253,18 @@ class QuartoReportGenerator:
                     shutil.copy2(plot_path, dest_path)
                     # Just use the filename since Quarto will look in the same directory
                     plot_files[plot_name] = f"{plot_name}.png"
-        
+
         # Generate Quarto document using template
         qmd_content = self._generate_qmd_content_from_template(
-            title, model_results, plot_files, 'model_results.json', report_dir, format_type
+            title, model_results, plot_files, "model_results.json", report_dir, format_type
         )
-        
+
         qmd_path = report_dir / "report.qmd"
-        with open(qmd_path, 'w', encoding='utf-8') as f:
+        with open(qmd_path, "w", encoding="utf-8") as f:
             f.write(qmd_content)
-        
+
         return qmd_path
-    
+
     def _generate_qmd_content_from_template(
         self,
         title: str,
@@ -264,30 +272,30 @@ class QuartoReportGenerator:
         plot_files: Dict[str, str],
         results_path_str: str,
         output_dir: Path,
-        format_type: str = "html"
+        format_type: str = "html",
     ) -> str:
         """Generate Quarto markdown content from template files."""
-        
+
         # Copy template resources and get paths
         resources = self._copy_template_resources(output_dir)
-        
+
         # Extract key information for placeholders
-        model_type = model_results.get('model_type', 'ARIMA')
-        order = model_results.get('order', 'N/A')
-        date_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+        model_type = model_results.get("model_type", "ARIMA")
+        order = model_results.get("order", "N/A")
+        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Load format configuration
         format_yaml = self._load_format_config(format_type)
-        
+
         # Load template sections
         header_content = self._load_template_file("header.qmd")
         body_content = self._load_template_file("body.qmd")
         footer_content = self._load_template_file("footer.qmd")
         config_section = self._load_template_file("config_section.qmd")
-        
+
         # Generate plots section
         plots_section = self._generate_plots_section(plot_files)
-        
+
         # Replace placeholders in header
         header_content = header_content.replace("{{title}}", title)
         header_content = header_content.replace("{{model_type}}", model_type)
@@ -295,15 +303,15 @@ class QuartoReportGenerator:
         header_content = header_content.replace("{{order}}", str(order))
         header_content = header_content.replace("{{format_yaml}}", format_yaml)
         header_content = header_content.replace("{{results_path}}", results_path_str)
-        
+
         # Replace placeholders in body
         body_content = body_content.replace("{{plots_section}}", plots_section)
         body_content = body_content.replace("{{config_section}}", config_section)
-        
+
         # Add custom CSS styles section if CSS exists
         css_section = ""
-        if resources.get('css_path'):
-            css_section = f'''
+        if resources.get("css_path"):
+            css_section = f"""
 <style>
 /* Limita dimensioni immagini esterne */
 .figure img {{
@@ -314,30 +322,32 @@ class QuartoReportGenerator:
     margin: 0 auto;
 }}
 </style>
-'''
-        
+"""
+
         # Combine all sections
-        qmd_content = header_content + "\n\n" + body_content + "\n\n" + css_section + "\n\n" + footer_content
-        
+        qmd_content = (
+            header_content + "\n\n" + body_content + "\n\n" + css_section + "\n\n" + footer_content
+        )
+
         return qmd_content
-    
+
     def _generate_plots_section(self, plot_files: Dict[str, str]) -> str:
         """Generate the plots section for the report."""
         if not plot_files:
             return ""
-        
+
         plots_content = ""
         for plot_name, plot_path in plot_files.items():
-            section_title = plot_name.replace('_', ' ').title()
-            plots_content += f'''
+            section_title = plot_name.replace("_", " ").title()
+            plots_content += f"""
 ### {section_title}
 
 ![{section_title}]({plot_path}){{.figure-img}}
 
-'''
-        
+"""
+
         return plots_content
-    
+
     def _render_report(self, qmd_path: Path, format_type: str, output_filename: str) -> Path:
         """Render Quarto document to specified format."""
         try:
@@ -346,33 +356,32 @@ class QuartoReportGenerator:
             temp_output_name = f"{output_filename}.{format_type}"
             temp_output_path = qmd_path.parent / temp_output_name
             final_output_path = self.output_dir / temp_output_name
-            
-            # Ensure we use the current Python environment  
+
+            # Ensure we use the current Python environment
             import sys
-            
+
             # Use forward slashes for cross-platform compatibility
-            qmd_path_posix = str(qmd_path.absolute()).replace('\\', '/')
-            
+            qmd_path_posix = str(qmd_path.absolute()).replace("\\", "/")
+
             cmd = [
-                "quarto", "render", qmd_path_posix,
-                "--to", format_type,
-                "--output", temp_output_name  # Just filename, not full path
+                "quarto",
+                "render",
+                qmd_path_posix,
+                "--to",
+                format_type,
+                "--output",
+                temp_output_name,  # Just filename, not full path
             ]
-            
+
             env = os.environ.copy()
-            env['PYTHONPATH'] = os.pathsep.join(sys.path)
+            env["PYTHONPATH"] = os.pathsep.join(sys.path)
             # Also set QUARTO_PYTHON to point to our environment
-            env['QUARTO_PYTHON'] = sys.executable
-            
+            env["QUARTO_PYTHON"] = sys.executable
+
             result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True, 
-                encoding='utf-8',
-                cwd=qmd_path.parent,
-                env=env
+                cmd, capture_output=True, text=True, encoding="utf-8", cwd=qmd_path.parent, env=env
             )
-            
+
             # Debug del processo quarto
             self.logger.info(f"Quarto command: {' '.join(cmd)}")
             self.logger.info(f"Return code: {result.returncode}")
@@ -380,15 +389,17 @@ class QuartoReportGenerator:
                 self.logger.info(f"Stdout: {result.stdout}")
             if result.stderr:
                 self.logger.warning(f"Stderr: {result.stderr}")
-            
+
             if result.returncode != 0:
                 self.logger.error(f"Quarto render failed: {result.stderr}")
                 raise ForecastError(f"Quarto rendering failed: {result.stderr}")
-            
+
             # Cerca file generati nella directory (fallback)
             generated_files = list(qmd_path.parent.glob("*.html"))
-            self.logger.info(f"HTML files found in {qmd_path.parent}: {[f.name for f in generated_files]}")
-            
+            self.logger.info(
+                f"HTML files found in {qmd_path.parent}: {[f.name for f in generated_files]}"
+            )
+
             # Cerca il file atteso o qualsiasi HTML con nome simile
             if temp_output_path.exists():
                 output_file = temp_output_path
@@ -398,26 +409,27 @@ class QuartoReportGenerator:
                 self.logger.info(f"Using fallback HTML file: {output_file.name}")
             else:
                 raise ForecastError(f"No HTML output found in {qmd_path.parent}")
-            
+
             # Move the generated file to final location
             import shutil
+
             # Ensure output directory exists
             final_output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(output_file), str(final_output_path))
-            
+
             # Fix image paths and inject magnifying lens functionality
             if format_type == "html":
                 self._fix_html_resources(final_output_path, output_filename)
-            
+
             return final_output_path
-            
+
         except FileNotFoundError:
             raise ForecastError(
                 "Quarto not found. Please install Quarto: https://quarto.org/docs/get-started/"
             )
         except Exception as e:
             raise ForecastError(f"Report rendering failed: {str(e)}")
-    
+
     def _make_json_serializable(self, obj: Any) -> Any:
         """Convert numpy arrays and other non-serializable objects to JSON-serializable format."""
         if isinstance(obj, dict):
@@ -433,12 +445,12 @@ class QuartoReportGenerator:
         elif isinstance(obj, pd.Series):
             return obj.tolist()
         elif isinstance(obj, pd.DataFrame):
-            return obj.to_dict('records')
+            return obj.to_dict("records")
         elif isinstance(obj, (np.bool_, bool)):
             return bool(obj)
-        elif hasattr(obj, 'isoformat'):  # datetime objects
+        elif hasattr(obj, "isoformat"):  # datetime objects
             return obj.isoformat()
-        elif pd.isna(obj) if hasattr(pd, 'isna') else False:
+        elif pd.isna(obj) if hasattr(pd, "isna") else False:
             return None
         else:
             # Try to preserve numeric types before converting to string
@@ -447,7 +459,7 @@ class QuartoReportGenerator:
                 if isinstance(obj, str):
                     try:
                         # Try to parse as int first, then float
-                        if '.' not in obj:
+                        if "." not in obj:
                             return int(obj)
                         else:
                             return float(obj)
@@ -457,111 +469,106 @@ class QuartoReportGenerator:
                     return str(obj)
             except:
                 return None
-    
+
     def _fix_html_resources(self, html_path: Path, output_filename: str) -> None:
         """Fix all resource paths and inject magnifying lens functionality into HTML file."""
         try:
             # Read the HTML file
-            with open(html_path, 'r', encoding='utf-8') as f:
+            with open(html_path, "r", encoding="utf-8") as f:
                 html_content = f.read()
-            
+
             files_dir = f"{output_filename}_files"
-            
+
             import re
-            
+
             # Fix all resource paths (CSS, JS, images)
-            
+
             # 1. Fix CSS/JS paths: href="report_files/ -> href="output_filename_files/report_files/
             html_content = re.sub(
-                r'href="report_files/',
-                f'href="{files_dir}/report_files/',
-                html_content
+                r'href="report_files/', f'href="{files_dir}/report_files/', html_content
             )
-            
+
             # 2. Fix script paths: src="report_files/ -> src="output_filename_files/report_files/
             html_content = re.sub(
-                r'src="report_files/',
-                f'src="{files_dir}/report_files/',
-                html_content
+                r'src="report_files/', f'src="{files_dir}/report_files/', html_content
             )
-            
+
             # 3. Fix image paths that need the subdirectory prefix
             # Pattern: src="forecast_plot.png" -> src="output_filename_files/forecast_plot.png"
             # But only for simple image names, not paths that already have directories
             pattern = r'src="([^/\\]+\.png)"'
-            
+
             def replace_img_path(match):
                 filename = match.group(1)
                 # Don't fix paths that already have the files_dir
                 if files_dir in filename:
                     return match.group(0)
                 # Don't fix paths that start with 'figure-html/' (Quarto internal images)
-                if 'figure-html' in filename:
+                if "figure-html" in filename:
                     return match.group(0)
                 # Fix the path
                 return f'src="{files_dir}/{filename}"'
-            
+
             html_content = re.sub(pattern, replace_img_path, html_content)
-            
+
             # 4. Inject CSS and JavaScript files
             report_dir = html_path.parent / files_dir
             js_path = report_dir / "scripts.js"
             css_path = report_dir / "styles.css"
             template_css_path = report_dir / "template-styles.css"
-            
+
             magnifier_code = ""
             # Include template CSS first (base styles)
             if template_css_path.exists():
-                magnifier_code += f'<link rel="stylesheet" href="{files_dir}/template-styles.css" />\n'
+                magnifier_code += (
+                    f'<link rel="stylesheet" href="{files_dir}/template-styles.css" />\n'
+                )
             # Include main CSS second (advanced styles - will override template styles)
             if css_path.exists():
                 magnifier_code += f'<link rel="stylesheet" href="{files_dir}/styles.css" />\n'
             # Include JavaScript
             if js_path.exists():
                 magnifier_code += f'<script src="{files_dir}/scripts.js"></script>\n'
-            
+
             if magnifier_code:
                 # Inject the code before </head> tag
-                head_pattern = r'</head>'
+                head_pattern = r"</head>"
                 if re.search(head_pattern, html_content, re.IGNORECASE):
                     html_content = re.sub(
-                        head_pattern, 
-                        magnifier_code + '</head>', 
-                        html_content, 
-                        flags=re.IGNORECASE
+                        head_pattern, magnifier_code + "</head>", html_content, flags=re.IGNORECASE
                     )
                     self.logger.info(f"Injected external resources into HTML report")
                 else:
                     self.logger.warning("Could not find </head> tag to inject external resources")
-            
+
             # Write back the fixed HTML
-            with open(html_path, 'w', encoding='utf-8') as f:
+            with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
-                
+
             self.logger.info(f"Fixed all resource paths in HTML report: {html_path}")
-            
+
         except Exception as e:
             self.logger.warning(f"Could not fix HTML resources: {e}")
             # Don't fail the entire report generation for this issue
-    
+
     def create_comparison_report(
         self,
         models_results: Dict[str, Dict[str, Any]],
         report_title: str = "ARIMA Models Comparison Report",
         output_filename: str = None,
         format_type: str = "html",
-        template_name: str = None
+        template_name: str = None,
     ) -> Path:
         """
         Generate comparative analysis report for multiple models.
-        
+
         Args:
             models_results: Dictionary of model names and their results
             report_title: Title for the report
             output_filename: Custom filename for the report
             format_type: Output format ('html', 'pdf', 'docx')
             template_name: Template to use (default: use instance template)
-            
+
         Returns:
             Path to generated report
         """
@@ -572,103 +579,109 @@ class QuartoReportGenerator:
                 self.template_name = template_name
                 self.template_dir = Path(__file__).parent / "templates" / template_name
                 self.template_metadata = self._load_template_metadata()
-            
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if output_filename is None:
                 output_filename = f"models_comparison_{timestamp}"
-            
+
             report_dir = self.output_dir / f"{output_filename}_files"
             report_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Save models results
             results_path = report_dir / "models_comparison.json"
-            with open(results_path, 'w') as f:
+            with open(results_path, "w") as f:
                 serializable_results = {
                     model_name: self._make_json_serializable(results)
                     for model_name, results in models_results.items()
                 }
                 json.dump(serializable_results, f, indent=2)
-            
+
             # Generate comparison document
-            qmd_content = self._generate_comparison_qmd(report_title, models_results, results_path, format_type)
-            
+            qmd_content = self._generate_comparison_qmd(
+                report_title, models_results, results_path, format_type
+            )
+
             qmd_path = report_dir / "comparison_report.qmd"
-            with open(qmd_path, 'w', encoding='utf-8') as f:
+            with open(qmd_path, "w", encoding="utf-8") as f:
                 f.write(qmd_content)
-            
+
             # Render report
             output_path = self._render_report(qmd_path, format_type, output_filename)
-            
+
             # Restore original template if changed
             if template_name and template_name != old_template:
                 self.template_name = old_template
                 self.template_dir = Path(__file__).parent / "templates" / old_template
                 self.template_metadata = self._load_template_metadata()
-            
+
             self.logger.info(f"Comparison report generated: {output_path}")
             return output_path
-            
+
         except Exception as e:
             self.logger.error(f"Failed to generate comparison report: {str(e)}")
             raise ForecastError(f"Comparison report generation failed: {str(e)}")
-    
+
     def _generate_comparison_qmd(
-        self, 
-        title: str, 
-        models_results: Dict[str, Dict[str, Any]], 
+        self,
+        title: str,
+        models_results: Dict[str, Dict[str, Any]],
         results_path: Path,
-        format_type: str = "html"
+        format_type: str = "html",
     ) -> str:
         """Generate Quarto document for models comparison using template."""
-        
+
         # Get format configuration
         format_yaml = self._load_format_config(format_type)
-        
+
         # Load comparison template
         template_path = self.template_dir / "confronto.qmd"
-        
+
         try:
-            with open(template_path, 'r', encoding='utf-8') as f:
+            with open(template_path, "r", encoding="utf-8") as f:
                 template_content = f.read()
-            
+
             # Replace template variables
             qmd_content = template_content.format(
                 title=title,
-                date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 format_yaml=format_yaml,
-                results_path=results_path
+                results_path=results_path,
             )
-            
+
             self.logger.info(f"Generato report comparativo usando template: {template_path}")
             return qmd_content
-            
+
         except FileNotFoundError:
             self.logger.error(f"Template confronto.qmd non trovato in: {template_path}")
             # Fallback to basic comparison template
-            return self._generate_basic_comparison_qmd(title, models_results, results_path, format_type)
-        
+            return self._generate_basic_comparison_qmd(
+                title, models_results, results_path, format_type
+            )
+
         except Exception as e:
             self.logger.error(f"Errore caricamento template confronto: {e}")
             # Fallback to basic comparison template
-            return self._generate_basic_comparison_qmd(title, models_results, results_path, format_type)
-    
+            return self._generate_basic_comparison_qmd(
+                title, models_results, results_path, format_type
+            )
+
     def _generate_basic_comparison_qmd(
-        self, 
-        title: str, 
-        models_results: Dict[str, Dict[str, Any]], 
+        self,
+        title: str,
+        models_results: Dict[str, Dict[str, Any]],
         results_path: Path,
-        format_type: str = "html"
+        format_type: str = "html",
     ) -> str:
         """Fallback method for basic comparison report generation."""
-        
+
         # Get format configuration
         format_yaml = self._load_format_config(format_type)
-        
+
         qmd_content = f'''---
 title: "{title}"
 subtitle: "Analisi Comparativa Modelli (Fallback)"
 author: "ARIMA Forecaster Library"
-date: "{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+date: "{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}"
 {format_yaml}
 execute:
   echo: false
@@ -709,6 +722,6 @@ display(HTML(df.to_html(index=False, classes='table table-striped')))
 
 *Template confronto.qmd non disponibile - usando modalità fallback*
 '''
-        
+
         self.logger.warning("Usando template fallback per report comparativo")
         return qmd_content
