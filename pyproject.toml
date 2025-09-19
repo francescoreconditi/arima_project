@@ -63,6 +63,7 @@ dependencies = [
     "psutil>=5.9.0", # System and process utilities for monitoring
     "rich>=13.0.0", # Rich text and beautiful formatting for CLI
     "email-validator>=2.3.0",
+    "networkx>=3.2.1",
 ]
 
 # Dipendenze opzionali

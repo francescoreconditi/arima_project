@@ -111,7 +111,8 @@
       "Bash(for file in src/arima_forecaster/demand_sensing/*.py)",
       "Bash(arima-forecast:*)",
       "Bash(uv build:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(ruff format:*)"
     ],
     "deny": [],
     "ask": [],

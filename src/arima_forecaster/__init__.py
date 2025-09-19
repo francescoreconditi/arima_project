@@ -107,3 +107,26 @@ try:
     _has_explainability = True
 except ImportError:
     _has_explainability = False
+
+# Forecast Reconciliation (conditional import)
+try:
+    from .reconciliation import (
+        HierarchicalReconciler,
+        ProductHierarchy,
+        GeographicalHierarchy,
+        TemporalHierarchy,
+        ReconciliationMethod,
+        CoherenceChecker,
+    )
+
+    __all__.extend([
+        "HierarchicalReconciler",
+        "ProductHierarchy",
+        "GeographicalHierarchy",
+        "TemporalHierarchy",
+        "ReconciliationMethod",
+        "CoherenceChecker"
+    ])
+    _has_reconciliation = True
+except ImportError:
+    _has_reconciliation = False
