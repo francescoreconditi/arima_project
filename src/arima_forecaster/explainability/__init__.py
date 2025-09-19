@@ -12,12 +12,12 @@ from .business_rules import BusinessRulesEngine, Rule, RuleAction, BusinessConte
 __all__ = [
     "SHAPExplainer",
     "SHAPConfig",
-    "FeatureImportanceAnalyzer", 
+    "FeatureImportanceAnalyzer",
     "AnomalyExplainer",
     "AnomalyExplanation",
     "BusinessRulesEngine",
     "Rule",
     "RuleAction",
     "BusinessContext",
-    "RuleType"
+    "RuleType",
 ]

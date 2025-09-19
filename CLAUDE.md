@@ -63,6 +63,10 @@ Quando possibile SEMPRE scrivere commenti nei sorgenti in Italiano.
 4. **CONSEGUENZE**: Violare questa regola causa crash runtime e perdita tempo debugging
 5. **ECCEZIONE**: Solo nei commenti/documentazione Markdown sono permesse emoji
 
+# Code Quality Rules
+# ALWAYS run ruff format on any Python file after creating or modifying it
+ruff format filename.py            # Auto-format specific file after modification
+
 ### 🔴 Sistema Traduzioni Centralizzato
 **Dal 26/08/2024: Sistema traduzioni unificato per tutto il progetto**
 1. **Directory traduzioni**: `src/arima_forecaster/assets/locales/` contiene file JSON per ogni lingua

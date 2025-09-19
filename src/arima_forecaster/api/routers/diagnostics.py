@@ -20,9 +20,7 @@ logger = get_logger(__name__)
 
 # Crea router con prefix e tags
 router = APIRouter(
-    prefix="/models",
-    tags=["Diagnostics"],
-    responses={404: {"description": "Not found"}}
+    prefix="/models", tags=["Diagnostics"], responses={404: {"description": "Not found"}}
 )
 
 """
@@ -46,6 +44,7 @@ Analisi incluse:
 def get_services():
     """Dependency per ottenere i servizi necessari."""
     from pathlib import Path
+
     storage_path = Path("models")
     model_manager = ModelManager(storage_path)
     forecast_service = ForecastService(model_manager)
@@ -53,22 +52,19 @@ def get_services():
 
 
 @router.post("/{model_id}/diagnostics", response_model=ModelDiagnostics)
-async def get_model_diagnostics(
-    model_id: str,
-    services: tuple = Depends(get_services)
-):
+async def get_model_diagnostics(model_id: str, services: tuple = Depends(get_services)):
     """
     Esegue diagnostica completa su un modello addestrato.
-    
+
     Analizza i residui del modello, esegue test statistici e calcola metriche
     di performance dettagliate per valutare la qualità del fit.
-    
+
     <h4>Parametri di Ingresso:</h4>
     <table >
         <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
         <tr><td>model_id</td><td>str</td><td>ID univoco del modello da analizzare</td></tr>
     </table>
-    
+
     <h4>Risposta:</h4>
     <table >
         <tr><th>Campo</th><th>Tipo</th><th>Descrizione</th></tr>
@@ -79,12 +75,12 @@ async def get_model_diagnostics(
         <tr><td>pacf_values</td><td>list</td><td>Valori di autocorrelazione parziale (PACF)</td></tr>
         <tr><td>performance_metrics</td><td>dict</td><td>Metriche di performance (MAE, RMSE, MAPE, etc.)</td></tr>
     </table>
-    
+
     <h4>Esempio di Chiamata:</h4>
     <pre><code>
     curl -X POST "http://localhost:8000/models/abc123/diagnostics"
     </code></pre>
-    
+
     <h4>Esempio di Risposta:</h4>
     <pre><code>
     {
@@ -114,7 +110,7 @@ async def get_model_diagnostics(
         }
     }
     </code></pre>
-    
+
     <h4>Errori Possibili:</h4>
     <ul>
         <li><strong>404</strong>: Modello non trovato</li>
@@ -122,94 +118,92 @@ async def get_model_diagnostics(
     </ul>
     """
     model_manager, _ = services
-    
+
     try:
         # Verifica l'esistenza del modello
         if not model_manager.model_exists(model_id):
             raise HTTPException(status_code=404, detail="Model not found")
-        
+
         # Carica il modello
         model = model_manager.load_model(model_id)
-        
+
         # Ottiene i residui del modello
-        residuals = model.residuals if hasattr(model, 'residuals') else None
-        
+        residuals = model.residuals if hasattr(model, "residuals") else None
+
         if residuals is None or len(residuals) == 0:
             raise HTTPException(
-                status_code=400,
-                detail="Model does not have residuals available for diagnostics"
+                status_code=400, detail="Model does not have residuals available for diagnostics"
             )
-        
+
         # Calcola statistiche sui residui
         residuals_stats = {
             "mean": float(np.mean(residuals)),
             "std": float(np.std(residuals)),
             "skewness": float(pd.Series(residuals).skew()),
-            "kurtosis": float(pd.Series(residuals).kurtosis())
+            "kurtosis": float(pd.Series(residuals).kurtosis()),
         }
-        
+
         # Test di Ljung-Box per autocorrelazione
         from statsmodels.stats.diagnostic import acorr_ljungbox
+
         lb_test = acorr_ljungbox(residuals, lags=10, return_df=False)
         ljung_box_test = {
             "statistic": float(lb_test[0][-1]),
             "p_value": float(lb_test[1][-1]),
-            "result": "No autocorrelation detected" if lb_test[1][-1] > 0.05 
-                     else "Autocorrelation detected in residuals"
+            "result": "No autocorrelation detected"
+            if lb_test[1][-1] > 0.05
+            else "Autocorrelation detected in residuals",
         }
-        
+
         # Test di Jarque-Bera per normalità
         from scipy import stats
+
         jb_stat, jb_pvalue = stats.jarque_bera(residuals)
         jarque_bera_test = {
             "statistic": float(jb_stat),
             "p_value": float(jb_pvalue),
-            "result": "Residuals are normally distributed" if jb_pvalue > 0.05
-                     else "Residuals are not normally distributed"
+            "result": "Residuals are normally distributed"
+            if jb_pvalue > 0.05
+            else "Residuals are not normally distributed",
         }
-        
+
         # Calcola ACF e PACF
         from statsmodels.stats.stattools import acf, pacf
+
         acf_values = acf(residuals, nlags=20).tolist()
         pacf_values = pacf(residuals, nlags=20).tolist()
-        
+
         # Calcola metriche di performance
         evaluator = ModelEvaluator()
-        
+
         # Ottiene valori fitted se disponibili
-        if hasattr(model, 'fitted_values') and model.fitted_values is not None:
+        if hasattr(model, "fitted_values") and model.fitted_values is not None:
             fitted = model.fitted_values
             # Trova l'indice comune tra serie originale e fitted
-            if hasattr(model, '_last_series'):
+            if hasattr(model, "_last_series"):
                 actual = model._last_series
                 common_idx = actual.index.intersection(fitted.index)
                 if len(common_idx) > 0:
-                    metrics = evaluator.calculate_metrics(
-                        actual[common_idx],
-                        fitted[common_idx]
-                    )
+                    metrics = evaluator.calculate_metrics(actual[common_idx], fitted[common_idx])
                 else:
                     metrics = {}
             else:
                 metrics = {}
         else:
             metrics = {}
-        
+
         # Converte metriche in float per JSON
-        performance_metrics = {
-            k: float(v) if not np.isnan(v) else None
-            for k, v in metrics.items()
-        }
-        
+        performance_metrics = {k: float(v) if not np.isnan(v) else None for k, v in metrics.items()}
+
         return ModelDiagnostics(
             residuals_stats=residuals_stats,
             ljung_box_test=ljung_box_test,
             jarque_bera_test=jarque_bera_test,
             acf_values=acf_values,
             pacf_values=pacf_values,
-            performance_metrics=performance_metrics
+            performance_metrics=performance_metrics,
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

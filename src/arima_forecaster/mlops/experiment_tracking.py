@@ -36,6 +36,7 @@ logger = get_logger(__name__)
 
 class ExperimentStatus(str, Enum):
     """Status di un esperimento."""
+
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -44,6 +45,7 @@ class ExperimentStatus(str, Enum):
 
 class RunStatus(str, Enum):
     """Status di un run."""
+
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -53,6 +55,7 @@ class RunStatus(str, Enum):
 @dataclass
 class Experiment:
     """Metadata per un esperimento."""
+
     experiment_id: str
     name: str
     description: str
@@ -69,6 +72,7 @@ class Experiment:
 @dataclass
 class ExperimentRun:
     """Metadata per un singolo run di esperimento."""
+
     run_id: str
     experiment_id: str
     name: Optional[str]
@@ -90,6 +94,7 @@ class ExperimentRun:
 
 class ExperimentRunRequest(BaseModel):
     """Request per creare un nuovo run."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     experiment_id: str
@@ -203,7 +208,7 @@ class ExperimentTracker:
         description: str = "",
         tags: Optional[List[str]] = None,
         created_by: str = "system",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Experiment:
         """
         Crea un nuovo esperimento.
@@ -234,29 +239,32 @@ class ExperimentTracker:
             status=ExperimentStatus.RUNNING,
             created_by=created_by,
             runs_count=0,
-            metadata=metadata
+            metadata=metadata,
         )
 
         # Salva in database
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO experiments
                 (experiment_id, name, description, tags, status, created_by,
                  runs_count, metadata, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                experiment.experiment_id,
-                experiment.name,
-                experiment.description,
-                json.dumps(experiment.tags),
-                experiment.status.value,
-                experiment.created_by,
-                experiment.runs_count,
-                json.dumps(experiment.metadata or {}),
-                experiment.created_at,
-                experiment.updated_at
-            ))
+            """,
+                (
+                    experiment.experiment_id,
+                    experiment.name,
+                    experiment.description,
+                    json.dumps(experiment.tags),
+                    experiment.status.value,
+                    experiment.created_by,
+                    experiment.runs_count,
+                    json.dumps(experiment.metadata or {}),
+                    experiment.created_at,
+                    experiment.updated_at,
+                ),
+            )
             conn.commit()
 
         logger.info(f"Esperimento creato: {name} ({experiment_id})")
@@ -270,7 +278,7 @@ class ExperimentTracker:
         tags: Optional[List[str]] = None,
         model_type: Optional[str] = None,
         created_by: str = "system",
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> ExperimentRun:
         """
         Inizia un nuovo run per un esperimento.
@@ -311,47 +319,55 @@ class ExperimentTracker:
             dataset_hash=None,
             git_commit=self._get_git_commit(),
             created_by=created_by,
-            notes=notes
+            notes=notes,
         )
 
         # Salva in database
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO runs
                 (run_id, experiment_id, name, status, parameters, metrics, tags,
                  artifacts, start_time, model_type, git_commit, created_by, notes, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                run.run_id,
-                run.experiment_id,
-                run.name,
-                run.status.value,
-                json.dumps(run.parameters),
-                json.dumps(run.metrics),
-                json.dumps(run.tags),
-                json.dumps(run.artifacts),
-                run.start_time,
-                run.model_type,
-                run.git_commit,
-                run.created_by,
-                run.notes,
-                json.dumps({})
-            ))
+            """,
+                (
+                    run.run_id,
+                    run.experiment_id,
+                    run.name,
+                    run.status.value,
+                    json.dumps(run.parameters),
+                    json.dumps(run.metrics),
+                    json.dumps(run.tags),
+                    json.dumps(run.artifacts),
+                    run.start_time,
+                    run.model_type,
+                    run.git_commit,
+                    run.created_by,
+                    run.notes,
+                    json.dumps({}),
+                ),
+            )
 
             # Aggiorna contatore runs nell'esperimento
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE experiments
                 SET runs_count = runs_count + 1, updated_at = ?
                 WHERE experiment_id = ?
-            """, (now, experiment_id))
+            """,
+                (now, experiment_id),
+            )
 
             conn.commit()
 
         logger.info(f"Run iniziato: {run.name} ({run_id})")
         return run
 
-    def log_metrics(self, run_id: str, metrics: Dict[str, float], step: Optional[int] = None) -> None:
+    def log_metrics(
+        self, run_id: str, metrics: Dict[str, float], step: Optional[int] = None
+    ) -> None:
         """
         Logga metriche per un run.
 
@@ -369,21 +385,24 @@ class ExperimentTracker:
             cursor.execute("SELECT metrics FROM runs WHERE run_id = ?", (run_id,))
             row = cursor.fetchone()
             if row:
-                current_metrics = json.loads(row[0] or '{}')
+                current_metrics = json.loads(row[0] or "{}")
                 current_metrics.update(metrics)
 
                 cursor.execute(
                     "UPDATE runs SET metrics = ? WHERE run_id = ?",
-                    (json.dumps(current_metrics), run_id)
+                    (json.dumps(current_metrics), run_id),
                 )
 
                 # Logga in metrics_history per tracking nel tempo
                 for metric_name, metric_value in metrics.items():
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO metrics_history
                         (run_id, metric_name, metric_value, step, timestamp)
                         VALUES (?, ?, ?, ?, ?)
-                    """, (run_id, metric_name, metric_value, step, now))
+                    """,
+                        (run_id, metric_name, metric_value, step, now),
+                    )
 
                 conn.commit()
 
@@ -404,18 +423,20 @@ class ExperimentTracker:
             cursor.execute("SELECT parameters FROM runs WHERE run_id = ?", (run_id,))
             row = cursor.fetchone()
             if row:
-                current_params = json.loads(row[0] or '{}')
+                current_params = json.loads(row[0] or "{}")
                 current_params.update(parameters)
 
                 cursor.execute(
                     "UPDATE runs SET parameters = ? WHERE run_id = ?",
-                    (json.dumps(current_params), run_id)
+                    (json.dumps(current_params), run_id),
                 )
                 conn.commit()
 
         logger.debug(f"Parametri loggati per run {run_id}: {parameters}")
 
-    def log_artifact(self, run_id: str, artifact_path: Union[str, Path], artifact_name: Optional[str] = None) -> str:
+    def log_artifact(
+        self, run_id: str, artifact_path: Union[str, Path], artifact_name: Optional[str] = None
+    ) -> str:
         """
         Logga un artifact per un run.
 
@@ -447,12 +468,12 @@ class ExperimentTracker:
             cursor.execute("SELECT artifacts FROM runs WHERE run_id = ?", (run_id,))
             row = cursor.fetchone()
             if row:
-                artifacts = json.loads(row[0] or '[]')
+                artifacts = json.loads(row[0] or "[]")
                 artifacts.append(str(target_path))
 
                 cursor.execute(
                     "UPDATE runs SET artifacts = ? WHERE run_id = ?",
-                    (json.dumps(artifacts), run_id)
+                    (json.dumps(artifacts), run_id),
                 )
                 conn.commit()
 
@@ -483,11 +504,14 @@ class ExperimentTracker:
                 start_time = datetime.fromisoformat(row[0])
                 duration_seconds = (now - start_time).total_seconds()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE runs
                 SET status = ?, end_time = ?, duration_seconds = ?
                 WHERE run_id = ?
-            """, (status.value, now, duration_seconds, run_id))
+            """,
+                (status.value, now, duration_seconds, run_id),
+            )
 
             conn.commit()
 
@@ -562,7 +586,9 @@ class ExperimentTracker:
 
             return [self._row_to_experiment(row) for row in rows]
 
-    def list_runs(self, experiment_id: Optional[str] = None, status: Optional[RunStatus] = None) -> List[ExperimentRun]:
+    def list_runs(
+        self, experiment_id: Optional[str] = None, status: Optional[RunStatus] = None
+    ) -> List[ExperimentRun]:
         """
         Lista runs.
 
@@ -610,28 +636,30 @@ class ExperimentTracker:
             run = self.get_run(run_id)
             if run:
                 row_data = {
-                    'run_id': run.run_id,
-                    'experiment_id': run.experiment_id,
-                    'name': run.name,
-                    'status': run.status.value,
-                    'model_type': run.model_type,
-                    'duration_seconds': run.duration_seconds,
-                    'start_time': run.start_time
+                    "run_id": run.run_id,
+                    "experiment_id": run.experiment_id,
+                    "name": run.name,
+                    "status": run.status.value,
+                    "model_type": run.model_type,
+                    "duration_seconds": run.duration_seconds,
+                    "start_time": run.start_time,
                 }
 
                 # Aggiungi parametri
                 for param, value in run.parameters.items():
-                    row_data[f'param_{param}'] = value
+                    row_data[f"param_{param}"] = value
 
                 # Aggiungi metriche
                 for metric, value in run.metrics.items():
-                    row_data[f'metric_{metric}'] = value
+                    row_data[f"metric_{metric}"] = value
 
                 runs_data.append(row_data)
 
         return pd.DataFrame(runs_data)
 
-    def get_best_run(self, experiment_id: str, metric_name: str, maximize: bool = True) -> Optional[ExperimentRun]:
+    def get_best_run(
+        self, experiment_id: str, metric_name: str, maximize: bool = True
+    ) -> Optional[ExperimentRun]:
         """
         Ottiene il miglior run per una metrica.
 
@@ -654,7 +682,11 @@ class ExperimentTracker:
         for run in runs:
             if metric_name in run.metrics:
                 value = run.metrics[metric_name]
-                if best_value is None or (maximize and value > best_value) or (not maximize and value < best_value):
+                if (
+                    best_value is None
+                    or (maximize and value > best_value)
+                    or (not maximize and value < best_value)
+                ):
                     best_value = value
                     best_run = run
 
@@ -675,13 +707,13 @@ class ExperimentTracker:
         runs = self.list_runs(experiment_id=experiment_id)
 
         export_data = {
-            'experiment': asdict(experiment),
-            'runs': [asdict(run) for run in runs],
-            'exported_at': datetime.now(timezone.utc).isoformat()
+            "experiment": asdict(experiment),
+            "runs": [asdict(run) for run in runs],
+            "exported_at": datetime.now(timezone.utc).isoformat(),
         }
 
         export_path = Path(export_path)
-        with open(export_path, 'w', encoding='utf-8') as f:
+        with open(export_path, "w", encoding="utf-8") as f:
             json.dump(export_data, f, indent=2, default=str)
 
         logger.info(f"Esperimento esportato: {experiment_id} -> {export_path}")
@@ -694,7 +726,8 @@ class ExperimentTracker:
         """Ottiene commit Git corrente."""
         try:
             import subprocess
-            result = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True)
+
+            result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
             if result.returncode == 0:
                 return result.stdout.strip()
         except Exception:
@@ -706,15 +739,15 @@ class ExperimentTracker:
         return Experiment(
             experiment_id=row[0],
             name=row[1],
-            description=row[2] or '',
-            tags=json.loads(row[3] or '[]'),
+            description=row[2] or "",
+            tags=json.loads(row[3] or "[]"),
             status=ExperimentStatus(row[4]),
-            created_by=row[5] or 'system',
+            created_by=row[5] or "system",
             runs_count=row[6] or 0,
             best_run_id=row[7],
-            metadata=json.loads(row[8] or '{}'),
+            metadata=json.loads(row[8] or "{}"),
             created_at=datetime.fromisoformat(row[9]) if row[9] else datetime.now(timezone.utc),
-            updated_at=datetime.fromisoformat(row[10]) if row[10] else datetime.now(timezone.utc)
+            updated_at=datetime.fromisoformat(row[10]) if row[10] else datetime.now(timezone.utc),
         )
 
     def _row_to_run(self, row: tuple) -> ExperimentRun:
@@ -724,23 +757,25 @@ class ExperimentTracker:
             experiment_id=row[1],
             name=row[2],
             status=RunStatus(row[3]),
-            parameters=json.loads(row[4] or '{}'),
-            metrics=json.loads(row[5] or '{}'),
-            tags=json.loads(row[6] or '[]'),
-            artifacts=json.loads(row[7] or '[]'),
+            parameters=json.loads(row[4] or "{}"),
+            metrics=json.loads(row[5] or "{}"),
+            tags=json.loads(row[6] or "[]"),
+            artifacts=json.loads(row[7] or "[]"),
             start_time=datetime.fromisoformat(row[8]) if row[8] else datetime.now(timezone.utc),
             end_time=datetime.fromisoformat(row[9]) if row[9] else None,
             duration_seconds=row[10],
             model_type=row[11],
             dataset_hash=row[12],
             git_commit=row[13],
-            created_by=row[14] or 'system',
+            created_by=row[14] or "system",
             notes=row[15],
-            metadata=json.loads(row[16] or '{}')
+            metadata=json.loads(row[16] or "{}"),
         )
 
 
-def create_experiment_tracker(tracking_path: Union[str, Path] = "experiments_tracking") -> ExperimentTracker:
+def create_experiment_tracker(
+    tracking_path: Union[str, Path] = "experiments_tracking",
+) -> ExperimentTracker:
     """
     Factory function per creare ExperimentTracker.
 

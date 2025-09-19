@@ -36,6 +36,7 @@ logger = get_logger(__name__)
 
 class ModelStage(str, Enum):
     """Stage del modello nel lifecycle."""
+
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -44,6 +45,7 @@ class ModelStage(str, Enum):
 
 class ModelStatus(str, Enum):
     """Status del modello."""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     DEPRECATED = "deprecated"
@@ -53,6 +55,7 @@ class ModelStatus(str, Enum):
 @dataclass
 class ModelMetadata:
     """Metadata per un modello registrato."""
+
     model_name: str
     version: str
     model_type: str  # "ARIMA", "SARIMA", "VAR", ecc.
@@ -73,6 +76,7 @@ class ModelMetadata:
 
 class ModelVersion(BaseModel):
     """Pydantic model per validazione model version."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str = Field(..., description="Nome del modello")
@@ -180,7 +184,7 @@ class ModelRegistry:
         author: str = "system",
         dataset_hash: Optional[str] = None,
         dependencies: Optional[Dict[str, str]] = None,
-        stage: ModelStage = ModelStage.DEVELOPMENT
+        stage: ModelStage = ModelStage.DEVELOPMENT,
     ) -> ModelMetadata:
         """
         Registra un nuovo modello nel registry.
@@ -238,7 +242,7 @@ class ModelRegistry:
             dataset_hash=dataset_hash,
             model_hash=model_hash,
             file_path=str(file_path),
-            dependencies=dependencies
+            dependencies=dependencies,
         )
 
         # Salva in database
@@ -247,7 +251,9 @@ class ModelRegistry:
         logger.info(f"Modello registrato: {name} v{version} ({model_type})")
         return metadata
 
-    def get_model(self, name: str, version: Optional[str] = None, stage: Optional[ModelStage] = None) -> Tuple[Any, ModelMetadata]:
+    def get_model(
+        self, name: str, version: Optional[str] = None, stage: Optional[ModelStage] = None
+    ) -> Tuple[Any, ModelMetadata]:
         """
         Carica un modello dal registry.
 
@@ -268,13 +274,15 @@ class ModelRegistry:
         if not model_path.exists():
             raise FileNotFoundError(f"File modello non trovato: {model_path}")
 
-        with open(model_path, 'rb') as f:
+        with open(model_path, "rb") as f:
             model = pickle.load(f)
 
         logger.info(f"Modello caricato: {name} v{metadata.version}")
         return model, metadata
 
-    def get_model_metadata(self, name: str, version: Optional[str] = None, stage: Optional[ModelStage] = None) -> Optional[ModelMetadata]:
+    def get_model_metadata(
+        self, name: str, version: Optional[str] = None, stage: Optional[ModelStage] = None
+    ) -> Optional[ModelMetadata]:
         """
         Ottiene metadata di un modello.
 
@@ -325,7 +333,9 @@ class ModelRegistry:
 
             return self._row_to_metadata(row)
 
-    def list_models(self, stage: Optional[ModelStage] = None, status: Optional[ModelStatus] = None) -> List[ModelMetadata]:
+    def list_models(
+        self, stage: Optional[ModelStage] = None, status: Optional[ModelStatus] = None
+    ) -> List[ModelMetadata]:
         """
         Lista tutti i modelli nel registry.
 
@@ -357,7 +367,9 @@ class ModelRegistry:
 
             return [self._row_to_metadata(row) for row in rows]
 
-    def promote_model(self, name: str, version: str, target_stage: ModelStage, author: str = "system") -> ModelMetadata:
+    def promote_model(
+        self, name: str, version: str, target_stage: ModelStage, author: str = "system"
+    ) -> ModelMetadata:
         """
         Promuove un modello a uno stage superiore.
 
@@ -382,14 +394,16 @@ class ModelRegistry:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE models SET stage = ?, updated_at = ? WHERE name = ? AND version = ?",
-                (target_stage.value, datetime.now(timezone.utc), name, version)
+                (target_stage.value, datetime.now(timezone.utc), name, version),
             )
             conn.commit()
 
         logger.info(f"Modello promosso: {name} v{version} -> {target_stage.value}")
         return self.get_model_metadata(name, version)
 
-    def update_performance(self, name: str, version: str, metrics: Dict[str, float]) -> ModelMetadata:
+    def update_performance(
+        self, name: str, version: str, metrics: Dict[str, float]
+    ) -> ModelMetadata:
         """
         Aggiorna metriche di performance di un modello.
 
@@ -405,7 +419,7 @@ class ModelRegistry:
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE models SET performance = ?, updated_at = ? WHERE name = ? AND version = ?",
-                (json.dumps(metrics), datetime.now(timezone.utc), name, version)
+                (json.dumps(metrics), datetime.now(timezone.utc), name, version),
             )
             conn.commit()
 
@@ -443,7 +457,7 @@ class ModelRegistry:
                 # Soft delete - marca come archived
                 cursor.execute(
                     "UPDATE models SET status = ?, updated_at = ? WHERE name = ? AND version = ?",
-                    (ModelStatus.DEPRECATED.value, datetime.now(timezone.utc), name, version)
+                    (ModelStatus.DEPRECATED.value, datetime.now(timezone.utc), name, version),
                 )
 
             conn.commit()
@@ -464,12 +478,17 @@ class ModelRegistry:
         models = self.list_models()
         metadata_export = [asdict(model) for model in models]
 
-        with open(export_path, 'w', encoding='utf-8') as f:
-            json.dump({
-                'registry_version': '1.0',
-                'exported_at': datetime.now(timezone.utc).isoformat(),
-                'models': metadata_export
-            }, f, indent=2, default=str)
+        with open(export_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "registry_version": "1.0",
+                    "exported_at": datetime.now(timezone.utc).isoformat(),
+                    "models": metadata_export,
+                },
+                f,
+                indent=2,
+                default=str,
+            )
 
         logger.info(f"Registry esportato: {export_path}")
 
@@ -494,22 +513,26 @@ class ModelRegistry:
             # Deployment history
             cursor.execute(
                 "SELECT * FROM deployments WHERE model_name = ? AND model_version = ? ORDER BY deployed_at DESC",
-                (name, version)
+                (name, version),
             )
-            deployments = [dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()]
+            deployments = [
+                dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()
+            ]
 
             # Tutte le versioni del modello
             cursor.execute(
                 "SELECT version, stage, status, created_at, performance FROM models WHERE name = ? ORDER BY created_at",
-                (name,)
+                (name,),
             )
-            versions = [dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()]
+            versions = [
+                dict(zip([col[0] for col in cursor.description], row)) for row in cursor.fetchall()
+            ]
 
         return {
-            'model': asdict(metadata),
-            'deployments': deployments,
-            'all_versions': versions,
-            'dependencies': metadata.dependencies or {}
+            "model": asdict(metadata),
+            "deployments": deployments,
+            "all_versions": versions,
+            "dependencies": metadata.dependencies or {},
         }
 
     # ============================================
@@ -522,7 +545,7 @@ class ModelRegistry:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT version FROM models WHERE name = ? ORDER BY created_at DESC LIMIT 1",
-                (name,)
+                (name,),
             )
             row = cursor.fetchone()
 
@@ -532,7 +555,7 @@ class ModelRegistry:
             # Parse semantic version
             last_version = row[0]
             try:
-                major, minor, patch = map(int, last_version.split('.'))
+                major, minor, patch = map(int, last_version.split("."))
                 return f"{major}.{minor}.{patch + 1}"
             except:
                 # Fallback per versioni non semantic
@@ -552,7 +575,7 @@ class ModelRegistry:
         filename = f"{name}_v{version.replace('.', '_')}.pkl"
         file_path = self.models_path / filename
 
-        with open(file_path, 'wb') as f:
+        with open(file_path, "wb") as f:
             pickle.dump(model, f)
 
         return file_path
@@ -561,31 +584,34 @@ class ModelRegistry:
         """Salva metadata nel database."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO models
                 (name, version, type, stage, status, parameters, performance, metadata,
                  tags, description, author, dataset_hash, model_hash, file_path,
                  dependencies, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                metadata.model_name,
-                metadata.version,
-                metadata.model_type,
-                metadata.stage.value,
-                metadata.status.value,
-                json.dumps(metadata.parameters),
-                json.dumps(metadata.performance_metrics),
-                json.dumps({}),  # metadata extra
-                json.dumps(metadata.tags),
-                metadata.description,
-                metadata.author,
-                metadata.dataset_hash,
-                metadata.model_hash,
-                metadata.file_path,
-                json.dumps(metadata.dependencies or {}),
-                metadata.created_at,
-                metadata.updated_at
-            ))
+            """,
+                (
+                    metadata.model_name,
+                    metadata.version,
+                    metadata.model_type,
+                    metadata.stage.value,
+                    metadata.status.value,
+                    json.dumps(metadata.parameters),
+                    json.dumps(metadata.performance_metrics),
+                    json.dumps({}),  # metadata extra
+                    json.dumps(metadata.tags),
+                    metadata.description,
+                    metadata.author,
+                    metadata.dataset_hash,
+                    metadata.model_hash,
+                    metadata.file_path,
+                    json.dumps(metadata.dependencies or {}),
+                    metadata.created_at,
+                    metadata.updated_at,
+                ),
+            )
             conn.commit()
 
     def _row_to_metadata(self, row: tuple) -> ModelMetadata:
@@ -596,35 +622,31 @@ class ModelRegistry:
             model_type=row[3],
             stage=ModelStage(row[4]),
             status=ModelStatus(row[5]),
-            parameters=json.loads(row[6] or '{}'),
-            performance_metrics=json.loads(row[7] or '{}'),
-            tags=json.loads(row[9] or '[]'),
-            description=row[10] or '',
-            author=row[11] or 'system',
+            parameters=json.loads(row[6] or "{}"),
+            performance_metrics=json.loads(row[7] or "{}"),
+            tags=json.loads(row[9] or "[]"),
+            description=row[10] or "",
+            author=row[11] or "system",
             dataset_hash=row[12],
             model_hash=row[13],
             file_path=row[14],
-            dependencies=json.loads(row[15] or '{}'),
+            dependencies=json.loads(row[15] or "{}"),
             created_at=datetime.fromisoformat(row[16]) if row[16] else datetime.now(timezone.utc),
-            updated_at=datetime.fromisoformat(row[17]) if row[17] else datetime.now(timezone.utc)
+            updated_at=datetime.fromisoformat(row[17]) if row[17] else datetime.now(timezone.utc),
         )
 
     def _log_deployment(self, name: str, version: str, stage: ModelStage, author: str) -> None:
         """Registra deployment nel log."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO deployments
                 (model_name, model_version, stage, deployed_at, deployed_by, deployment_config)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                name,
-                version,
-                stage.value,
-                datetime.now(timezone.utc),
-                author,
-                json.dumps({})
-            ))
+            """,
+                (name, version, stage.value, datetime.now(timezone.utc), author, json.dumps({})),
+            )
             conn.commit()
 
 

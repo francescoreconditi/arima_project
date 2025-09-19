@@ -11,7 +11,7 @@ from .event_processor import EventProcessor, ForecastEvent, EventType, EventPrio
 
 __all__ = [
     "KafkaForecastProducer",
-    "StreamingConfig", 
+    "StreamingConfig",
     "ForecastMessage",
     "RealtimeForecastService",
     "WebSocketServer",
@@ -19,5 +19,5 @@ __all__ = [
     "EventProcessor",
     "ForecastEvent",
     "EventType",
-    "EventPriority"
+    "EventPriority",
 ]

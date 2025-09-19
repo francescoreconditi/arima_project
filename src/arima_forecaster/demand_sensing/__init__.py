@@ -14,7 +14,7 @@ from .demand_sensor import (
     ExternalFactor,
     FactorImpact,
     SensingConfig,
-    AdjustmentStrategy
+    AdjustmentStrategy,
 )
 from .weather import WeatherIntegration, WeatherImpact
 from .trends import GoogleTrendsIntegration, TrendImpact
@@ -24,23 +24,23 @@ from .calendar_events import CalendarEvents, EventImpact, Event, EventType
 from .ensemble import EnsembleDemandSensor, EnsembleConfig
 
 __all__ = [
-    'DemandSensor',
-    'ExternalFactor',
-    'FactorImpact',
-    'SensingConfig',
-    'AdjustmentStrategy',
-    'WeatherIntegration',
-    'WeatherImpact',
-    'GoogleTrendsIntegration',
-    'TrendImpact',
-    'SocialSentimentAnalyzer',
-    'SentimentImpact',
-    'EconomicIndicators',
-    'EconomicImpact',
-    'CalendarEvents',
-    'EventImpact',
-    'Event', 
-    'EventType',
-    'EnsembleDemandSensor',
-    'EnsembleConfig'
+    "DemandSensor",
+    "ExternalFactor",
+    "FactorImpact",
+    "SensingConfig",
+    "AdjustmentStrategy",
+    "WeatherIntegration",
+    "WeatherImpact",
+    "GoogleTrendsIntegration",
+    "TrendImpact",
+    "SocialSentimentAnalyzer",
+    "SentimentImpact",
+    "EconomicIndicators",
+    "EconomicImpact",
+    "CalendarEvents",
+    "EventImpact",
+    "Event",
+    "EventType",
+    "EnsembleDemandSensor",
+    "EnsembleConfig",
 ]

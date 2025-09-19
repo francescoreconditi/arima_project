@@ -53,15 +53,16 @@ dependencies = [
     "python-dotenv>=1.0.0", # .env file support
     "pytrends>=4.9.2",
     "python-multipart>=0.0.20",
-    "openpyxl>=3.1.0",  # Excel file generation and processing
-    "streamlit>=1.28.0",  # Web dashboard framework
-    "plotly>=5.15.0",  # Interactive charts and visualizations
-    "kafka-python>=2.0.2",  # Apache Kafka integration for real-time streaming
-    "websockets>=11.0.2",    # WebSocket server for real-time dashboard updates
-    "shap>=0.42.1",         # SHAP values for explainable AI
-    "redis>=4.6.0",         # Redis for real-time caching
-    "psutil>=5.9.0",        # System and process utilities for monitoring
-    "rich>=13.0.0",         # Rich text and beautiful formatting for CLI
+    "openpyxl>=3.1.0", # Excel file generation and processing
+    "streamlit>=1.28.0", # Web dashboard framework
+    "plotly>=5.15.0", # Interactive charts and visualizations
+    "kafka-python>=2.0.2", # Apache Kafka integration for real-time streaming
+    "websockets>=11.0.2", # WebSocket server for real-time dashboard updates
+    "shap>=0.42.1", # SHAP values for explainable AI
+    "redis>=4.6.0", # Redis for real-time caching
+    "psutil>=5.9.0", # System and process utilities for monitoring
+    "rich>=13.0.0", # Rich text and beautiful formatting for CLI
+    "email-validator>=2.3.0",
 ]
 
 # Dipendenze opzionali

@@ -25,7 +25,7 @@ from arima_forecaster.cli import (
     train_command,
     forecast_command,
     evaluate_command,
-    version_command
+    version_command,
 )
 from arima_forecaster import __version__
 
@@ -52,10 +52,10 @@ class TestCLIBasics:
         """Test caricamento config valido."""
         test_config = {
             "arima": {"order": [2, 1, 2]},
-            "sarima": {"order": [1, 1, 1], "seasonal_order": [1, 1, 1, 12]}
+            "sarima": {"order": [1, 1, 1], "seasonal_order": [1, 1, 1, 12]},
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(test_config, f)
             config_path = f.name
 
@@ -69,7 +69,7 @@ class TestCLIBasics:
 class TestVersionCommand:
     """Test comando version."""
 
-    @patch('arima_forecaster.cli.console.print')
+    @patch("arima_forecaster.cli.console.print")
     def test_version_command(self, mock_print):
         """Test comando version."""
         args = Mock()
@@ -80,11 +80,13 @@ class TestVersionCommand:
 class TestTrainCommand:
     """Test comando train."""
 
-    @patch('arima_forecaster.cli.DataLoader')
-    @patch('arima_forecaster.cli.TimeSeriesPreprocessor')
-    @patch('arima_forecaster.cli.ARIMAForecaster')
-    @patch('arima_forecaster.cli.console')
-    def test_train_command_arima_success(self, mock_console, mock_arima, mock_preprocessor, mock_loader):
+    @patch("arima_forecaster.cli.DataLoader")
+    @patch("arima_forecaster.cli.TimeSeriesPreprocessor")
+    @patch("arima_forecaster.cli.ARIMAForecaster")
+    @patch("arima_forecaster.cli.console")
+    def test_train_command_arima_success(
+        self, mock_console, mock_arima, mock_preprocessor, mock_loader
+    ):
         """Test training ARIMA con successo."""
         # Setup mocks
         mock_data = Mock()
@@ -114,9 +116,9 @@ class TestTrainCommand:
         mock_model.fit.assert_called_once_with(mock_data)
         mock_model.save_model.assert_called_once()
 
-    @patch('arima_forecaster.cli.DataLoader')
-    @patch('arima_forecaster.cli.SARIMAForecaster')
-    @patch('arima_forecaster.cli.console')
+    @patch("arima_forecaster.cli.DataLoader")
+    @patch("arima_forecaster.cli.SARIMAForecaster")
+    @patch("arima_forecaster.cli.console")
     def test_train_command_sarima_success(self, mock_console, mock_sarima, mock_loader):
         """Test training SARIMA con successo."""
         # Setup mocks
@@ -142,7 +144,7 @@ class TestTrainCommand:
         mock_sarima.assert_called_once()
         mock_model.fit.assert_called_once_with(mock_data)
 
-    @patch('arima_forecaster.cli.console')
+    @patch("arima_forecaster.cli.console")
     def test_train_command_unsupported_model(self, mock_console):
         """Test training con modello non supportato."""
         args = Mock()
@@ -158,9 +160,9 @@ class TestTrainCommand:
 class TestForecastCommand:
     """Test comando forecast."""
 
-    @patch('arima_forecaster.cli.ARIMAForecaster')
-    @patch('arima_forecaster.cli.console')
-    @patch('pandas.Series')
+    @patch("arima_forecaster.cli.ARIMAForecaster")
+    @patch("arima_forecaster.cli.console")
+    @patch("pandas.Series")
     def test_forecast_command_success(self, mock_series, mock_console, mock_arima):
         """Test forecasting con successo."""
         # Setup mocks
@@ -184,7 +186,7 @@ class TestForecastCommand:
         mock_arima.load_model.assert_called_once_with("model.pkl")
         mock_model.forecast.assert_called_once_with(steps=5)
 
-    @patch('arima_forecaster.cli.console')
+    @patch("arima_forecaster.cli.console")
     def test_forecast_command_unsupported_model(self, mock_console):
         """Test forecasting con modello non supportato."""
         args = Mock()
@@ -200,10 +202,10 @@ class TestForecastCommand:
 class TestEvaluateCommand:
     """Test comando evaluate."""
 
-    @patch('arima_forecaster.cli.DataLoader')
-    @patch('arima_forecaster.cli.ARIMAForecaster')
-    @patch('arima_forecaster.cli.ModelEvaluator')
-    @patch('arima_forecaster.cli.console')
+    @patch("arima_forecaster.cli.DataLoader")
+    @patch("arima_forecaster.cli.ARIMAForecaster")
+    @patch("arima_forecaster.cli.ModelEvaluator")
+    @patch("arima_forecaster.cli.console")
     def test_evaluate_command_success(self, mock_console, mock_evaluator, mock_arima, mock_loader):
         """Test valutazione con successo."""
         # Setup mocks
@@ -234,21 +236,21 @@ class TestEvaluateCommand:
 class TestCLIIntegration:
     """Test integrazione CLI completa."""
 
-    @patch('sys.argv', ['arima-forecast', 'version'])
-    @patch('arima_forecaster.cli.console.print')
+    @patch("sys.argv", ["arima-forecast", "version"])
+    @patch("arima_forecaster.cli.console.print")
     def test_main_version(self, mock_print):
         """Test main con comando version."""
         main()
         mock_print.assert_called_with(f"[green]ARIMA Forecaster v{__version__}[/green]")
 
-    @patch('sys.argv', ['arima-forecast'])
-    @patch('argparse.ArgumentParser.print_help')
+    @patch("sys.argv", ["arima-forecast"])
+    @patch("argparse.ArgumentParser.print_help")
     def test_main_no_command(self, mock_help):
         """Test main senza comando."""
         main()
         mock_help.assert_called_once()
 
-    @patch('sys.argv', ['arima-forecast', '--help'])
+    @patch("sys.argv", ["arima-forecast", "--help"])
     def test_main_help(self):
         """Test main con help."""
         with pytest.raises(SystemExit):
@@ -258,9 +260,9 @@ class TestCLIIntegration:
 class TestCLIErrorHandling:
     """Test gestione errori CLI."""
 
-    @patch('arima_forecaster.cli.DataLoader')
-    @patch('arima_forecaster.cli.console')
-    @patch('sys.exit')
+    @patch("arima_forecaster.cli.DataLoader")
+    @patch("arima_forecaster.cli.console")
+    @patch("sys.exit")
     def test_train_command_exception(self, mock_exit, mock_console, mock_loader):
         """Test gestione eccezione in train."""
         # Setup exception
@@ -277,9 +279,9 @@ class TestCLIErrorHandling:
         mock_console.print.assert_called()
         mock_exit.assert_called_once_with(1)
 
-    @patch('arima_forecaster.cli.ARIMAForecaster')
-    @patch('arima_forecaster.cli.console')
-    @patch('sys.exit')
+    @patch("arima_forecaster.cli.ARIMAForecaster")
+    @patch("arima_forecaster.cli.console")
+    @patch("sys.exit")
     def test_forecast_command_exception(self, mock_exit, mock_console, mock_arima):
         """Test gestione eccezione in forecast."""
         # Setup exception
@@ -300,9 +302,9 @@ class TestCLIErrorHandling:
 class TestCLIOutputFormats:
     """Test formati output CLI."""
 
-    @patch('arima_forecaster.cli.ARIMAForecaster')
-    @patch('arima_forecaster.cli.console')
-    @patch('pandas.Series')
+    @patch("arima_forecaster.cli.ARIMAForecaster")
+    @patch("arima_forecaster.cli.console")
+    @patch("pandas.Series")
     def test_forecast_csv_output(self, mock_series, mock_console, mock_arima):
         """Test output forecast in CSV."""
         # Setup mocks
@@ -312,7 +314,7 @@ class TestCLIOutputFormats:
         mock_model.forecast.return_value = mock_forecast
         mock_arima.load_model.return_value = mock_model
 
-        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
             output_path = f.name
 
         try:

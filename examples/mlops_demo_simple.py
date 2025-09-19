@@ -20,14 +20,14 @@ from arima_forecaster.mlops import (
     DeploymentManager,
     ModelStage,
     EnvironmentType,
-    DeploymentConfig
+    DeploymentConfig,
 )
 
 
 def create_sample_data():
     """Crea dati di esempio per demo."""
     np.random.seed(42)
-    dates = pd.date_range('2023-01-01', periods=100, freq='D')
+    dates = pd.date_range("2023-01-01", periods=100, freq="D")
 
     # Serie con trend e stagionalità
     trend = np.linspace(100, 120, 100)
@@ -54,8 +54,7 @@ def main():
     print("\n[EXPERIMENT] Creazione esperimento...")
 
     experiment = tracker.create_experiment(
-        name="ARIMA Demo Test",
-        description="Test semplificato MLOps"
+        name="ARIMA Demo Test", description="Test semplificato MLOps"
     )
 
     print(f"Esperimento creato: {experiment.experiment_id}")
@@ -64,9 +63,7 @@ def main():
     print("\n[TRAINING] Training modello ARIMA...")
 
     run = tracker.start_run(
-        experiment_id=experiment.experiment_id,
-        parameters={"order": [1, 1, 1]},
-        model_type="ARIMA"
+        experiment_id=experiment.experiment_id, parameters={"order": [1, 1, 1]}, model_type="ARIMA"
     )
 
     # Dati di test
@@ -93,7 +90,7 @@ def main():
         model_type="ARIMA",
         parameters={"order": [1, 1, 1]},
         performance_metrics=metrics,
-        description="Demo ARIMA model"
+        description="Demo ARIMA model",
     )
 
     print(f"Modello registrato: {metadata.model_name} v{metadata.version}")
@@ -101,11 +98,7 @@ def main():
     # 5. Promozione modello
     print("\n[PROMOTION] Promozione a staging...")
 
-    promoted = registry.promote_model(
-        "demo_arima",
-        "1.0.0",
-        ModelStage.STAGING
-    )
+    promoted = registry.promote_model("demo_arima", "1.0.0", ModelStage.STAGING)
 
     print(f"Modello promosso a: {promoted.stage}")
 
@@ -116,13 +109,10 @@ def main():
         environment=EnvironmentType.STAGING,
         model_name="demo_arima",
         model_version="1.0.0",
-        replicas=1
+        replicas=1,
     )
 
-    deployment = deployment_manager.create_deployment(
-        config=config,
-        auto_deploy=False
-    )
+    deployment = deployment_manager.create_deployment(config=config, auto_deploy=False)
 
     print(f"Deployment creato: {deployment.deployment_id}")
     print(f"Status: {deployment.status}")
@@ -150,4 +140,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[ERROR] Errore durante demo: {e}")
         import traceback
+
         traceback.print_exc()

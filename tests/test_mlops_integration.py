@@ -26,7 +26,7 @@ from arima_forecaster.mlops import (
     RunStatus,
     DeploymentStatus,
     EnvironmentType,
-    DeploymentConfig
+    DeploymentConfig,
 )
 from arima_forecaster.core import ARIMAForecaster
 
@@ -56,7 +56,7 @@ class TestMLOpsBasicIntegration:
             ExperimentRun,
             DeploymentManager,
             DeploymentConfig,
-            ModelDeployment
+            ModelDeployment,
         )
 
         # Verifica che le classi siano importabili
@@ -83,7 +83,7 @@ class TestMLOpsBasicIntegration:
             model_type="ARIMA",
             description="Test ARIMA model",
             tags=["test", "arima"],
-            performance_metrics={"mae": 0.5, "rmse": 0.7}
+            performance_metrics={"mae": 0.5, "rmse": 0.7},
         )
 
         assert metadata.model_name == "test_model"
@@ -101,9 +101,7 @@ class TestMLOpsBasicIntegration:
         """Test funzionalità base Experiment Tracking."""
         # Crea esperimento
         experiment = self.tracker.create_experiment(
-            name="test_experiment",
-            description="Test experiment for ARIMA",
-            tags=["test", "arima"]
+            name="test_experiment", description="Test experiment for ARIMA", tags=["test", "arima"]
         )
 
         assert experiment.name == "test_experiment"
@@ -114,7 +112,7 @@ class TestMLOpsBasicIntegration:
             experiment_id=experiment.experiment_id,
             name="test_run",
             parameters={"order": [1, 1, 1]},
-            model_type="ARIMA"
+            model_type="ARIMA",
         )
 
         assert run.experiment_id == experiment.experiment_id
@@ -134,10 +132,7 @@ class TestMLOpsBasicIntegration:
         # Prima registra un modello
         model = Mock()
         self.registry.register_model(
-            model=model,
-            name="deploy_test_model",
-            model_type="ARIMA",
-            stage=ModelStage.PRODUCTION
+            model=model, name="deploy_test_model", model_type="ARIMA", stage=ModelStage.PRODUCTION
         )
 
         # Crea configurazione deployment
@@ -145,14 +140,14 @@ class TestMLOpsBasicIntegration:
             environment=EnvironmentType.STAGING,
             model_name="deploy_test_model",
             model_version="1.0.0",
-            replicas=2
+            replicas=2,
         )
 
         # Crea deployment
         deployment = self.deployment_manager.create_deployment(
             config=config,
             deployed_by="test_user",
-            auto_deploy=False  # Non deployare automaticamente nei test
+            auto_deploy=False,  # Non deployare automaticamente nei test
         )
 
         assert deployment.model_name == "deploy_test_model"
@@ -167,8 +162,7 @@ class TestMLOpsBasicIntegration:
         """Test workflow completo MLOps."""
         # 1. Crea esperimento
         experiment = self.tracker.create_experiment(
-            name="full_workflow_test",
-            description="Test complete MLOps workflow"
+            name="full_workflow_test", description="Test complete MLOps workflow"
         )
 
         # 2. Inizia run
@@ -176,15 +170,11 @@ class TestMLOpsBasicIntegration:
             experiment_id=experiment.experiment_id,
             name="training_run",
             parameters={"order": [1, 1, 1], "seasonal_order": [1, 1, 1, 12]},
-            model_type="SARIMA"
+            model_type="SARIMA",
         )
 
         # 3. Simula training e logga metriche
-        self.tracker.log_metrics(run.run_id, {
-            "mae": 0.4,
-            "rmse": 0.6,
-            "mape": 8.5
-        })
+        self.tracker.log_metrics(run.run_id, {"mae": 0.4, "rmse": 0.6, "mape": 8.5})
 
         # 4. Termina run
         completed_run = self.tracker.end_run(run.run_id, RunStatus.COMPLETED)
@@ -200,28 +190,21 @@ class TestMLOpsBasicIntegration:
             model_type="SARIMA",
             parameters=completed_run.parameters,
             performance_metrics=completed_run.metrics,
-            description="Model from full workflow test"
+            description="Model from full workflow test",
         )
 
         # 6. Promuovi a staging
         staging_metadata = self.registry.promote_model(
-            "workflow_model",
-            "1.0.0",
-            ModelStage.STAGING
+            "workflow_model", "1.0.0", ModelStage.STAGING
         )
         assert staging_metadata.stage == ModelStage.STAGING
 
         # 7. Deploy in staging
         config = DeploymentConfig(
-            environment=EnvironmentType.STAGING,
-            model_name="workflow_model",
-            model_version="1.0.0"
+            environment=EnvironmentType.STAGING, model_name="workflow_model", model_version="1.0.0"
         )
 
-        deployment = self.deployment_manager.create_deployment(
-            config=config,
-            auto_deploy=False
-        )
+        deployment = self.deployment_manager.create_deployment(config=config, auto_deploy=False)
 
         # Verifica workflow completo
         assert experiment.name == "full_workflow_test"
@@ -239,7 +222,7 @@ class TestMLOpsBasicIntegration:
             name="lineage_test",
             model_type="ARIMA",
             dependencies={"pandas": "2.0.0", "numpy": "1.24.0"},
-            dataset_hash="abc123"
+            dataset_hash="abc123",
         )
 
         # Promuovi attraverso stages
@@ -260,17 +243,13 @@ class TestMLOpsBasicIntegration:
 
         # Crea multiple runs con parametri diversi
         run1 = self.tracker.start_run(
-            experiment.experiment_id,
-            parameters={"order": [1, 1, 1]},
-            model_type="ARIMA"
+            experiment.experiment_id, parameters={"order": [1, 1, 1]}, model_type="ARIMA"
         )
         self.tracker.log_metrics(run1.run_id, {"mae": 0.5, "rmse": 0.7})
         self.tracker.end_run(run1.run_id)
 
         run2 = self.tracker.start_run(
-            experiment.experiment_id,
-            parameters={"order": [2, 1, 2]},
-            model_type="ARIMA"
+            experiment.experiment_id, parameters={"order": [2, 1, 2]}, model_type="ARIMA"
         )
         self.tracker.log_metrics(run2.run_id, {"mae": 0.4, "rmse": 0.6})
         self.tracker.end_run(run2.run_id)
@@ -298,7 +277,7 @@ class TestMLOpsBasicIntegration:
         config_v1 = DeploymentConfig(
             environment=EnvironmentType.PRODUCTION,
             model_name="rollback_test",
-            model_version="1.0.0"
+            model_version="1.0.0",
         )
         deployment_v1 = self.deployment_manager.create_deployment(config_v1, auto_deploy=False)
 
@@ -306,7 +285,7 @@ class TestMLOpsBasicIntegration:
         config_v2 = DeploymentConfig(
             environment=EnvironmentType.PRODUCTION,
             model_name="rollback_test",
-            model_version="1.1.0"
+            model_version="1.1.0",
         )
         deployment_v2 = self.deployment_manager.create_deployment(config_v2, auto_deploy=False)
 
@@ -317,7 +296,7 @@ class TestMLOpsBasicIntegration:
         assert rolled_back.status in [
             DeploymentStatus.ROLLED_BACK,
             DeploymentStatus.FAILED,
-            DeploymentStatus.ROLLING_BACK
+            DeploymentStatus.ROLLING_BACK,
         ]
 
     def test_mlops_export_import(self):
@@ -393,10 +372,7 @@ class TestMLOpsPerformance:
         for i in range(10):
             model = Mock()
             metadata = self.registry.register_model(
-                model,
-                f"bulk_model_{i}",
-                "ARIMA",
-                performance_metrics={"mae": 0.1 * i}
+                model, f"bulk_model_{i}", "ARIMA", performance_metrics={"mae": 0.1 * i}
             )
             models.append(metadata)
 
@@ -418,7 +394,7 @@ class TestMLOpsPerformance:
             run = self.tracker.start_run(
                 experiment.experiment_id,
                 parameters={"order": [1, 1, i % 3 + 1]},
-                model_type="ARIMA"
+                model_type="ARIMA",
             )
             self.tracker.log_metrics(run.run_id, {"mae": 0.1 * i, "rmse": 0.2 * i})
             self.tracker.end_run(run.run_id)

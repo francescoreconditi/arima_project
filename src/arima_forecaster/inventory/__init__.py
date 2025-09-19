@@ -11,7 +11,6 @@ from .balance_optimizer import (
     InventoryKPIDashboard,
     AdaptiveForecastEngine,
     MinimumShelfLifeManager,
-    
     # Modelli dati
     CostiGiacenza,
     AnalisiRischio,
@@ -19,21 +18,21 @@ from .balance_optimizer import (
     LivelloServizio,
     TipoCanale,
     RequisitoMSL,
-    AllocationResult
+    AllocationResult,
 )
 
 __all__ = [
-    'SafetyStockCalculator',
-    'TotalCostAnalyzer', 
-    'InventoryAlertSystem',
-    'InventoryKPIDashboard',
-    'AdaptiveForecastEngine',
-    'MinimumShelfLifeManager',
-    'CostiGiacenza',
-    'AnalisiRischio',
-    'AlertLevel',
-    'LivelloServizio',
-    'TipoCanale',
-    'RequisitoMSL',
-    'AllocationResult'
+    "SafetyStockCalculator",
+    "TotalCostAnalyzer",
+    "InventoryAlertSystem",
+    "InventoryKPIDashboard",
+    "AdaptiveForecastEngine",
+    "MinimumShelfLifeManager",
+    "CostiGiacenza",
+    "AnalisiRischio",
+    "AlertLevel",
+    "LivelloServizio",
+    "TipoCanale",
+    "RequisitoMSL",
+    "AllocationResult",
 ]
