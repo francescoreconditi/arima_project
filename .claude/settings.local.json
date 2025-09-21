@@ -112,7 +112,8 @@
       "Bash(arima-forecast:*)",
       "Bash(uv build:*)",
       "Bash(sed:*)",
-      "Bash(ruff format:*)"
+      "Bash(ruff format:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": [],
