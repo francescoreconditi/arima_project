@@ -113,7 +113,8 @@
       "Bash(uv build:*)",
       "Bash(sed:*)",
       "Bash(ruff format:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": [],

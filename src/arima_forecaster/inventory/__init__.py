@@ -11,7 +11,10 @@ from .balance_optimizer import (
     InventoryKPIDashboard,
     AdaptiveForecastEngine,
     MinimumShelfLifeManager,
-    # Modelli dati
+    # NEW v0.5.0: Dynamic Pricing + VMI
+    SafeDynamicPricingManager,
+    ControlledVMIPilot,
+    # Modelli dati esistenti
     CostiGiacenza,
     AnalisiRischio,
     AlertLevel,
@@ -19,15 +22,25 @@ from .balance_optimizer import (
     TipoCanale,
     RequisitoMSL,
     AllocationResult,
+    # NEW v0.5.0: Config e Results
+    DynamicPricingConfig,
+    PricingSuggestion,
+    VMIConfig,
+    VMIEvaluationResult,
 )
 
 __all__ = [
+    # Core classes
     "SafetyStockCalculator",
     "TotalCostAnalyzer",
     "InventoryAlertSystem",
     "InventoryKPIDashboard",
     "AdaptiveForecastEngine",
     "MinimumShelfLifeManager",
+    # NEW v0.5.0: Advanced features
+    "SafeDynamicPricingManager",
+    "ControlledVMIPilot",
+    # Data models
     "CostiGiacenza",
     "AnalisiRischio",
     "AlertLevel",
@@ -35,4 +48,9 @@ __all__ = [
     "TipoCanale",
     "RequisitoMSL",
     "AllocationResult",
+    # NEW v0.5.0: Config models
+    "DynamicPricingConfig",
+    "PricingSuggestion",
+    "VMIConfig",
+    "VMIEvaluationResult",
 ]

@@ -2775,5 +2775,406 @@ def esempio_bilanciamento_completo():
     print("=" * 60)
 
 
+# =====================================================
+# ADVANCED FEATURES v0.5.0 - DYNAMIC PRICING + VMI
+# =====================================================
+
+
+class DynamicPricingConfig(BaseModel):
+    """Configurazione sicura per Dynamic Pricing"""
+
+    max_discount_percentage: float = Field(0.05, description="Massimo sconto applicabile (5%)")
+    max_increase_percentage: float = Field(0.02, description="Massimo aumento prezzo (2%)")
+    price_change_frequency: str = Field("weekly", description="Frequenza cambio prezzi")
+    manual_approval_required: bool = Field(True, description="Approvazione manuale necessaria")
+    approved_categories: List[str] = Field(["SLOW_MOVING_ONLY"], description="Categorie approvate")
+    min_inventory_excess_threshold: float = Field(0.30, description="Soglia minima eccesso (30%)")
+    promotion_max_duration_days: int = Field(14, description="Durata massima promozione")
+
+
+class PricingSuggestion(BaseModel):
+    """Suggerimento pricing con dati di supporto"""
+
+    product_id: str
+    current_price: float
+    suggested_price: float
+    price_change_percentage: float
+    reason: str
+    inventory_excess_percentage: float
+    expected_demand_boost: float
+    requires_approval: bool
+    max_duration_days: int
+    risk_level: str
+    created_at: datetime
+
+
+class SafeDynamicPricingManager:
+    """
+    Sistema Dynamic Pricing SICURO con controlli multipli
+    Implementazione graduale senza rischi per business esistente
+    """
+
+    def __init__(self, config: DynamicPricingConfig = None):
+        self.config = config or DynamicPricingConfig()
+        self.pricing_history: List[PricingSuggestion] = []
+        self.active_promotions: Dict[str, PricingSuggestion] = {}
+        self.red_flags: Dict[str, bool] = {}
+
+        # Integrazione con sistemi esistenti
+        self.safety_calculator = SafetyStockCalculator()
+        # TotalCostAnalyzer richiede parametri - creiamo solo quando necessario
+        self._cost_analyzer = None
+
+    def calculate_inventory_excess(
+        self, product_id: str, current_inventory: int, forecast_data: pd.Series
+    ) -> float:
+        """Calcola percentuale eccesso inventario vs forecast"""
+        if len(forecast_data) == 0:
+            return 0.0
+
+        # Usa forecast prossimi 30 giorni
+        demand_30_days = forecast_data.head(30).sum()
+        if demand_30_days <= 0:
+            return 0.0
+
+        # Safety stock + demand normale
+        demand_mean = forecast_data.mean()
+        demand_std = forecast_data.std()
+        safety_stock_result = self.safety_calculator.calculate_dynamic_safety_stock(
+            demand_mean=demand_mean,
+            demand_std=demand_std,
+            lead_time_days=7,  # Default 7 giorni
+            service_level=0.95,
+        )
+        # Estrai il valore numerico dal risultato
+        if isinstance(safety_stock_result, dict):
+            safety_stock = safety_stock_result.get("safety_stock", 0)
+        else:
+            safety_stock = safety_stock_result
+
+        optimal_inventory = demand_30_days + safety_stock
+
+        if optimal_inventory <= 0:
+            return 0.0
+
+        excess_percentage = max(0, (current_inventory - optimal_inventory) / optimal_inventory)
+        return excess_percentage
+
+    def calculate_suggested_pricing(
+        self,
+        product_id: str,
+        current_price: float,
+        current_inventory: int,
+        forecast_data: pd.Series,
+        product_category: str = "UNKNOWN",
+    ) -> Optional[PricingSuggestion]:
+        """
+        Calcola suggerimento pricing sicuro
+        ATTENZIONE: Suggerisce solo, non cambia prezzi automaticamente
+        """
+
+        # Controlli di sicurezza iniziali
+        if product_category not in self.config.approved_categories:
+            return None
+
+        if product_id in self.active_promotions:
+            return None  # Una promozione alla volta per prodotto
+
+        # Calcola eccesso inventario
+        excess_percentage = self.calculate_inventory_excess(
+            product_id, current_inventory, forecast_data
+        )
+
+        # Solo se eccesso supera soglia minima
+        if excess_percentage < self.config.min_inventory_excess_threshold:
+            return None
+
+        # Calcola sconto suggerito (conservativo)
+        suggested_discount = min(
+            self.config.max_discount_percentage,
+            excess_percentage * 0.15,  # 15% dello sconto per ogni 100% di eccesso
+        )
+
+        if suggested_discount < 0.01:  # Minimo 1% per giustificare cambio
+            return None
+
+        suggested_price = current_price * (1 - suggested_discount)
+
+        # Stima boost domanda atteso (basato su elasticità prezzo conservativa)
+        expected_demand_boost = suggested_discount * 1.5  # Elasticità 1.5
+
+        # Valuta rischio
+        risk_level = self._assess_pricing_risk(excess_percentage, suggested_discount)
+
+        suggestion = PricingSuggestion(
+            product_id=product_id,
+            current_price=current_price,
+            suggested_price=suggested_price,
+            price_change_percentage=-suggested_discount,
+            reason=f"Eccesso inventario {excess_percentage:.1%} - Liquidazione consigliata",
+            inventory_excess_percentage=excess_percentage,
+            expected_demand_boost=expected_demand_boost,
+            requires_approval=self.config.manual_approval_required,
+            max_duration_days=self.config.promotion_max_duration_days,
+            risk_level=risk_level,
+            created_at=datetime.now(),
+        )
+
+        # Salva nella history per tracking
+        self.pricing_history.append(suggestion)
+
+        return suggestion
+
+    def _assess_pricing_risk(self, excess_percentage: float, discount_percentage: float) -> str:
+        """Valuta livello rischio pricing"""
+        if discount_percentage > 0.10 or excess_percentage > 0.8:
+            return "HIGH"
+        elif discount_percentage > 0.05 or excess_percentage > 0.5:
+            return "MEDIUM"
+        else:
+            return "LOW"
+
+    def approve_pricing_suggestion(
+        self, suggestion: PricingSuggestion, approver: str
+    ) -> Dict[str, Any]:
+        """Approva suggerimento pricing (simulato - non cambia prezzi reali)"""
+
+        # In implementazione reale, qui ci sarebbe integrazione con sistema pricing
+        approval_result = {
+            "approved": True,
+            "suggestion_id": suggestion.product_id,
+            "approver": approver,
+            "approved_at": datetime.now(),
+            "status": "READY_FOR_IMPLEMENTATION",
+            "next_steps": [
+                "Update pricing system",
+                "Monitor competitor response",
+                "Track demand changes",
+                "Schedule review in 7 days",
+            ],
+        }
+
+        # Attiva promozione
+        self.active_promotions[suggestion.product_id] = suggestion
+
+        return approval_result
+
+    def monitor_red_flags(self) -> Dict[str, Any]:
+        """Sistema monitoraggio red flags per stop automatico"""
+
+        # Placeholder per controlli reali
+        red_flags = {
+            "margin_erosion_detected": False,
+            "competitor_price_war": False,
+            "customer_complaints_spike": False,
+            "promotion_performance_poor": False,
+        }
+
+        # In implementazione reale, questi sarebbero controlli su dati reali
+        critical_flags = [k for k, v in red_flags.items() if v]
+
+        return {
+            "red_flags": red_flags,
+            "critical_count": len(critical_flags),
+            "action_required": len(critical_flags) > 0,
+            "recommendation": "HALT_PRICING" if len(critical_flags) > 1 else "CONTINUE_MONITORING",
+        }
+
+
+class VMIConfig(BaseModel):
+    """Configurazione sicura per VMI pilot"""
+
+    pilot_products: List[str] = Field(["CRZ001"], description="Prodotti pilota (max 3)")
+    max_vmi_percentage: float = Field(0.30, description="Max 30% inventory via VMI")
+    internal_forecast_override: bool = Field(True, description="Nostro forecast prevale sempre")
+    dual_verification_required: bool = Field(True, description="Doppia verifica necessaria")
+    pilot_duration_days: int = Field(30, description="Durata pilota limitata")
+    vendor_reliability_score_min: float = Field(
+        0.85, description="Score minimo affidabilità vendor"
+    )
+
+
+class VMIEvaluationResult(BaseModel):
+    """Risultato valutazione VMI per prodotto"""
+
+    product_id: str
+    eligible: bool
+    risk_level: str
+    confidence_score: float
+    failed_criteria: List[str]
+    estimated_benefits: Dict[str, float]
+    estimated_risks: Dict[str, str]
+    recommendation: str
+
+
+class ControlledVMIPilot:
+    """
+    Sistema VMI pilota CONTROLLATO con sicurezza massima
+    Mantiene sempre controllo interno su forecasting e decisioni critiche
+    """
+
+    def __init__(self, config: VMIConfig = None):
+        self.config = config or VMIConfig()
+        self.pilot_products = set(self.config.pilot_products)
+        self.vmi_evaluations: List[VMIEvaluationResult] = []
+        self.vendor_performance: Dict[str, Dict[str, float]] = {}
+
+        # Integrazione sistemi esistenti (manteniamo controllo)
+        self.safety_calculator = SafetyStockCalculator()
+        # TotalCostAnalyzer richiede parametri - creiamo solo quando necessario
+        self._cost_analyzer = None
+
+    def evaluate_vmi_opportunity(
+        self, product_id: str, historical_data: pd.DataFrame, vendor_data: Dict[str, Any]
+    ) -> VMIEvaluationResult:
+        """
+        Valuta opportunità VMI per prodotto specifico
+        Criteri MOLTO selettivi per minimizzare rischi
+        """
+
+        # Check 1: Prodotto nel pilota?
+        if product_id not in self.pilot_products:
+            return VMIEvaluationResult(
+                product_id=product_id,
+                eligible=False,
+                risk_level="N/A",
+                confidence_score=0.0,
+                failed_criteria=["not_in_pilot_list"],
+                estimated_benefits={},
+                estimated_risks={},
+                recommendation="WAIT_FOR_PILOT_EXPANSION",
+            )
+
+        # Criteri di selezione rigorosi
+        criteria_checks = self._evaluate_vmi_criteria(product_id, historical_data, vendor_data)
+
+        failed_criteria = [k for k, v in criteria_checks.items() if not v]
+        eligible = len(failed_criteria) == 0
+
+        if eligible:
+            benefits = self._estimate_vmi_benefits(product_id, historical_data)
+            risks = self._assess_vmi_risks(product_id, vendor_data)
+            confidence_score = self._calculate_confidence_score(criteria_checks)
+            risk_level = "LOW" if confidence_score > 0.8 else "MEDIUM"
+            recommendation = "PROCEED_WITH_CAUTION" if confidence_score > 0.7 else "POSTPONE"
+        else:
+            benefits = {}
+            risks = {"high_risk": "Multiple criteria failed"}
+            confidence_score = 0.0
+            risk_level = "HIGH"
+            recommendation = "REJECT"
+
+        result = VMIEvaluationResult(
+            product_id=product_id,
+            eligible=eligible,
+            risk_level=risk_level,
+            confidence_score=confidence_score,
+            failed_criteria=failed_criteria,
+            estimated_benefits=benefits,
+            estimated_risks=risks,
+            recommendation=recommendation,
+        )
+
+        self.vmi_evaluations.append(result)
+        return result
+
+    def _evaluate_vmi_criteria(
+        self, product_id: str, historical_data: pd.DataFrame, vendor_data: Dict[str, Any]
+    ) -> Dict[str, bool]:
+        """Criteri rigorosi per selezione VMI"""
+
+        if len(historical_data) < 180:  # Minimo 6 mesi dati
+            return {"insufficient_data": False}
+
+        # Calcola metriche base
+        demand = historical_data["quantity"].values
+        cv = np.std(demand) / np.mean(demand) if np.mean(demand) > 0 else 999
+
+        criteria = {
+            "high_volume": np.mean(demand) > 20,  # Domanda media >20/giorno
+            "stable_demand": cv < 0.6,  # Coefficiente variazione <60%
+            "single_supplier_dominance": vendor_data.get("market_share", 0) > 0.7,
+            "vendor_reliability": vendor_data.get("reliability_score", 0)
+            > self.config.vendor_reliability_score_min,
+            "non_critical_product": vendor_data.get("criticality", "high") != "critical",
+            "good_lead_time": vendor_data.get("lead_time_days", 999) <= 7,
+            "price_stability": vendor_data.get("price_volatility", 1.0) < 0.1,
+        }
+
+        return criteria
+
+    def _estimate_vmi_benefits(
+        self, product_id: str, historical_data: pd.DataFrame
+    ) -> Dict[str, float]:
+        """Stima benefici economici VMI"""
+
+        demand = historical_data["quantity"].values
+        avg_inventory_value = (
+            historical_data.get("inventory_value", [0]).mean()
+            if "inventory_value" in historical_data.columns
+            else 50000
+        )
+
+        return {
+            "cash_flow_liberation_eur": avg_inventory_value * 0.8,  # 80% di cash liberato
+            "stockout_reduction_percent": 0.60,  # 60% riduzione stockout attesi
+            "procurement_cost_saving_eur": 15000,  # Saving FTE procurement
+            "inventory_carrying_cost_saving_eur": avg_inventory_value
+            * 0.15,  # 15% carrying cost saved
+        }
+
+    def _assess_vmi_risks(self, product_id: str, vendor_data: Dict[str, Any]) -> Dict[str, str]:
+        """Valuta rischi specifici VMI"""
+
+        risks = {}
+
+        if vendor_data.get("market_share", 0) > 0.8:
+            risks["vendor_lock_in"] = "HIGH - Dipendenza eccessiva da singolo fornitore"
+
+        if vendor_data.get("financial_stability", "good") != "excellent":
+            risks["vendor_continuity"] = "MEDIUM - Stabilità finanziaria vendor non ottimale"
+
+        if vendor_data.get("data_sharing_required", True):
+            risks["competitive_intelligence"] = "MEDIUM - Condivisione dati sensibili richiesta"
+
+        return risks
+
+    def _calculate_confidence_score(self, criteria_checks: Dict[str, bool]) -> float:
+        """Calcola score confidenza basato su criteri passati"""
+        return sum(criteria_checks.values()) / len(criteria_checks)
+
+    def simulate_vmi_pilot(self, product_id: str, duration_days: int = 30) -> Dict[str, Any]:
+        """Simula pilota VMI con monitoring stretto"""
+
+        # In implementazione reale, questo avrebbe integrazioni vendor reali
+        simulation_results = {
+            "product_id": product_id,
+            "pilot_duration_days": duration_days,
+            "start_date": datetime.now(),
+            "end_date": datetime.now() + timedelta(days=duration_days),
+            "kpis_tracked": [
+                "inventory_levels_daily",
+                "stockout_incidents",
+                "vendor_response_time",
+                "forecast_accuracy_comparison",
+                "cost_savings_realized",
+            ],
+            "success_criteria": {
+                "max_stockout_incidents": 2,
+                "min_cost_savings_percent": 0.10,
+                "max_forecast_accuracy_degradation": 0.05,
+            },
+            "checkpoint_schedule": [7, 14, 21, 30],  # Review ogni settimana
+            "abort_conditions": [
+                "stockout_incidents > 3",
+                "vendor_response_time > 24h",
+                "cost_increase_detected",
+                "forecast_accuracy_drop > 10%",
+            ],
+        }
+
+        return simulation_results
+
+
 if __name__ == "__main__":
     esempio_bilanciamento_completo()
