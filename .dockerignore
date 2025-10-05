@@ -1,0 +1,95 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.virtualenv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation
+docs/_build/
+site/
+
+# Examples e test data non necessari
+examples/
+tests/
+*.ipynb
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Outputs locali (verranno montati come volume)
+outputs/
+logs/
+
+# Backup
+C:\Backup/
+
+# Altri file non necessari
+# Escludi tutti i .md tranne README.md (necessario per build)
+DOCKER_README.md
+CLAUDE.md
+LICENSE
+.pre-commit-config.yaml
+justfile
+.editorconfig
+
+# Dashboard (non necessaria per API)
+src/arima_forecaster/dashboard/
+
+# Script non necessari (solo run_api.py serve)
+scripts/run_dashboard.py
+scripts/train.py
+scripts/forecast.py
+scripts/demo_*.py

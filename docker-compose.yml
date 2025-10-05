@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # FastAPI Application
+  arima-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arima-forecaster-api
+    image: arima-forecaster-api:0.4.0
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Configurazione API
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_WORKERS=4
+      - API_RELOAD=false
+      - PRODUCTION_MODE=true
+
+      # Logging
+      - LOG_LEVEL=info
+      - PYTHONUNBUFFERED=1
+
+      # Model Storage
+      - MODEL_STORAGE_PATH=/app/outputs/models
+
+      # CORS Origins (modifica secondo necessità)
+      - CORS_ORIGINS=*
+
+      # Redis (opzionale, per caching)
+      # - REDIS_HOST=redis
+      # - REDIS_PORT=6379
+
+      # Kafka (opzionale, per streaming)
+      # - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+    volumes:
+      # Persisti modelli addestrati
+      - ./outputs/models:/app/outputs/models
+      # Persisti grafici e visualizzazioni
+      - ./outputs/plots:/app/outputs/plots
+      # Persisti report generati
+      - ./outputs/reports:/app/outputs/reports
+      # Persisti logs
+      - ./logs:/app/logs
+
+    networks:
+      - arima-network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    labels:
+      - "com.arima-forecaster.service=api"
+      - "com.arima-forecaster.version=0.4.0"
+
+  # Redis (opzionale, decommentare se necessario per caching)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: arima-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - arima-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Kafka (opzionale, decommentare se necessario per real-time streaming)
+  # kafka:
+  #   image: apache/kafka:latest
+  #   container_name: arima-kafka
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9092:9092"
+  #   environment:
+  #     - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+  #   volumes:
+  #     - kafka-data:/var/lib/kafka/data
+  #   networks:
+  #     - arima-network
+
+networks:
+  arima-network:
+    driver: bridge
+
+# Decommenta questa sezione se abiliti Redis o Kafka
+# volumes:
+#   redis-data:
+#     driver: local
+#   kafka-data:
+#     driver: local
