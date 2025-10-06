@@ -114,7 +114,9 @@
       "Bash(sed:*)",
       "Bash(ruff format:*)",
       "Bash(awk:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(docker compose build:*)",
+      "Bash(docker compose:*)"
     ],
     "deny": [],
     "ask": [],

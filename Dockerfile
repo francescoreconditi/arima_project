@@ -31,8 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Installa UV (package manager veloce)
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:$PATH"
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    ln -s /root/.local/bin/uv /usr/local/bin/uv && \
+    ln -s /root/.local/bin/uvx /usr/local/bin/uvx
 
 # Copia solo i file necessari per l'installazione delle dipendenze
 COPY pyproject.toml ./
