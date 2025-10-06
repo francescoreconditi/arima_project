@@ -151,26 +151,44 @@ async def _train_model_background(
         else:
             metrics = {}
 
-        # TODO: Implementare save_model nel ModelManager
-        # model_manager.save_model(
-        #     model_id=model_id,
-        #     model=model,
-        #     model_type=request.model_type,
-        #     metadata={
-        #         "order": request.order,
-        #         "seasonal_order": request.seasonal_order,
-        #         "training_observations": len(series),
-        #         "metrics": metrics,
-        #         "status": "completed"
-        #     }
-        # )
+        # Salva il modello nel registry con metadati completi
+        model_manager.save_model(
+            model_id=model_id,
+            model=model,
+            model_type=request.model_type,
+            metadata={
+                "parameters": {
+                    "order": {
+                        "p": request.order.p,
+                        "d": request.order.d,
+                        "q": request.order.q
+                    },
+                    "seasonal_order": {
+                        "p": request.seasonal_order.p,
+                        "d": request.seasonal_order.d,
+                        "q": request.seasonal_order.q,
+                        "P": request.seasonal_order.P,
+                        "D": request.seasonal_order.D,
+                        "Q": request.seasonal_order.Q,
+                        "s": request.seasonal_order.s
+                    } if request.seasonal_order else None,
+                },
+                "training_observations": len(series),
+                "metrics": metrics,
+                "status": "completed",
+                "created_at": datetime.now()
+            }
+        )
 
         logger.info(f"Model {model_id} training completed successfully")
 
     except Exception as e:
         logger.error(f"Model {model_id} training failed: {e}")
-        # TODO: Implementare update_model_status o gestione alternativa degli errori
-        # model_manager.update_model_status(model_id, "failed", error=str(e))
+        # Aggiorna lo stato del modello a "failed" nel registry
+        if model_id in model_manager.model_registry:
+            model_manager.model_registry[model_id]["status"] = "failed"
+            model_manager.model_registry[model_id]["error"] = str(e)
+            model_manager._save_registry()
 
 
 async def _train_var_background(

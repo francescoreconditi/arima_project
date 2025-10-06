@@ -79,7 +79,7 @@ export class ModelForecast implements OnInit {
     const request: ForecastRequest = {
       steps: this.forecastSteps,
       confidence_level: this.confidenceLevel,
-      return_confidence_intervals: this.includeConfidenceIntervals
+      return_intervals: this.includeConfidenceIntervals
     };
 
     this.isForecasting = true;

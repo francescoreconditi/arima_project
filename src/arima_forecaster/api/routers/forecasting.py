@@ -147,13 +147,18 @@ async def generate_forecast(
         # Carica il modello
         model = model_manager.load_model(model_id)
 
+        # Converti confidence_level in alpha per modelli ARIMA/SARIMA
+        # alpha = 1 - confidence_level (es. confidence_level=0.95 -> alpha=0.05)
+        alpha = 1.0 - request.confidence_level
+
         # Genera le previsioni
-        if request.return_confidence_intervals:
+        if request.return_intervals:
             # Genera previsioni con intervalli di confidenza
+            # Usa alpha per ARIMA/SARIMA, confidence_level per Prophet
             forecast_values = model.forecast(
                 steps=request.steps,
                 confidence_intervals=True,
-                confidence_level=request.confidence_level,
+                alpha=alpha,
             )
 
             # Estrai valori e intervalli

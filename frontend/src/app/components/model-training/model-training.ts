@@ -89,6 +89,9 @@ export class ModelTraining {
     // Aggiungi parametri stagionali per SARIMA/SARIMAX
     if (this.modelType === 'sarima' || this.modelType === 'sarimax') {
       request.seasonal_order = {
+        p: this.p,  // Include anche i parametri non-stagionali (richiesto dal backend)
+        d: this.d,
+        q: this.q,
         P: this.P,
         D: this.D,
         Q: this.Q,

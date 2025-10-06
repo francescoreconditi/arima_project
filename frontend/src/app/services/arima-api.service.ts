@@ -8,9 +8,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import {
   ModelTrainingRequest,
   ModelInfo,
+  ModelListResponse,
   ForecastRequest,
   ForecastResponse,
   AutoSelectionRequest,
@@ -87,7 +89,9 @@ export class ArimaApiService {
    * Ottiene la lista di tutti i modelli
    */
   listModels(): Observable<ModelInfo[]> {
-    return this.http.get<ModelInfo[]>(`${this.API_BASE_URL}/models`);
+    return this.http.get<ModelListResponse>(`${this.API_BASE_URL}/models`).pipe(
+      map(response => response.models)
+    );
   }
 
   /**
@@ -108,6 +112,7 @@ export class ArimaApiService {
    * Verifica lo stato di un modello in training
    */
   checkModelStatus(modelId: string): Observable<ModelInfo> {
-    return this.http.get<ModelInfo>(`${this.API_BASE_URL}/models/${modelId}/status`);
+    // Usa endpoint corretto: /models/{model_id} invece di /models/{model_id}/status
+    return this.http.get<ModelInfo>(`${this.API_BASE_URL}/models/${modelId}`);
   }
 }

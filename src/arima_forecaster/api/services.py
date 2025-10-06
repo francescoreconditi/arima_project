@@ -183,6 +183,54 @@ class ModelManager:
         except Exception as e:
             self.logger.error(f"Errore inaspettato durante il salvataggio del registry: {e}")
 
+    def save_model(
+        self,
+        model_id: str,
+        model: Any,
+        model_type: str,
+        metadata: Dict[str, Any]
+    ):
+        """
+        Salva un modello addestrato sul filesystem e aggiorna il registry.
+
+        Args:
+            model_id: Identificatore univoco del modello
+            model: Istanza del modello addestrato (ARIMAForecaster, SARIMAForecaster, etc.)
+            model_type: Tipo di modello ("arima", "sarima", "sarimax", "var")
+            metadata: Metadati del modello (parametri, metriche, status, etc.)
+
+        Raises:
+            IOError: Errore durante il salvataggio del modello
+            ValueError: Parametri non validi
+        """
+        try:
+            # Percorso per salvare il modello serializzato
+            model_path = self.storage_path / f"{model_id}.pkl"
+
+            # Salva il modello usando il metodo save della classe specifica
+            model.save(model_path)
+
+            # Aggiorna il registry con i metadati
+            self.model_registry[model_id] = {
+                "model_id": model_id,
+                "model_type": model_type,
+                "model_path": str(model_path),
+                "created_at": metadata.get("created_at", datetime.now()),
+                "training_observations": metadata.get("training_observations", 0),
+                "parameters": metadata.get("parameters", {}),
+                "metrics": metadata.get("metrics", {}),
+                "status": metadata.get("status", "completed"),
+            }
+
+            # Persiste il registry su disco
+            self._save_registry()
+
+            self.logger.info(f"Modello {model_id} ({model_type}) salvato con successo")
+
+        except Exception as e:
+            self.logger.error(f"Errore durante il salvataggio del modello {model_id}: {e}")
+            raise
+
     async def train_model(self, model_id: str, series: pd.Series, request: ModelTrainingRequest):
         """
         Addestra un modello ARIMA, SARIMA o SARIMAX in modalità asincrona.

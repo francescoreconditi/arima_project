@@ -117,7 +117,12 @@
       "Bash(npm run dev:*)",
       "Bash(docker compose build:*)",
       "Bash(docker compose:*)",
-      "Bash(ng version)"
+      "Bash(ng version)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker ps:*)"
     ],
     "deny": [],
     "ask": [],

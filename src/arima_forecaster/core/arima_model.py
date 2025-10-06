@@ -214,19 +214,24 @@ class ARIMAForecaster:
                 conf_int = None
 
             # Crea indice di previsione
-            last_date = self.training_data.index[-1]
-            if isinstance(last_date, pd.Timestamp):
-                freq = pd.infer_freq(self.training_data.index)
-                if freq is None:
-                    # Fallback: calcola la frequenza dalle prime due date
-                    freq = self.training_data.index[1] - self.training_data.index[0]
-                    forecast_index = pd.date_range(start=last_date + freq, periods=steps, freq=freq)
-                else:
-                    forecast_index = pd.date_range(start=last_date, periods=steps + 1, freq=freq)[
-                        1:
-                    ]  # Salta il primo elemento per evitare sovrapposizioni
+            # Fallback se training_data non è disponibile (modello caricato da disco)
+            if self.training_data is None or len(self.training_data) == 0:
+                # Usa indice numerico semplice
+                forecast_index = range(steps)
             else:
-                forecast_index = range(len(self.training_data), len(self.training_data) + steps)
+                last_date = self.training_data.index[-1]
+                if isinstance(last_date, pd.Timestamp):
+                    freq = pd.infer_freq(self.training_data.index)
+                    if freq is None:
+                        # Fallback: calcola la frequenza dalle prime due date
+                        freq = self.training_data.index[1] - self.training_data.index[0]
+                        forecast_index = pd.date_range(start=last_date + freq, periods=steps, freq=freq)
+                    else:
+                        forecast_index = pd.date_range(start=last_date, periods=steps + 1, freq=freq)[
+                            1:
+                        ]  # Salta il primo elemento per evitare sovrapposizioni
+                else:
+                    forecast_index = range(len(self.training_data), len(self.training_data) + steps)
 
             forecast_series = pd.Series(forecast_values, index=forecast_index, name="forecast")
 
@@ -301,10 +306,14 @@ class ARIMAForecaster:
             # Salva usando il metodo built-in di statsmodels
             self.fitted_model.save(str(filepath))
 
-            # Salva anche i metadati
+            # Salva anche i metadati (inclusi training_data per forecasting)
             metadata_path = filepath.with_suffix(".metadata.pkl")
             with open(metadata_path, "wb") as f:
-                pickle.dump({"order": self.order, "training_metadata": self.training_metadata}, f)
+                pickle.dump({
+                    "order": self.order,
+                    "training_metadata": self.training_metadata,
+                    "training_data": self.training_data
+                }, f)
 
             self.logger.info(f"Modello salvato in {filepath}")
 
@@ -336,14 +345,17 @@ class ARIMAForecaster:
                     metadata = pickle.load(f)
                 order = metadata.get("order", (1, 1, 1))
                 training_metadata = metadata.get("training_metadata", {})
+                training_data = metadata.get("training_data", None)
             else:
                 order = (1, 1, 1)  # Ordine di default
                 training_metadata = {}
+                training_data = None
 
             # Crea istanza e popola
             instance = cls(order=order)
             instance.fitted_model = fitted_model
             instance.training_metadata = training_metadata
+            instance.training_data = training_data
 
             instance.logger.info(f"Modello caricato da {filepath}")
 

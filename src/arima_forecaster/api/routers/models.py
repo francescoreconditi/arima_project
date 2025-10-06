@@ -108,23 +108,31 @@ async def list_models(services: tuple = Depends(get_services)):
     model_manager, _ = services
 
     try:
-        models = model_manager.list_models()
+        # list_models() restituisce solo gli ID, dobbiamo ottenere i metadati completi
+        model_ids = model_manager.list_models()
 
         model_infos = []
-        for model_data in models:
-            model_infos.append(
-                ModelInfo(
-                    model_id=model_data["model_id"],
-                    model_type=model_data.get("model_type", "unknown"),
-                    status=model_data.get("status", "completed"),
-                    created_at=model_data.get("created_at", datetime.now()),
-                    training_observations=model_data.get("training_observations", 0),
-                    parameters=model_data.get("parameters", {}),
-                    metrics=model_data.get("metrics", {}),
+        for model_id in model_ids:
+            try:
+                # Ottieni i metadati completi per ogni modello
+                metadata = model_manager.get_model_info(model_id)
+                model_infos.append(
+                    ModelInfo(
+                        model_id=model_id,
+                        model_type=metadata.get("model_type", "unknown"),
+                        status=metadata.get("status", "completed"),
+                        created_at=metadata.get("created_at", datetime.now()),
+                        training_observations=metadata.get("training_observations", 0),
+                        parameters=metadata.get("parameters", {}),
+                        metrics=metadata.get("metrics", {}),
+                    )
                 )
-            )
+            except Exception as e:
+                # Se non riesce a caricare un modello, salta e continua
+                logger.warning(f"Skipping model {model_id}: {e}")
+                continue
 
-        return ModelListResponse(models=model_infos, total_count=len(model_infos))
+        return ModelListResponse(models=model_infos, total=len(model_infos))
 
     except Exception as e:
         logger.error(f"Failed to list models: {e}")
@@ -180,8 +188,8 @@ async def get_model_info(model_id: str, services: tuple = Depends(get_services))
         if not model_manager.model_exists(model_id):
             raise HTTPException(status_code=404, detail="Model not found")
 
-        # Carica i metadati
-        metadata = model_manager.get_model_metadata(model_id)
+        # Carica i metadati dal registry
+        metadata = model_manager.get_model_info(model_id)
 
         return ModelInfo(
             model_id=model_id,

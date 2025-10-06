@@ -23,10 +23,13 @@ export interface ModelOrder {
 }
 
 export interface SeasonalOrder {
-  P: number;
-  D: number;
-  Q: number;
-  s: number;
+  p: number;  // Non-seasonal AR order (required by backend)
+  d: number;  // Non-seasonal differencing (required by backend)
+  q: number;  // Non-seasonal MA order (required by backend)
+  P: number;  // Seasonal AR order
+  D: number;  // Seasonal differencing
+  Q: number;  // Seasonal MA order
+  s: number;  // Seasonal period
 }
 
 export interface ModelTrainingRequest {
@@ -39,7 +42,7 @@ export interface ModelTrainingRequest {
 export interface ForecastRequest {
   steps: number;
   confidence_level?: number;
-  return_confidence_intervals?: boolean;
+  return_intervals?: boolean;
 }
 
 export interface AutoSelectionRequest {
@@ -62,6 +65,11 @@ export interface ModelInfo {
   training_observations: number;
   parameters: Record<string, any>;
   metrics: Record<string, number>;
+}
+
+export interface ModelListResponse {
+  models: ModelInfo[];
+  total: number;
 }
 
 export interface ConfidenceIntervals {
