@@ -1,0 +1,56 @@
+<div class="models-container">
+  <h2>Modelli Salvati</h2>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-message">
+    Caricamento modelli in corso...
+  </div>
+
+  <!-- Errore -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Pulsante refresh -->
+  <button (click)="loadModels()" class="btn-refresh" *ngIf="!isLoading">
+    Aggiorna Lista
+  </button>
+
+  <!-- Tabella modelli -->
+  <div *ngIf="!isLoading && models.length > 0" class="models-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Model ID</th>
+          <th>Tipo</th>
+          <th>Status</th>
+          <th>Osservazioni</th>
+          <th>Creato</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let model of models">
+          <td>{{ model.model_id.substring(0, 8) }}...</td>
+          <td>{{ model.model_type }}</td>
+          <td>
+            <span [class]="'status-' + model.status">{{ model.status }}</span>
+          </td>
+          <td>{{ model.training_observations }}</td>
+          <td>{{ model.created_at | date:'short' }}</td>
+          <td>
+            <button (click)="deleteModel(model.model_id)" class="btn-danger">
+              Elimina
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Nessun modello -->
+  <div *ngIf="!isLoading && models.length === 0" class="no-models">
+    <p>Nessun modello trovato.</p>
+    <p>Vai alla pagina <a routerLink="/training">Training</a> per addestrare un nuovo modello.</p>
+  </div>
+</div>

@@ -1,0 +1,133 @@
+<div class="forecast-container">
+  <h2>Generazione Forecast</h2>
+
+  <!-- Form di configurazione -->
+  <div class="config-form">
+    <!-- Selezione modello -->
+    <div class="form-group">
+      <label for="modelSelect">Seleziona Modello:</label>
+      <select id="modelSelect" [(ngModel)]="selectedModelId" class="form-control">
+        <option value="">-- Seleziona un modello --</option>
+        <option *ngFor="let model of availableModels" [value]="model.model_id">
+          {{ model.model_type }} - {{ model.model_id.substring(0, 8) }}... ({{ model.training_observations }} obs)
+        </option>
+      </select>
+      <button type="button" (click)="loadAvailableModels()" class="btn-refresh">Aggiorna Lista</button>
+    </div>
+
+    <!-- Parametri forecast -->
+    <div class="parameters-row">
+      <div class="form-group">
+        <label for="steps">Passi Forecast:</label>
+        <input type="number" id="steps" [(ngModel)]="forecastSteps" min="1" max="365" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="confidence">Livello Confidenza:</label>
+        <select id="confidence" [(ngModel)]="confidenceLevel" class="form-control">
+          <option [value]="0.80">80%</option>
+          <option [value]="0.90">90%</option>
+          <option [value]="0.95">95%</option>
+          <option [value]="0.99">99%</option>
+        </select>
+      </div>
+      <div class="form-group checkbox-group">
+        <label>
+          <input type="checkbox" [(ngModel)]="includeConfidenceIntervals">
+          Includi Intervalli di Confidenza
+        </label>
+      </div>
+    </div>
+
+    <!-- Pulsante genera forecast -->
+    <button
+      (click)="onGenerateForecast()"
+      [disabled]="isForecasting || !selectedModelId"
+      class="btn-primary">
+      {{ isForecasting ? 'Generazione in corso...' : 'Genera Forecast' }}
+    </button>
+  </div>
+
+  <!-- Messaggi di errore -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Risultati forecast -->
+  <div *ngIf="forecastResult" class="forecast-results">
+    <div class="results-header">
+      <h3>Risultati Forecast</h3>
+      <button (click)="exportToCSV()" class="btn-export">Esporta CSV</button>
+    </div>
+
+    <!-- Info generali -->
+    <div class="info-card">
+      <p><strong>Model ID:</strong> {{ forecastResult.model_id }}</p>
+      <p><strong>Passi previsti:</strong> {{ forecastResult.forecast_steps }}</p>
+      <p><strong>Periodo:</strong> {{ forecastResult.timestamps[0] }} - {{ forecastResult.timestamps[forecastResult.timestamps.length - 1] }}</p>
+    </div>
+
+    <!-- Grafico semplice (HTML/CSS) -->
+    <div class="simple-chart">
+      <h4>Visualizzazione Forecast</h4>
+      <div class="chart-area">
+        <div class="chart-line" *ngFor="let value of forecastData; let i = index">
+          <span class="chart-label">{{ chartLabels[i] }}</span>
+          <div class="chart-bar-container">
+            <div class="chart-bar" [style.width.%]="(value / getMaxValue()) * 100"></div>
+            <span class="chart-value">{{ formatNumber(value) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabella dati -->
+    <div class="data-table">
+      <h4>Dati Forecast Dettagliati</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Previsione</th>
+            <th *ngIf="includeConfidenceIntervals && forecastResult.confidence_intervals">Lower Bound</th>
+            <th *ngIf="includeConfidenceIntervals && forecastResult.confidence_intervals">Upper Bound</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let timestamp of forecastResult.timestamps; let i = index">
+            <td>{{ timestamp }}</td>
+            <td>{{ formatNumber(forecastResult.forecast[i]) }}</td>
+            <td *ngIf="includeConfidenceIntervals && forecastResult.confidence_intervals">
+              {{ formatNumber(forecastResult.confidence_intervals.lower[i]) }}
+            </td>
+            <td *ngIf="includeConfidenceIntervals && forecastResult.confidence_intervals">
+              {{ formatNumber(forecastResult.confidence_intervals.upper[i]) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Statistiche summary -->
+    <div class="summary-stats">
+      <h4>Statistiche Forecast</h4>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Media:</span>
+          <span class="stat-value">{{ formatNumber(calculateMean(forecastResult.forecast)) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Min:</span>
+          <span class="stat-value">{{ formatNumber(calculateMin(forecastResult.forecast)) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Max:</span>
+          <span class="stat-value">{{ formatNumber(calculateMax(forecastResult.forecast)) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Std Dev:</span>
+          <span class="stat-value">{{ formatNumber(calculateStdDev(forecastResult.forecast)) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

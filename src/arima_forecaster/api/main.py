@@ -174,7 +174,11 @@ def create_app(
     # Configura il middleware CORS per permettere richieste cross-origin
     # Essenziale per applicazioni web frontend che consumano l'API
     cors_origins = (
-        ["*"] if not production_mode else ["http://localhost:3000", "https://yourdomain.com"]
+        ["*"] if not production_mode else [
+            "http://localhost:3000",
+            "http://localhost:4200",  # Angular frontend
+            "https://yourdomain.com"
+        ]
     )
 
     app.add_middleware(

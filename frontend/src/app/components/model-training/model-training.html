@@ -1,0 +1,103 @@
+<div class="training-container">
+  <h2>Addestramento Modello ARIMA/SARIMA</h2>
+
+  <!-- Form di configurazione -->
+  <div class="config-form">
+    <!-- Tipo di modello -->
+    <div class="form-group">
+      <label for="modelType">Tipo Modello:</label>
+      <select id="modelType" [(ngModel)]="modelType" class="form-control">
+        <option value="arima">ARIMA</option>
+        <option value="sarima">SARIMA</option>
+        <option value="sarimax">SARIMAX</option>
+      </select>
+    </div>
+
+    <!-- Parametri ARIMA (p, d, q) -->
+    <div class="parameters-row">
+      <div class="form-group">
+        <label for="p">p (AR order):</label>
+        <input type="number" id="p" [(ngModel)]="p" min="0" max="10" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="d">d (Differencing):</label>
+        <input type="number" id="d" [(ngModel)]="d" min="0" max="3" class="form-control">
+      </div>
+      <div class="form-group">
+        <label for="q">q (MA order):</label>
+        <input type="number" id="q" [(ngModel)]="q" min="0" max="10" class="form-control">
+      </div>
+    </div>
+
+    <!-- Parametri stagionali (per SARIMA) -->
+    <div *ngIf="modelType === 'sarima' || modelType === 'sarimax'" class="seasonal-params">
+      <h4>Parametri Stagionali</h4>
+      <div class="parameters-row">
+        <div class="form-group">
+          <label for="P">P (Seasonal AR):</label>
+          <input type="number" id="P" [(ngModel)]="P" min="0" max="5" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="D">D (Seasonal Diff):</label>
+          <input type="number" id="D" [(ngModel)]="D" min="0" max="2" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="Q">Q (Seasonal MA):</label>
+          <input type="number" id="Q" [(ngModel)]="Q" min="0" max="5" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="s">s (Season Length):</label>
+          <input type="number" id="s" [(ngModel)]="s" min="2" max="365" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- Area dati CSV -->
+    <div class="form-group">
+      <label for="csvData">Dati Serie Temporale (formato CSV: data,valore):</label>
+      <textarea
+        id="csvData"
+        [(ngModel)]="csvData"
+        rows="10"
+        class="form-control"
+        placeholder="2024-01-01,100&#10;2024-01-02,105&#10;2024-01-03,103&#10;...">
+      </textarea>
+      <button type="button" (click)="loadSampleData()" class="btn-sample">Carica Dati di Esempio</button>
+    </div>
+
+    <!-- Pulsante training -->
+    <button
+      (click)="onTrainModel()"
+      [disabled]="isTraining || !csvData"
+      class="btn-primary">
+      {{ isTraining ? 'Training in corso...' : 'Addestra Modello' }}
+    </button>
+  </div>
+
+  <!-- Messaggi di errore -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Risultati del training -->
+  <div *ngIf="trainedModel" class="training-results">
+    <h3>Risultati Training</h3>
+    <div class="result-card">
+      <p><strong>Model ID:</strong> {{ trainedModel.model_id }}</p>
+      <p><strong>Tipo:</strong> {{ trainedModel.model_type }}</p>
+      <p><strong>Status:</strong> <span [class]="'status-' + trainedModel.status">{{ trainedModel.status }}</span></p>
+      <p><strong>Osservazioni:</strong> {{ trainedModel.training_observations }}</p>
+      <p><strong>Creato:</strong> {{ trainedModel.created_at | date:'short' }}</p>
+
+      <!-- Metriche (se disponibili) -->
+      <div *ngIf="trainedModel.metrics && Object.keys(trainedModel.metrics).length > 0">
+        <h4>Metriche Performance:</h4>
+        <ul>
+          <li *ngFor="let metric of Object.keys(trainedModel.metrics)">
+            <strong>{{ metric }}:</strong> {{ trainedModel.metrics[metric] | number:'1.2-4' }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
