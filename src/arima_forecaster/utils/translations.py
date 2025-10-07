@@ -46,17 +46,23 @@ class TranslationManager:
             "Español": "es",
             "Français": "fr",
             "中文": "zh",
+            "Deutsch": "de",
+            "Português": "pt",
             # Aggiungi alias comuni
             "italian": "it",
             "english": "en",
             "spanish": "es",
             "french": "fr",
             "chinese": "zh",
+            "german": "de",
+            "portuguese": "pt",
             "zh-CN": "zh",
             "zh-TW": "zh",
+            "pt-BR": "pt",
+            "pt-PT": "pt",
         }
 
-        self.supported_languages = ["it", "en", "es", "fr", "zh"]
+        self.supported_languages = ["it", "en", "es", "fr", "zh", "de", "pt"]
         self.default_language = "it"
 
     @lru_cache(maxsize=10)
@@ -178,6 +184,8 @@ class TranslationManager:
             "es": "Español",
             "fr": "Français",
             "zh": "中文",
+            "de": "Deutsch",
+            "pt": "Português",
         }
 
         available = {}

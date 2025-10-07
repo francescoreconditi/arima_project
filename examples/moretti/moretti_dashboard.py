@@ -1611,10 +1611,16 @@ def main():
         st.markdown("### 🌍 Impostazioni Lingua")
         dashboard_language = st.selectbox(
             "Lingua Dashboard:",
-            ["Italiano", "English", "Español", "Français", "中文"],
-            index=["Italiano", "English", "Español", "Français", "中文"].index(
-                st.session_state.dashboard_language
-            ),
+            ["Italiano", "English", "Español", "Français", "中文", "Deutsch", "Português"],
+            index=[
+                "Italiano",
+                "English",
+                "Español",
+                "Français",
+                "中文",
+                "Deutsch",
+                "Português",
+            ].index(st.session_state.dashboard_language),
             key="lang_selector",
         )
         st.session_state.dashboard_language = dashboard_language
@@ -2418,7 +2424,8 @@ def main():
             executive_summary = st.checkbox("Executive Summary", value=True)
 
             language = st.selectbox(
-                "Lingua Report:", ["Italiano", "English", "Español", "Français", "中文"]
+                "Lingua Report:",
+                ["Italiano", "English", "Español", "Français", "中文", "Deutsch", "Português"],
             )
 
         st.markdown("---")

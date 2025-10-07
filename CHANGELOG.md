@@ -7,6 +7,14 @@ e questo progetto aderisce a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 ## [Unreleased]
 
+### Aggiunto - 2025-10-07
+- 🌍 **Supporto Tedesco e Portoghese**: Estensione sistema traduzioni multilingue
+  - Nuovi file traduzione: `de.json` (Deutsch) e `pt.json` (Português)
+  - Aggiornato TranslationManager con 7 lingue totali: IT, EN, ES, FR, ZH, DE, PT
+  - Dashboard Streamlit aggiornata con selettore lingue esteso
+  - API REST configurabile per tutte le 7 lingue
+  - Documentazione aggiornata in CLAUDE.md e README
+
 ## [0.4.0] - 2025-01-01
 
 ### Aggiunto - 🌊 Real-Time Streaming & 🤖 Explainable AI

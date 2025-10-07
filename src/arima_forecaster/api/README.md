@@ -202,7 +202,7 @@ API_DEBUG=false
 
 # Multilingual Support
 DEFAULT_LANGUAGE=it
-SUPPORTED_LANGUAGES=it,en,es,fr,zh
+SUPPORTED_LANGUAGES=it,en,es,fr,zh,de,pt
 
 # Performance
 MAX_WORKERS=4
