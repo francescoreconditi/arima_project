@@ -70,7 +70,7 @@ ruff format filename.py            # Auto-format specific file after modificatio
 ### 🔴 Sistema Traduzioni Centralizzato
 **Dal 26/08/2024: Sistema traduzioni unificato per tutto il progetto**
 1. **Directory traduzioni**: `src/arima_forecaster/assets/locales/` contiene file JSON per ogni lingua
-2. **7 lingue supportate**: Italiano (it), English (en), Español (es), Français (fr), 中文 (zh), Deutsch (de), Português (pt)
+2. **8 lingue supportate**: Italiano (it), English (en), Español (es), Français (fr), 中文 (zh), Deutsch (de), Português (pt)
 3. **Modulo centralizzato**: `src/arima_forecaster/utils/translations.py` gestisce tutto
 4. **Import per nuovi moduli**:
    ```python
@@ -82,7 +82,7 @@ ruff format filename.py            # Auto-format specific file after modificatio
 
 ## Panoramica del Progetto
 
-Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva multilingue (7 lingue), reporting dinamico con Quarto, sistema traduzioni centralizzato, **Real-Time Streaming** con Apache Kafka e WebSocket, ed **Explainable AI** con SHAP e Business Rules Engine.
+Libreria Python avanzata per forecasting serie temporali con modelli ARIMA, SARIMA e VAR. Include funzionalità enterprise-grade come Auto-ML, API REST, dashboard interattiva multilingue (8 lingue), reporting dinamico con Quarto, sistema traduzioni centralizzato, **Real-Time Streaming** con Apache Kafka e WebSocket, ed **Explainable AI** con SHAP e Business Rules Engine.
 
 ### 🆕 NUOVE FUNZIONALITÀ v0.4.0
 
@@ -235,7 +235,7 @@ docker run -p 9092:9092 apache/kafka:latest
 
 #### API & Dashboard
 - **FastAPI REST API** (`src/arima_forecaster/api/`): Endpoints production-ready multilingue
-- **Streamlit Dashboard** (`src/arima_forecaster/dashboard/`): UI web interattiva (7 lingue)
+- **Streamlit Dashboard** (`src/arima_forecaster/dashboard/`): UI web interattiva (8 lingue)
 
 ### Pipeline Dati Tipica
 
@@ -388,7 +388,7 @@ just build       # Build package per distribuzione
 - ✅ VAR con test causalità Granger e impulse response
 - ✅ Auto-ML con Optuna, Hyperopt, Scikit-Optimize
 - ✅ API REST production-ready con FastAPI
-- ✅ Dashboard Streamlit interattiva multilingue (7 lingue: IT, EN, ES, FR, ZH, DE, PT)
+- ✅ Dashboard Streamlit interattiva multilingue (7 lingue: IT, EN, ES, FR, ZH, DE, PT, JA)
 - ✅ Reporting Quarto con export multi-formato
 - ✅ Ensemble methods e model stacking
 - ✅ **NUOVO:** Slow/Fast Moving Inventory Classification con ABC/XYZ analysis
@@ -619,7 +619,7 @@ uv run python moretti_inventory_fast.py  # 30-sec demo ready
 #### **🆕 AGGIORNAMENTI RECENTI - Agosto 2024**
 
 ##### **Sistema Traduzioni Multilingue:**
-- ✅ **7 lingue supportate**: Italiano, English, Español, Français, 中文 (Cinese), Deutsch (Tedesco), Português (Portoghese)
+- ✅ **8 lingue supportate**: Italiano, English, Español, Français, 中文 (Cinese), Deutsch (Tedesco), Português (Portoghese), 日本語 (Giapponese)
 - ✅ **Report multilingue**: Generazione automatica in tutte le lingue
 - ✅ **Dashboard tradotta**: Interfaccia completamente localizzata
 - ✅ **Fix encoding UTF-8**: Risolti problemi caratteri cinesi in report PDF/HTML

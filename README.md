@@ -2,7 +2,7 @@
 
 ## Libreria Avanzata per Forecasting Serie Temporali con Modelli ARIMA, SARIMA, SARIMAX, VAR, Prophet, Real-Time Streaming e Explainable AI
 
-Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene), VAR (Vector Autoregression) e **Facebook Prophet**. Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (7 lingue), **Real-Time Streaming con Kafka/WebSocket**, **Explainable AI con SHAP**, sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
+Una libreria Python professionale e completa per l'analisi, modellazione e previsione di serie temporali utilizzando modelli ARIMA, SARIMA (Seasonal ARIMA), SARIMAX (con variabili esogene), VAR (Vector Autoregression) e **Facebook Prophet**. Include funzionalità avanzate di Auto-ML, API REST, dashboard interattiva multilingue (8 lingue), **Real-Time Streaming con Kafka/WebSocket**, **Explainable AI con SHAP**, sistema traduzioni centralizzato e ottimizzazione automatica dei parametri per applicazioni enterprise-grade.
 
 ---
 
@@ -29,7 +29,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 - **📊 Modelli VAR**: Forecasting multivariato con analisi di causalità e impulse response
 - **🤖 Auto-ML**: Ottimizzazione automatica con Optuna, Hyperopt e Scikit-Optimize  
 - **🌐 API REST**: Servizi di forecasting production-ready con FastAPI multilingue
-- **💻 Dashboard Streamlit**: Interfaccia web interattiva multilingue (IT, EN, ES, FR, ZH, DE, PT)
+- **💻 Dashboard Streamlit**: Interfaccia web interattiva multilingue (IT, EN, ES, FR, ZH, DE, PT, JA)
 - **🌍 Sistema Traduzioni**: Gestione centralizzata traduzioni per 7 lingue
 - **📄 Report Quarto**: Generazione report dinamici multilingue con analisi automatiche
 - **🎯 Ensemble Methods**: Combinazione intelligente di modelli diversi
@@ -128,7 +128,7 @@ Una libreria Python professionale e completa per l'analisi, modellazione e previ
 │   │   ├── logger.py               # Logging configurabile
 │   │   └── exceptions.py           # Eccezioni personalizzate
 │   └── assets/                      # Risorse static del progetto
-│       └── locales/                 # File traduzioni JSON (7 lingue)
+│       └── locales/                 # File traduzioni JSON (8 lingue)
 ├── docs/                           # Documentazione completa
 │   ├── GPU_SETUP.md               # 🚀 Setup completo GPU/CUDA acceleration
 │   ├── teoria_arima.md            # Teoria matematica ARIMA
@@ -1383,7 +1383,7 @@ docx_report = arima_model.generate_report(
 - **Multiple Doc Formats**: Swagger UI, ReDoc, Scalar per ogni esigenza
 
 #### 📊 Dashboard Interattiva Multilingue
-- **7 Lingue Supportate**: Italiano, English, Español, Français, 中文 (Cinese), Deutsch (Tedesco), Português (Portoghese)
+- **8 Lingue Supportate**: Italiano, English, Español, Français, 中文 (Cinese), Deutsch (Tedesco), Português (Portoghese), 日本語 (Giapponese)
 - **Data Exploration**: Upload CSV, statistiche, visualizzazioni localizzate
 - **Model Comparison**: Confronto performance modelli con interfaccia tradotta
 - **Interactive Plotting**: Grafici Plotly con zoom, filtering, labels multilingue
@@ -1941,7 +1941,7 @@ uv run python scripts/deploy_cloud.py --platform=aws --region=us-east-1
 #### ✅ Implementato (v0.5.0 - Agosto 2024)
 - [x] **Prophet Integration**: Facebook Prophet models con supporto completo stagionalità e holidays ✅
 - [x] **Prophet Auto-Selection**: Ottimizzazione automatica parametri Prophet (Grid, Random, Bayesian) ✅
-- [x] **Sistema Multilingue**: Dashboard e report in 7 lingue (IT, EN, ES, FR, ZH, DE, PT) ✅
+- [x] **Sistema Multilingue**: Dashboard e report in 7 lingue (IT, EN, ES, FR, ZH, DE, PT, JA) ✅
 - [x] **Cold Start Problem**: Forecasting per nuovi prodotti senza dati storici ✅
 - [x] **Anomaly Detection**: Rilevamento outlier integrato (IQR, z-score, isolation forest) ✅
 
