@@ -72,11 +72,22 @@ class ARIMAModelSelector:
 
         all_orders = list(product(p_values, d_values, q_values))
 
+        # Filtra modelli non validi: almeno uno tra p e q deve essere > 0
+        # ARIMA(0,0,0) non è un modello valido
+        all_orders = [order for order in all_orders if order[0] > 0 or order[2] > 0]
+
+        if not all_orders:
+            raise ValueError(
+                "Nessuna combinazione di parametri valida. Almeno uno tra p e q deve essere > 0."
+            )
+
         if max_models and len(all_orders) > max_models:
             self.logger.info(f"Limitazione ricerca alle prime {max_models} combinazioni di modelli")
             all_orders = all_orders[:max_models]
 
-        self.logger.info(f"Valutazione di {len(all_orders)} combinazioni di modelli")
+        self.logger.info(
+            f"Valutazione di {len(all_orders)} combinazioni di modelli (filtrati modelli non validi)"
+        )
 
         best_criterion = float("inf")
         best_order = None
@@ -148,7 +159,14 @@ class ARIMAModelSelector:
         from .arima_model import ARIMAForecaster
 
         # Crea un'istanza ARIMAForecaster con l'ordine ottimale
-        forecaster = ARIMAForecaster(order=self.best_order)
+        # IMPORTANTE: Disabilita ottimizzazioni per compatibilità con serie piccole
+        forecaster = ARIMAForecaster(
+            order=self.best_order,
+            use_cache=False,
+            use_smart_params=False,
+            use_memory_pool=False,
+            use_vectorized_ops=False,
+        )
         forecaster.fitted_model = self.best_model
         forecaster.is_fitted = True
         forecaster.training_data = self.training_series

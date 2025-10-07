@@ -52,11 +52,10 @@ Caratteristiche:
 # Funzione per dependency injection dei servizi
 def get_services():
     """Dependency per ottenere i servizi necessari."""
-    from pathlib import Path
+    from arima_forecaster.api.main import get_model_manager, get_forecast_service
 
-    storage_path = Path("models")
-    model_manager = ModelManager(storage_path)
-    forecast_service = ForecastService(model_manager)
+    model_manager = get_model_manager()
+    forecast_service = get_forecast_service()
     return model_manager, forecast_service
 
 
@@ -74,7 +73,15 @@ async def _train_model_background(
             from arima_forecaster import ARIMAForecaster
 
             order_tuple = (request.order.p, request.order.d, request.order.q)
-            model = ARIMAForecaster(order=order_tuple)
+            # Disabilita ottimizzazioni per serie piccole (<30 obs) per evitare errori
+            use_optimizations = len(series) >= 30
+            model = ARIMAForecaster(
+                order=order_tuple,
+                use_cache=use_optimizations,
+                use_smart_params=use_optimizations,
+                use_memory_pool=use_optimizations,
+                use_vectorized_ops=use_optimizations,
+            )
         elif request.model_type == "sarima":
             from arima_forecaster import SARIMAForecaster
 
@@ -89,7 +96,16 @@ async def _train_model_background(
                 if request.seasonal_order
                 else None
             )
-            model = SARIMAForecaster(order=order_tuple, seasonal_order=seasonal_order_tuple)
+            # Disabilita ottimizzazioni per serie piccole
+            use_optimizations = len(series) >= 30
+            model = SARIMAForecaster(
+                order=order_tuple,
+                seasonal_order=seasonal_order_tuple,
+                use_cache=use_optimizations,
+                use_smart_params=use_optimizations,
+                use_memory_pool=use_optimizations,
+                use_vectorized_ops=use_optimizations,
+            )
         elif request.model_type == "sarimax":
             from arima_forecaster import SARIMAForecaster
 
@@ -104,7 +120,16 @@ async def _train_model_background(
                 if request.seasonal_order
                 else None
             )
-            model = SARIMAForecaster(order=order_tuple, seasonal_order=seasonal_order_tuple)
+            # Disabilita ottimizzazioni per serie piccole
+            use_optimizations = len(series) >= 30
+            model = SARIMAForecaster(
+                order=order_tuple,
+                seasonal_order=seasonal_order_tuple,
+                use_cache=use_optimizations,
+                use_smart_params=use_optimizations,
+                use_memory_pool=use_optimizations,
+                use_vectorized_ops=use_optimizations,
+            )
         elif request.model_type == "prophet":
             try:
                 from arima_forecaster.core import ProphetForecaster
@@ -158,11 +183,7 @@ async def _train_model_background(
             model_type=request.model_type,
             metadata={
                 "parameters": {
-                    "order": {
-                        "p": request.order.p,
-                        "d": request.order.d,
-                        "q": request.order.q
-                    },
+                    "order": {"p": request.order.p, "d": request.order.d, "q": request.order.q},
                     "seasonal_order": {
                         "p": request.seasonal_order.p,
                         "d": request.seasonal_order.d,
@@ -170,14 +191,16 @@ async def _train_model_background(
                         "P": request.seasonal_order.P,
                         "D": request.seasonal_order.D,
                         "Q": request.seasonal_order.Q,
-                        "s": request.seasonal_order.s
-                    } if request.seasonal_order else None,
+                        "s": request.seasonal_order.s,
+                    }
+                    if request.seasonal_order
+                    else None,
                 },
                 "training_observations": len(series),
                 "metrics": metrics,
                 "status": "completed",
-                "created_at": datetime.now()
-            }
+                "created_at": datetime.now(),
+            },
         )
 
         logger.info(f"Model {model_id} training completed successfully")
@@ -423,19 +446,33 @@ async def auto_select_model(request: AutoSelectionRequest, services: tuple = Dep
         timestamps = pd.to_datetime(request.data.timestamps)
         series = pd.Series(request.data.values, index=timestamps)
 
+        # Valida che ci siano abbastanza dati
+        min_obs = 10  # Minimo richiesto per ARIMA
+        if len(series) < min_obs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dati insufficienti per auto-selezione. Richiesti almeno {min_obs} osservazioni, forniti {len(series)}",
+            )
+
+        logger.info(f"Auto-selection starting with {len(series)} observations")
+
         # Esegue la ricerca
         import time
 
         start_time = time.time()
 
-        if request.seasonal:
+        # Gestione sicura del campo seasonal (può essere None)
+        is_seasonal = getattr(request, "seasonal", False) or False
+
+        if is_seasonal:
             from arima_forecaster.core.sarima_selection import SARIMAModelSelector
 
+            seasonal_period = getattr(request, "seasonal_period", 12)
             selector = SARIMAModelSelector(
                 p_range=(0, request.max_p),
                 d_range=(0, request.max_d),
                 q_range=(0, request.max_q),
-                seasonal_periods=[request.seasonal_period],
+                seasonal_periods=[seasonal_period],
                 information_criterion=request.criterion,
             )
         else:
@@ -448,9 +485,23 @@ async def auto_select_model(request: AutoSelectionRequest, services: tuple = Dep
                 information_criterion=request.criterion,
             )
 
-        best_order = selector.search(series)
+        selector.search(series)
 
         search_time = time.time() - start_time
+
+        # Estrae i parametri ottimali dal selector
+        if is_seasonal:
+            # Per SARIMA: combina order e seasonal_order in una tupla unica
+            best_order = (
+                selector.best_order[0], selector.best_order[1], selector.best_order[2],
+                selector.best_seasonal_order[0], selector.best_seasonal_order[1],
+                selector.best_seasonal_order[2], selector.best_seasonal_order[3]
+            )
+        else:
+            # Per ARIMA: usa solo order
+            best_order = selector.best_order
+
+        logger.info(f"Auto-selection completed. Best order: {best_order}, type: {type(best_order)}")
 
         # Accede ai results dalla classe selector
         all_results_data = selector.results if hasattr(selector, "results") else []
@@ -458,10 +509,89 @@ async def auto_select_model(request: AutoSelectionRequest, services: tuple = Dep
         # Prepara il best model
         best_result = all_results_data[0] if all_results_data else None
 
+        # Ottiene il modello migliore addestrato
+        best_model_obj = selector.get_best_model()
+
+        # Genera ID univoco per il modello e salvalo
+        import uuid
+
+        model_id = str(uuid.uuid4())
+
+        # Salva il modello migliore nel ModelManager
+        model_manager, _ = services
+        if best_model_obj is not None:
+            # Estrae metriche dal modello
+            model_info = best_model_obj.get_model_info()
+            metrics = {
+                "aic": model_info.get("aic"),
+                "bic": model_info.get("bic"),
+                "hqic": model_info.get("hqic"),
+            }
+
+            # Prepara parametri - gestisce sia tuple che liste
+            try:
+                if is_seasonal:
+                    # Per SARIMA, best_order dovrebbe avere almeno 7 elementi (p,d,q,P,D,Q,s)
+                    if len(best_order) >= 7:
+                        params = {
+                            "order": {
+                                "p": int(best_order[0]),
+                                "d": int(best_order[1]),
+                                "q": int(best_order[2]),
+                            },
+                            "seasonal_order": {
+                                "P": int(best_order[3]),
+                                "D": int(best_order[4]),
+                                "Q": int(best_order[5]),
+                                "s": int(best_order[6]),
+                            },
+                        }
+                    else:
+                        # Fallback: usa solo la parte non stagionale
+                        params = {
+                            "order": {
+                                "p": int(best_order[0]),
+                                "d": int(best_order[1]),
+                                "q": int(best_order[2]),
+                            },
+                        }
+                else:
+                    # Per ARIMA, best_order ha 3 elementi (p,d,q)
+                    params = {
+                        "order": {
+                            "p": int(best_order[0]),
+                            "d": int(best_order[1]),
+                            "q": int(best_order[2]),
+                        },
+                    }
+            except (IndexError, TypeError, ValueError) as e:
+                logger.error(f"Error parsing best_order {best_order}: {e}")
+                # Fallback sicuro
+                params = {"order": {"p": 1, "d": 1, "q": 1}}
+
+            # Salva il modello
+            model_manager.save_model(
+                model_id=model_id,
+                model=best_model_obj,
+                model_type="sarima" if is_seasonal else "arima",
+                metadata={
+                    "parameters": params,
+                    "training_observations": len(series),
+                    "metrics": metrics,
+                    "status": "completed",
+                    "created_at": datetime.now(),
+                    "auto_selected": True,
+                },
+            )
+            logger.info(f"Auto-selected model {model_id} saved successfully")
+
         return AutoSelectionResult(
             best_model={
-                "order": list(best_order) if not request.seasonal else list(best_order[:3]),
-                "seasonal_order": list(best_order[3:]) if request.seasonal and len(best_order) > 3 else None,
+                "model_id": model_id if best_model_obj is not None else None,
+                "order": list(best_order) if not is_seasonal else list(best_order[:3]),
+                "seasonal_order": list(best_order[3:])
+                if is_seasonal and len(best_order) > 3
+                else None,
                 "aic": best_result.get(request.criterion) if best_result else None,
                 "bic": best_result.get("bic") if best_result else None,
             },

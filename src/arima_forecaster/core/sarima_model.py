@@ -23,6 +23,10 @@ class SARIMAForecaster:
         order: Tuple[int, int, int] = (1, 1, 1),
         seasonal_order: Tuple[int, int, int, int] = (1, 1, 1, 12),
         trend: Optional[str] = None,
+        use_cache: bool = False,
+        use_smart_params: bool = False,
+        use_memory_pool: bool = False,
+        use_vectorized_ops: bool = False,
     ):
         """
         Inizializza il previsore SARIMA.
@@ -31,10 +35,19 @@ class SARIMAForecaster:
             order: Ordine ARIMA non stagionale (p, d, q)
             seasonal_order: Ordine ARIMA stagionale (P, D, Q, s)
             trend: Parametro di trend ('n', 'c', 't', 'ct')
+            use_cache: Se utilizzare model caching (default: False per SARIMA)
+            use_smart_params: Se utilizzare parametri starting intelligenti (default: False)
+            use_memory_pool: Se utilizzare memory pooling (default: False)
+            use_vectorized_ops: Se utilizzare operazioni vettorizzate (default: False)
         """
         self.order = order
         self.seasonal_order = seasonal_order
         self.trend = trend
+        # Parametri di ottimizzazione (default disabilitati per SARIMA per stabilità)
+        self.use_cache = use_cache
+        self.use_smart_params = use_smart_params
+        self.use_memory_pool = use_memory_pool
+        self.use_vectorized_ops = use_vectorized_ops
         self.model = None
         self.fitted_model = None
         self.training_data = None

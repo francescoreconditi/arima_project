@@ -1,0 +1,91 @@
+{
+  "fc3becf2-14bb-4871-bfd0-eae9a7d05975": {
+    "model_id": "fc3becf2-14bb-4871-bfd0-eae9a7d05975",
+    "model_type": "arima",
+    "model_path": "models\\fc3becf2-14bb-4871-bfd0-eae9a7d05975.pkl",
+    "created_at": "2025-10-07T22:02:36.214013",
+    "training_observations": 20,
+    "parameters": {
+      "order": {
+        "p": 0,
+        "d": 2,
+        "q": 2
+      }
+    },
+    "metrics": {
+      "aic": 90.77948545636089,
+      "bic": 93.45060073004939,
+      "hqic": 91.14779623517094
+    },
+    "status": "completed"
+  },
+  "f34960b5-4563-49b1-9acf-0b0306a002e5": {
+    "model_id": "f34960b5-4563-49b1-9acf-0b0306a002e5",
+    "model_type": "sarima",
+    "model_path": "models\\f34960b5-4563-49b1-9acf-0b0306a002e5.pkl",
+    "created_at": "2025-10-07T22:44:16.083091",
+    "training_observations": 20,
+    "parameters": {
+      "order": {
+        "p": 2,
+        "d": 2,
+        "q": 1
+      },
+      "seasonal_order": {
+        "P": 0,
+        "D": 1,
+        "Q": 0,
+        "s": 12
+      }
+    },
+    "metrics": {
+      "aic": 8.0,
+      "bic": 7.16703787691222,
+      "hqic": 4.665584646261274
+    },
+    "status": "completed"
+  },
+  "af7d96a5-d7ee-4c05-8621-825202d537ab": {
+    "model_id": "af7d96a5-d7ee-4c05-8621-825202d537ab",
+    "model_type": "sarima",
+    "model_path": "models\\af7d96a5-d7ee-4c05-8621-825202d537ab.pkl",
+    "created_at": "2025-10-07T22:44:26.536524",
+    "training_observations": 20,
+    "parameters": {
+      "order": {
+        "p": 0,
+        "d": 0,
+        "q": 0
+      },
+      "seasonal_order": {
+        "p": 0,
+        "d": 0,
+        "q": 0,
+        "P": 0,
+        "D": 0,
+        "Q": 1,
+        "s": 12
+      }
+    },
+    "metrics": {
+      "mae": 96.30050546482406,
+      "mse": 9617.525493645784,
+      "rmse": 98.06898334155292,
+      "mape": 83.31489200788262,
+      "smape": 152.91052381335518,
+      "r_squared": -90.13762283429233,
+      "correlation": 0.8309487333620741,
+      "mean_error": 96.30050546482406,
+      "median_ae": 104.0,
+      "max_error": 122.0,
+      "min_error": 69.0011837583701,
+      "std_error": 18.540176397898193,
+      "iqr_error": 33.99874521612769,
+      "q90_error": 118.2,
+      "q95_error": 120.1,
+      "theil_u": 26.846843454124354,
+      "mase": 29.043009584629477
+    },
+    "status": "completed"
+  }
+}

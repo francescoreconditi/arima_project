@@ -38,6 +38,31 @@ from arima_forecaster.api.routers import (
     visualization_router,
 )
 from arima_forecaster.utils.logger import get_logger
+from arima_forecaster.api.services import ModelManager, ForecastService
+
+
+# Istanze singleton dei servizi (create una sola volta)
+_model_manager_instance: Optional[ModelManager] = None
+_forecast_service_instance: Optional[ForecastService] = None
+
+
+def get_model_manager() -> ModelManager:
+    """Restituisce l'istanza singleton del ModelManager."""
+    global _model_manager_instance
+    if _model_manager_instance is None:
+        from pathlib import Path
+
+        storage_path = Path("models")
+        _model_manager_instance = ModelManager(storage_path)
+    return _model_manager_instance
+
+
+def get_forecast_service() -> ForecastService:
+    """Restituisce l'istanza singleton del ForecastService."""
+    global _forecast_service_instance
+    if _forecast_service_instance is None:
+        _forecast_service_instance = ForecastService(get_model_manager())
+    return _forecast_service_instance
 
 
 def create_app(
@@ -174,10 +199,12 @@ def create_app(
     # Configura il middleware CORS per permettere richieste cross-origin
     # Essenziale per applicazioni web frontend che consumano l'API
     cors_origins = (
-        ["*"] if not production_mode else [
+        ["*"]
+        if not production_mode
+        else [
             "http://localhost:3000",
             "http://localhost:4200",  # Angular frontend
-            "https://yourdomain.com"
+            "https://yourdomain.com",
         ]
     )
 

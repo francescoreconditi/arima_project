@@ -47,9 +47,10 @@ Contenuti report:
 # Dependency injection dei servizi
 def get_services():
     """Dependency per ottenere i servizi necessari."""
-    storage_path = Path("models")
-    model_manager = ModelManager(storage_path)
-    forecast_service = ForecastService(model_manager)
+    from arima_forecaster.api.main import get_model_manager, get_forecast_service
+
+    model_manager = get_model_manager()
+    forecast_service = get_forecast_service()
     return model_manager, forecast_service
 
 

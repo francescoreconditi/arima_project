@@ -131,11 +131,28 @@ class ARIMAForecaster:
             self.model = ARIMA(preprocessed_series, order=self.order)
 
             # Smart starting parameters (usa analisi serie ottimizzata)
-            if self.use_smart_params:
-                smart_params = self._get_smart_fit_params_from_analysis(series_analysis)
-                fit_kwargs = {**smart_params, **fit_kwargs}  # fit_kwargs ha precedenza
+            # DISABILITATO per serie piccole o parametri inusuali per evitare errori
+            use_smart = self.use_smart_params and len(preprocessed_series) >= 30
 
-                self.logger.debug(f"Using smart parameters from optimized analysis: {smart_params}")
+            if use_smart:
+                try:
+                    smart_params = self._get_smart_fit_params_from_analysis(series_analysis)
+                    # Valida che start_params abbia il numero corretto di elementi
+                    if "start_params" in smart_params:
+                        expected_params = self.order[0] + self.order[2] + 1  # p + q + sigma2
+                        if len(smart_params["start_params"]) != expected_params:
+                            self.logger.warning(
+                                f"Smart params size mismatch: expected {expected_params}, got {len(smart_params['start_params'])}. Skipping smart params."
+                            )
+                            smart_params = {}
+
+                    if smart_params:
+                        fit_kwargs = {**smart_params, **fit_kwargs}  # fit_kwargs ha precedenza
+                        self.logger.debug(
+                            f"Using smart parameters from optimized analysis: {smart_params}"
+                        )
+                except Exception as e:
+                    self.logger.warning(f"Failed to compute smart parameters: {e}. Using defaults.")
 
             # 3. FIT del modello
             training_start = time.time()
@@ -225,11 +242,13 @@ class ARIMAForecaster:
                     if freq is None:
                         # Fallback: calcola la frequenza dalle prime due date
                         freq = self.training_data.index[1] - self.training_data.index[0]
-                        forecast_index = pd.date_range(start=last_date + freq, periods=steps, freq=freq)
+                        forecast_index = pd.date_range(
+                            start=last_date + freq, periods=steps, freq=freq
+                        )
                     else:
-                        forecast_index = pd.date_range(start=last_date, periods=steps + 1, freq=freq)[
-                            1:
-                        ]  # Salta il primo elemento per evitare sovrapposizioni
+                        forecast_index = pd.date_range(
+                            start=last_date, periods=steps + 1, freq=freq
+                        )[1:]  # Salta il primo elemento per evitare sovrapposizioni
                 else:
                     forecast_index = range(len(self.training_data), len(self.training_data) + steps)
 
@@ -309,11 +328,14 @@ class ARIMAForecaster:
             # Salva anche i metadati (inclusi training_data per forecasting)
             metadata_path = filepath.with_suffix(".metadata.pkl")
             with open(metadata_path, "wb") as f:
-                pickle.dump({
-                    "order": self.order,
-                    "training_metadata": self.training_metadata,
-                    "training_data": self.training_data
-                }, f)
+                pickle.dump(
+                    {
+                        "order": self.order,
+                        "training_metadata": self.training_metadata,
+                        "training_data": self.training_data,
+                    },
+                    f,
+                )
 
             self.logger.info(f"Modello salvato in {filepath}")
 

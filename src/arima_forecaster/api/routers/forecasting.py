@@ -45,11 +45,10 @@ Funzionalità:
 # Dependency injection dei servizi
 def get_services():
     """Dependency per ottenere i servizi necessari."""
-    from pathlib import Path
+    from arima_forecaster.api.main import get_model_manager, get_forecast_service
 
-    storage_path = Path("models")
-    model_manager = ModelManager(storage_path)
-    forecast_service = ForecastService(model_manager)
+    model_manager = get_model_manager()
+    forecast_service = get_forecast_service()
     return model_manager, forecast_service
 
 
@@ -162,11 +161,18 @@ async def generate_forecast(
             )
 
             # Estrai valori e intervalli
-            if isinstance(forecast_values, tuple):
+            if isinstance(forecast_values, dict):
+                # ARIMAForecaster restituisce un dizionario con 'forecast' e 'confidence_intervals'
+                predictions = forecast_values["forecast"]
+                lower_bound = forecast_values["confidence_intervals"]["lower"]
+                upper_bound = forecast_values["confidence_intervals"]["upper"]
+            elif isinstance(forecast_values, tuple):
+                # Formato tupla (predictions, conf_int_dataframe)
                 predictions = forecast_values[0]
                 lower_bound = forecast_values[1][:, 0]
                 upper_bound = forecast_values[1][:, 1]
             else:
+                # Solo predictions - genera intervalli approssimativi
                 predictions = forecast_values
                 # Stima approssimativa degli intervalli se non disponibili
                 std_error = np.std(predictions) * 0.1
@@ -184,7 +190,14 @@ async def generate_forecast(
             }
         else:
             # Genera solo le previsioni puntuali
-            predictions = model.forecast(steps=request.steps)
+            forecast_values = model.forecast(steps=request.steps, confidence_intervals=False)
+
+            # Gestisci diversi formati di ritorno
+            if isinstance(forecast_values, dict):
+                predictions = forecast_values["forecast"]
+            else:
+                predictions = forecast_values
+
             confidence_intervals = None
 
         # Genera timestamps futuri

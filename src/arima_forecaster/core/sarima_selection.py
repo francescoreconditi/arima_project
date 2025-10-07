@@ -123,10 +123,16 @@ class SARIMAModelSelector:
                 self.best_seasonal_order = best_result["seasonal_order"]
 
                 # Addestra il miglior modello
+                # IMPORTANTE: Disabilita ottimizzazioni per compatibilità con serie piccole
                 self.best_model = SARIMAForecaster(
-                    order=self.best_order, seasonal_order=self.best_seasonal_order
+                    order=self.best_order,
+                    seasonal_order=self.best_seasonal_order,
+                    use_cache=False,
+                    use_smart_params=False,
+                    use_memory_pool=False,
+                    use_vectorized_ops=False,
                 )
-                self.best_model.fit(series)
+                self.best_model.fit(series, validate_input=False)
 
                 self.logger.info(
                     f"Miglior modello SARIMA: {self.best_order}x{self.best_seasonal_order}"
@@ -158,7 +164,9 @@ class SARIMAModelSelector:
                         for P in range(self.P_range[0], self.P_range[1] + 1):
                             for D in range(self.D_range[0], self.D_range[1] + 1):
                                 for Q in range(self.Q_range[0], self.Q_range[1] + 1):
-                                    combinations.append(((p, d, q), (P, D, Q, s)))
+                                    # Filtra modelli non validi: almeno uno tra p,q,P,Q deve essere > 0
+                                    if p > 0 or q > 0 or P > 0 or Q > 0:
+                                        combinations.append(((p, d, q), (P, D, Q, s)))
 
         return combinations
 
