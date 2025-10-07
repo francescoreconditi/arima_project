@@ -47,6 +47,7 @@ export interface ForecastRequest {
 
 export interface AutoSelectionRequest {
   data: TimeSeriesData;
+  model_type: string;  // Required: 'arima', 'sarima', 'sarimax'
   max_p?: number;
   max_d?: number;
   max_q?: number;
@@ -92,12 +93,13 @@ export interface AutoSelectionResult {
     aic?: number;
     bic?: number;
   };
-  all_models: Array<{
+  all_results: Array<{
     order: number[];
     seasonal_order?: number[];
     aic?: number;
     bic?: number;
   }>;
+  models_tested: number;
   search_time_seconds: number;
 }
 

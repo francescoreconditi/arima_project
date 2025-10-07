@@ -122,7 +122,8 @@
       "Bash(docker-compose:*)",
       "Bash(docker exec:*)",
       "Bash(docker logs:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": [],

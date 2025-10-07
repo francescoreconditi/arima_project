@@ -1091,6 +1091,13 @@ class AutoSelectionRequest(BaseModel):
     information_criterion: str = Field(
         default="aic", description="Criterio informativo per la selezione del modello migliore"
     )
+    # Parametri per grid search (usati da /training/auto-select endpoint)
+    max_p: Optional[int] = Field(default=3, ge=0, le=10, description="Valore massimo per p (AR)")
+    max_d: Optional[int] = Field(default=2, ge=0, le=3, description="Valore massimo per d (differencing)")
+    max_q: Optional[int] = Field(default=3, ge=0, le=10, description="Valore massimo per q (MA)")
+    seasonal: Optional[bool] = Field(default=False, description="Se considerare componente stagionale")
+    seasonal_period: Optional[int] = Field(default=12, ge=2, description="Periodo stagionale (es. 12 per mensile)")
+    criterion: Optional[str] = Field(default="aic", description="Criterio di selezione: aic o bic")
 
     @validator("model_type")
     def validate_model_type(cls, v):

@@ -1,0 +1,103 @@
+<div class="auto-training-container">
+  <h2>Auto-Training Modelli ARIMA/SARIMA/SARIMAX</h2>
+  <p class="subtitle">Ricerca automatica dei parametri ottimali</p>
+
+  <div class="config-form">
+    <div class="form-group">
+      <label for="modelType">Tipo Modello:</label>
+      <select id="modelType" [(ngModel)]="modelType" class="form-control">
+        <option value="auto-arima">Auto-ARIMA</option>
+        <option value="auto-sarima">Auto-SARIMA</option>
+        <option value="auto-sarimax">Auto-SARIMAX</option>
+      </select>
+    </div>
+
+    <div class="search-params">
+      <h4>Parametri Ricerca</h4>
+      <div class="parameters-row">
+        <div class="form-group">
+          <label for="maxP">Max p:</label>
+          <input type="number" id="maxP" [(ngModel)]="maxP" min="1" max="10" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="maxD">Max d:</label>
+          <input type="number" id="maxD" [(ngModel)]="maxD" min="0" max="3" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="maxQ">Max q:</label>
+          <input type="number" id="maxQ" [(ngModel)]="maxQ" min="1" max="10" class="form-control">
+        </div>
+        <div class="form-group" *ngIf="modelType !== 'auto-arima'">
+          <label for="seasonalPeriod">Periodo Stagionale:</label>
+          <input type="number" id="seasonalPeriod" [(ngModel)]="seasonalPeriod" min="2" max="365" class="form-control">
+        </div>
+      </div>
+
+      <div class="parameters-row">
+        <div class="form-group">
+          <label for="criterion">Criterio Selezione:</label>
+          <select id="criterion" [(ngModel)]="criterion" class="form-control">
+            <option value="aic">AIC</option>
+            <option value="bic">BIC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="maxModels">Max Modelli:</label>
+          <input type="number" id="maxModels" [(ngModel)]="maxModels" min="5" max="100" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="csvData">Dati Serie Temporale (CSV: data,valore):</label>
+      <textarea id="csvData" [(ngModel)]="csvData" rows="10" class="form-control"></textarea>
+      <button type="button" (click)="loadSampleData()" class="btn-sample">Carica Esempio</button>
+    </div>
+
+    <button (click)="onSearchModels()" [disabled]="isSearching || !csvData" class="btn-primary btn-search">
+      {{ isSearching ? 'Ricerca in corso...' : 'Avvia Ricerca' }}
+    </button>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
+
+  <div *ngIf="modelCandidates.length > 0 && !isSearching" class="candidates-section">
+    <h3>Modelli Candidati (Top {{modelCandidates.length}})</h3>
+    
+    <div class="candidates-list">
+      <div *ngFor="let candidate of modelCandidates; let i = index" class="candidate-card" [class.selected]="candidate.selected" (click)="selectModel(i)">
+        <div class="candidate-header">
+          <span class="candidate-rank">#{{ i + 1 }}</span>
+          <span class="candidate-formula">{{ formatOrder(candidate.order, candidate.seasonal_order) }}</span>
+        </div>
+        <div class="candidate-metrics">
+          <span><strong>AIC:</strong> {{ candidate.aic | number:'1.2-2' }}</span>
+          <span><strong>BIC:</strong> {{ candidate.bic | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="training-actions">
+      <button (click)="onTrainSelectedModel()" [disabled]="isTraining || selectedModelIndex === null" class="btn-primary">
+        {{ isTraining ? 'Training...' : 'Addestra Selezionato' }}
+      </button>
+      <button (click)="resetForm()" [disabled]="isSearching || isTraining" class="btn-secondary">Reset</button>
+    </div>
+  </div>
+
+  <div *ngIf="trainedModel" class="training-results">
+    <h3>Risultati Training</h3>
+    <div class="result-card">
+      <p><strong>Model ID:</strong> {{ trainedModel.model_id }}</p>
+      <p><strong>Status:</strong> {{ trainedModel.status }}</p>
+      <div *ngIf="trainedModel.metrics && Object.keys(trainedModel.metrics).length > 0">
+        <h4>Metriche:</h4>
+        <ul>
+          <li *ngFor="let metric of Object.keys(trainedModel.metrics)">
+            <strong>{{ metric }}:</strong> {{ trainedModel.metrics[metric] | number:'1.2-4' }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

@@ -432,45 +432,49 @@ async def auto_select_model(request: AutoSelectionRequest, services: tuple = Dep
             from arima_forecaster.core.sarima_selection import SARIMAModelSelector
 
             selector = SARIMAModelSelector(
-                max_p=request.max_p,
-                max_d=request.max_d,
-                max_q=request.max_q,
-                seasonal_period=request.seasonal_period,
-                criterion=request.criterion,
+                p_range=(0, request.max_p),
+                d_range=(0, request.max_d),
+                q_range=(0, request.max_q),
+                seasonal_periods=[request.seasonal_period],
+                information_criterion=request.criterion,
             )
         else:
             from arima_forecaster.core.model_selection import ARIMAModelSelector
 
             selector = ARIMAModelSelector(
-                max_p=request.max_p,
-                max_d=request.max_d,
-                max_q=request.max_q,
-                criterion=request.criterion,
+                p_range=(0, request.max_p),
+                d_range=(0, request.max_d),
+                q_range=(0, request.max_q),
+                information_criterion=request.criterion,
             )
 
-        best_model, all_results = selector.search(series)
+        best_order = selector.search(series)
 
         search_time = time.time() - start_time
 
-        # Prepara la risposta
-        best_params = best_model.get_params()
+        # Accede ai results dalla classe selector
+        all_results_data = selector.results if hasattr(selector, "results") else []
+
+        # Prepara il best model
+        best_result = all_results_data[0] if all_results_data else None
 
         return AutoSelectionResult(
             best_model={
-                "order": best_params.get("order", []),
-                "seasonal_order": best_params.get("seasonal_order", []),
-                "aic": best_model.aic if hasattr(best_model, "aic") else None,
-                "bic": best_model.bic if hasattr(best_model, "bic") else None,
+                "order": list(best_order) if not request.seasonal else list(best_order[:3]),
+                "seasonal_order": list(best_order[3:]) if request.seasonal and len(best_order) > 3 else None,
+                "aic": best_result.get(request.criterion) if best_result else None,
+                "bic": best_result.get("bic") if best_result else None,
             },
-            all_models=[
+            all_results=[
                 {
-                    "order": result["params"].get("order", []),
-                    "seasonal_order": result["params"].get("seasonal_order", []),
+                    "order": result.get("order", []),
+                    "seasonal_order": result.get("seasonal_order"),
                     "aic": result.get("aic"),
                     "bic": result.get("bic"),
                 }
-                for result in all_results[:10]  # Limita ai top 10
+                for result in all_results_data[:20]  # Top 20
             ],
+            models_tested=len(all_results_data),
             search_time_seconds=search_time,
         )
 

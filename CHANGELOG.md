@@ -17,6 +17,17 @@ e questo progetto aderisce a [Semantic Versioning](https://semver.org/spec/v2.0.
   - Report Quarto multilingue con supporto caratteri Unicode
   - Documentazione completa aggiornata in CLAUDE.md e README.md
 
+- 🤖 **Frontend Auto-Training Component**: Nuova sezione UI per selezione automatica modelli
+  - Componente Angular standalone per auto-training ARIMA/SARIMA/SARIMAX
+  - Interfaccia user-friendly per configurazione parametri grid search
+  - Visualizzazione interattiva lista modelli candidati con metriche AIC/BIC
+  - Selezione click-to-select e training modello scelto
+  - Integrazione completa con API FastAPI `/models/auto-select`
+  - Polling automatico status training con timeout e retry
+  - Gestione errori robusta con messaggi user-friendly
+  - Documentazione completa in `frontend/src/app/components/auto-training/README.md`
+  - Route registrata: `/auto-training` con link navigazione menu principale
+
 ## [0.4.0] - 2025-01-01
 
 ### Aggiunto - 🌊 Real-Time Streaming & 🤖 Explainable AI

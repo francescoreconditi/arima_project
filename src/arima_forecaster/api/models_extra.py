@@ -59,12 +59,14 @@ class AutoSelectionResult(BaseModel):
 
     <h4>Attributi:</h4>
     - **best_model**: Parametri del modello migliore trovato
-    - **all_models**: Lista di tutti i modelli testati
+    - **all_results**: Lista di tutti i modelli testati
+    - **models_tested**: Numero totale modelli valutati
     - **search_time_seconds**: Tempo totale di ricerca in secondi
     """
 
     best_model: Dict[str, Any]
-    all_models: List[Dict[str, Any]]
+    all_results: List[Dict[str, Any]]
+    models_tested: int
     search_time_seconds: float
 
 
