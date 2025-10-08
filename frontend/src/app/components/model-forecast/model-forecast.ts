@@ -8,6 +8,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ArimaApiService } from '../../services/arima-api.service';
 import { ForecastRequest, ForecastResponse, ModelInfo } from '../../models/api.models';
 
@@ -39,7 +40,14 @@ export class ModelForecast implements OnInit {
   lowerBound: number[] = [];
   upperBound: number[] = [];
 
-  constructor(private apiService: ArimaApiService) {}
+  // Plotly chart
+  plotlyChartUrl: SafeHtml | null = null;
+  isLoadingChart = false;
+
+  constructor(
+    private apiService: ArimaApiService,
+    private sanitizer: DomSanitizer
+  ) {}
 
   ngOnInit(): void {
     this.loadAvailableModels();
@@ -92,12 +100,33 @@ export class ModelForecast implements OnInit {
 
         // Prepara dati per il grafico
         this.prepareChartData(result);
+
+        // Genera il grafico Plotly interattivo
+        this.generatePlotlyChart();
       },
       error: (error) => {
         this.errorMessage = `Errore forecast: ${error.error?.detail || error.message}`;
         this.isForecasting = false;
       }
     });
+  }
+
+  /**
+   * Genera il grafico Plotly interattivo usando URL diretto in iframe
+   */
+  generatePlotlyChart(): void {
+    if (!this.selectedModelId) return;
+
+    this.isLoadingChart = true;
+    this.plotlyChartUrl = null;
+
+    // Costruisci URL diretto all'endpoint di visualizzazione
+    const baseUrl = this.apiService['API_BASE_URL']; // Accesso alla proprietà privata
+    const chartUrl = `${baseUrl}/visualization/forecast-plot/${this.selectedModelId}/${this.forecastSteps}?confidence_level=${this.confidenceLevel}&include_intervals=${this.includeConfidenceIntervals}&theme=plotly_white`;
+
+    // Sanitizza l'URL per l'iframe
+    this.plotlyChartUrl = this.sanitizer.bypassSecurityTrustResourceUrl(chartUrl);
+    this.isLoadingChart = false;
   }
 
   /**

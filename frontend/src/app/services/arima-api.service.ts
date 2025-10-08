@@ -136,4 +136,30 @@ export class ArimaApiService {
   getModelFullDetails(modelId: string): Observable<any> {
     return this.http.get<any>(`${this.API_BASE_URL}/models/${modelId}/details`);
   }
+
+  /**
+   * Genera grafico interattivo Plotly con Serie Temporale + Forecast
+   * Restituisce HTML completo del grafico
+   */
+  getForecastPlotHtml(
+    modelId: string,
+    forecastSteps: number,
+    confidenceLevel: number = 0.95,
+    includeIntervals: boolean = true,
+    theme: string = 'plotly_white'
+  ): Observable<string> {
+    const params = {
+      confidence_level: confidenceLevel.toString(),
+      include_intervals: includeIntervals.toString(),
+      theme: theme
+    };
+
+    return this.http.get(
+      `${this.API_BASE_URL}/visualization/forecast-plot/${modelId}/${forecastSteps}`,
+      {
+        params: params,
+        responseType: 'text'
+      }
+    );
+  }
 }

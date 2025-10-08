@@ -1,0 +1,285 @@
+// Stili per la pagina Forecast
+.forecast-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  h2 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  .config-form {
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 24px;
+
+    .form-group {
+      margin-bottom: 16px;
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+
+        &:focus {
+          outline: none;
+          border-color: #1976d2;
+        }
+      }
+
+      .btn-refresh {
+        margin-left: 10px;
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+
+        &:hover {
+          background-color: #388e3c;
+        }
+      }
+    }
+
+    .parameters-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+
+        label {
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+
+          input[type="checkbox"] {
+            margin-right: 8px;
+            width: auto;
+          }
+        }
+      }
+    }
+
+    .btn-primary {
+      padding: 12px 24px;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+
+      &:hover:not(:disabled) {
+        background-color: #1565c0;
+      }
+
+      &:disabled {
+        background-color: #bdbdbd;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .error-message {
+    padding: 15px;
+    background-color: #ffebee;
+    color: #c62828;
+    border-radius: 5px;
+    margin-bottom: 20px;
+  }
+
+  .forecast-results {
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+
+      h3 {
+        margin: 0;
+        color: #333;
+      }
+
+      .btn-export {
+        padding: 10px 20px;
+        background-color: #ff9800;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+
+        &:hover {
+          background-color: #f57c00;
+        }
+      }
+    }
+
+    .info-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+
+      p {
+        margin: 8px 0;
+        color: #666;
+
+        strong {
+          color: #333;
+        }
+      }
+    }
+
+    // Stili per il grafico Plotly
+    .plotly-chart-container {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+
+      h4 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #1976d2;
+      }
+
+      .loading-chart {
+        text-align: center;
+        padding: 60px;
+        color: #1976d2;
+        font-size: 16px;
+      }
+
+      .plotly-chart-wrapper {
+        width: 100%;
+        overflow: hidden;
+
+        // Assicura che il grafico Plotly si adatti al contenitore
+        > div {
+          width: 100% !important;
+        }
+      }
+
+      .chart-error {
+        text-align: center;
+        padding: 40px;
+        color: #f44336;
+        background-color: #ffebee;
+        border-radius: 4px;
+      }
+    }
+
+    .data-table {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+      overflow-x: auto;
+
+      h4 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #1976d2;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+
+        thead {
+          background-color: #1976d2;
+          color: white;
+
+          th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+          }
+        }
+
+        tbody {
+          tr {
+            border-bottom: 1px solid #e0e0e0;
+
+            &:hover {
+              background-color: #f5f5f5;
+            }
+
+            td {
+              padding: 12px;
+              font-size: 14px;
+            }
+          }
+        }
+      }
+    }
+
+    .summary-stats {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+      h4 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #1976d2;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+
+        .stat-item {
+          padding: 16px;
+          background-color: #f5f5f5;
+          border-radius: 6px;
+          border-left: 4px solid #1976d2;
+
+          .stat-label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+          }
+
+          .stat-value {
+            display: block;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+          }
+        }
+      }
+    }
+  }
+}

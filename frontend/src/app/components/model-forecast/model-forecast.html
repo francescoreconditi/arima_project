@@ -66,17 +66,29 @@
       <p><strong>Periodo:</strong> {{ forecastResult.timestamps[0] }} - {{ forecastResult.timestamps[forecastResult.timestamps.length - 1] }}</p>
     </div>
 
-    <!-- Grafico semplice (HTML/CSS) -->
-    <div class="simple-chart">
-      <h4>Visualizzazione Forecast</h4>
-      <div class="chart-area">
-        <div class="chart-line" *ngFor="let value of forecastData; let i = index">
-          <span class="chart-label">{{ chartLabels[i] }}</span>
-          <div class="chart-bar-container">
-            <div class="chart-bar" [style.width.%]="(value / getMaxValue()) * 100"></div>
-            <span class="chart-value">{{ formatNumber(value) }}</span>
-          </div>
-        </div>
+    <!-- Grafico Interattivo Plotly -->
+    <div class="plotly-chart-container">
+      <h4>Grafico Serie Temporale + Forecast</h4>
+
+      <!-- Loading chart -->
+      <div *ngIf="isLoadingChart" class="loading-chart">
+        <p>Generazione grafico interattivo...</p>
+      </div>
+
+      <!-- Chart HTML in iframe -->
+      <div *ngIf="!isLoadingChart && plotlyChartUrl" class="plotly-chart-wrapper">
+        <iframe
+          [src]="plotlyChartUrl"
+          frameborder="0"
+          width="100%"
+          height="600"
+          style="border: none;">
+        </iframe>
+      </div>
+
+      <!-- Fallback se il grafico non si carica -->
+      <div *ngIf="!isLoadingChart && !plotlyChartUrl" class="chart-error">
+        <p>Il grafico interattivo non è disponibile. Consulta la tabella dati qui sotto.</p>
       </div>
     </div>
 

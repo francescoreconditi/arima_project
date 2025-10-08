@@ -13,10 +13,23 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+import plotly.graph_objs as go
+import plotly.io as pio
 
 # Simulazione import delle utilità (da implementare nel progetto reale)
 from arima_forecaster.utils.logger import get_logger
+
+
+# Dependency injection dei servizi
+def get_services():
+    """Dependency per ottenere i servizi necessari."""
+    from arima_forecaster.api.main import get_model_manager, get_forecast_service
+
+    model_manager = get_model_manager()
+    forecast_service = get_forecast_service()
+    return model_manager, forecast_service
 
 # Configurazione router
 router = APIRouter(
@@ -853,6 +866,206 @@ async def create_interactive_analysis(
     background_tasks.add_task(create_interactive_job)
 
     return VisualizationJobResponse(job_id=job_id, status="queued")
+
+
+@router.get("/forecast-plot/{model_id}/{forecast_steps}", response_class=HTMLResponse)
+async def generate_forecast_plot(
+    model_id: str,
+    forecast_steps: int,
+    confidence_level: float = 0.95,
+    include_intervals: bool = True,
+    theme: str = "plotly_white",
+    services: tuple = Depends(get_services)
+):
+    """
+    Genera grafico interattivo Plotly con Serie Temporale + Forecast.
+
+    Questo endpoint genera un grafico HTML interattivo che mostra:
+    - Serie temporale storica (dati di training)
+    - Previsioni future (forecast)
+    - Intervalli di confidenza (opzionale)
+
+    <h4>Parametri:</h4>
+    <table>
+        <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
+        <tr><td>model_id</td><td>str</td><td>ID del modello per forecast</td></tr>
+        <tr><td>forecast_steps</td><td>int</td><td>Numero di step futuri da prevedere</td></tr>
+        <tr><td>confidence_level</td><td>float</td><td>Livello confidenza intervalli (default 0.95)</td></tr>
+        <tr><td>include_intervals</td><td>bool</td><td>Includere intervalli confidenza (default true)</td></tr>
+        <tr><td>theme</td><td>str</td><td>Tema Plotly (default plotly_white)</td></tr>
+    </table>
+
+    <h4>Risposta:</h4>
+    - HTML completo con grafico Plotly interattivo embeddato
+    - Pronto per essere visualizzato in iframe o div
+
+    <h4>Esempio Chiamata:</h4>
+    <pre><code>
+    GET /visualization/forecast-plot/abc123/30?confidence_level=0.95&include_intervals=true
+    </code></pre>
+    """
+    model_manager, forecast_service = services
+
+    try:
+        # Verifica esistenza modello
+        if not model_manager.model_exists(model_id):
+            raise HTTPException(status_code=404, detail="Modello non trovato")
+
+        # Carica il modello per ottenere i dati storici
+        model = model_manager.load_model(model_id)
+
+        # Genera forecast usando il ForecastService
+        forecast_response = await forecast_service.generate_forecast(
+            model_id=model_id,
+            steps=forecast_steps,
+            confidence_level=confidence_level,
+            return_intervals=include_intervals
+        )
+
+        # Converti ForecastResult in dizionario con i nomi corretti dei campi
+        forecast_result = {
+            'forecast': forecast_response.forecast_values,
+            'timestamps': forecast_response.forecast_timestamps,
+            'confidence_intervals': {
+                'lower': forecast_response.lower_bounds,
+                'upper': forecast_response.upper_bounds
+            } if forecast_response.lower_bounds and forecast_response.upper_bounds else None
+        }
+
+        # Recupera dati storici dal modello (se disponibili)
+        historical_data = []
+        historical_dates = []
+
+        if hasattr(model, 'training_data') and model.training_data is not None:
+            import pandas as pd
+
+            # Converti a lista i dati
+            if isinstance(model.training_data, pd.Series):
+                historical_data = model.training_data.values.tolist()
+                # Usa l'index del pandas Series se disponibile
+                if hasattr(model.training_data, 'index'):
+                    try:
+                        # Prova a convertire l'index in stringhe
+                        historical_dates = [str(x) for x in model.training_data.index]
+                    except:
+                        # Fallback a numeri sequenziali
+                        historical_dates = list(range(1, len(historical_data) + 1))
+                else:
+                    historical_dates = list(range(1, len(historical_data) + 1))
+            else:
+                # Fallback se non è un pandas Series
+                try:
+                    historical_data = list(model.training_data)
+                    historical_dates = list(range(1, len(historical_data) + 1))
+                except:
+                    historical_data = []
+                    historical_dates = []
+
+        # Crea il grafico Plotly
+        fig = go.Figure()
+
+        # Serie storica (se disponibile)
+        if historical_data:
+            fig.add_trace(go.Scatter(
+                x=historical_dates,
+                y=historical_data,
+                mode='lines',
+                name='Serie Storica',
+                line=dict(color='blue', width=2),
+                hovertemplate='<b>Storico</b><br>Periodo: %{x}<br>Valore: %{y:.2f}<extra></extra>'
+            ))
+
+        # Forecast - usa i timestamp se disponibili, altrimenti numeri sequenziali
+        if 'timestamps' in forecast_result and forecast_result['timestamps']:
+            forecast_dates = forecast_result['timestamps']
+        else:
+            # Fallback a numeri sequenziali
+            forecast_dates = list(range(
+                len(historical_data) + 1 if historical_data else 1,
+                len(historical_data) + forecast_steps + 1 if historical_data else forecast_steps + 1
+            ))
+
+        fig.add_trace(go.Scatter(
+            x=forecast_dates,
+            y=forecast_result['forecast'],
+            mode='lines+markers',
+            name='Forecast',
+            line=dict(color='red', width=2, dash='dash'),
+            marker=dict(size=6),
+            hovertemplate='<b>Forecast</b><br>Periodo: %{x}<br>Valore: %{y:.2f}<extra></extra>'
+        ))
+
+        # Intervalli di confidenza (se richiesti)
+        if include_intervals and 'confidence_intervals' in forecast_result:
+            ci = forecast_result['confidence_intervals']
+
+            # Upper bound
+            fig.add_trace(go.Scatter(
+                x=forecast_dates,
+                y=ci['upper'],
+                mode='lines',
+                name=f'Upper Bound ({int(confidence_level*100)}%)',
+                line=dict(width=0),
+                showlegend=False,
+                hovertemplate='<b>Upper Bound</b><br>Valore: %{y:.2f}<extra></extra>'
+            ))
+
+            # Lower bound con fill
+            fig.add_trace(go.Scatter(
+                x=forecast_dates,
+                y=ci['lower'],
+                mode='lines',
+                name=f'Intervallo Confidenza {int(confidence_level*100)}%',
+                fill='tonexty',
+                fillcolor='rgba(255, 0, 0, 0.2)',
+                line=dict(width=0),
+                hovertemplate='<b>Lower Bound</b><br>Valore: %{y:.2f}<extra></extra>'
+            ))
+
+        # Layout del grafico
+        fig.update_layout(
+            title={
+                'text': f'Serie Temporale + Forecast ({forecast_steps} step)',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 20}
+            },
+            xaxis_title='Periodo',
+            yaxis_title='Valore',
+            template=theme,
+            hovermode='x unified',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            height=600,
+            margin=dict(l=60, r=60, t=80, b=60)
+        )
+
+        # Converti in HTML
+        html_content = pio.to_html(
+            fig,
+            include_plotlyjs='cdn',
+            full_html=True,
+            config={
+                'displayModeBar': True,
+                'displaylogo': False,
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+            }
+        )
+
+        return HTMLResponse(content=html_content)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Errore generazione grafico forecast per {model_id}: {e}\n{error_details}")
+        raise HTTPException(status_code=500, detail=f"Errore generazione grafico: {str(e)}")
 
 
 @router.get("/job-status/{job_id}", response_model=VisualizationJobResponse)
