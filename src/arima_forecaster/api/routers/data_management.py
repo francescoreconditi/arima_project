@@ -27,9 +27,15 @@ router = APIRouter(
 
 logger = get_logger(__name__)
 
-# Storage globale simulato per dataset e jobs
-datasets_storage = {}
+# Storage globale per dataset e jobs
+datasets_storage = {}  # {dataset_id: {"metadata": DatasetMetadata, "dataframe": pd.DataFrame}}
 preprocessing_jobs = {}
+
+# Directory per salvare i dataset caricati
+from pathlib import Path as PathlibPath
+
+DATASETS_DIR = PathlibPath("outputs/datasets")
+DATASETS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class DatasetMetadata(BaseModel):
@@ -243,8 +249,14 @@ async def upload_dataset(
 
     try:
         # Parse configurazione
-        upload_config = DataUploadRequest.parse_raw(config)
+        import json
+        logger.info(f"Received config string: {config}")
+        config_dict = json.loads(config)
+        logger.info(f"Parsed config dict: {config_dict}")
+        upload_config = DataUploadRequest(**config_dict)
+        logger.info(f"Created DataUploadRequest: {upload_config}")
     except Exception as e:
+        logger.error(f"Config parsing error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Configurazione non valida: {str(e)}")
 
     job_id = f"upload_job_{uuid.uuid4().hex[:8]}"
@@ -261,61 +273,155 @@ async def upload_dataset(
     }
 
     try:
-        # Simula lettura file
+        # Importa moduli reali
+        import pandas as pd
+        from arima_forecaster.data import DataLoader
+
+        # Lettura file
         content = await file.read()
         file_size = len(content)
+        preprocessing_jobs[job_id]["progress"] = 0.2
 
-        # Simula parsing e validazione
-        await asyncio.sleep(1)  # Simula processing
+        # Parsing CSV con pandas
+        from io import BytesIO
+
+        try:
+            df = pd.read_csv(
+                BytesIO(content),
+                sep=upload_config.separator,
+                encoding=upload_config.encoding,
+                skiprows=upload_config.skip_rows,
+                parse_dates=[upload_config.date_column] if upload_config.date_column else False,
+            )
+            preprocessing_jobs[job_id]["progress"] = 0.4
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Errore parsing CSV: {str(e)}")
+
+        # Validazione colonne
+        if upload_config.date_column and upload_config.date_column not in df.columns:
+            raise HTTPException(
+                status_code=400, detail=f"Colonna date '{upload_config.date_column}' non trovata"
+            )
+
+        for col in upload_config.value_columns:
+            if col not in df.columns:
+                raise HTTPException(status_code=400, detail=f"Colonna valore '{col}' non trovata")
+
         preprocessing_jobs[job_id]["progress"] = 0.5
 
-        # Simula inferenza schema e validazione
-        await asyncio.sleep(1)
-        preprocessing_jobs[job_id]["progress"] = 0.8
+        # Se c'è una colonna date, imposta come indice
+        if upload_config.date_column:
+            try:
+                df[upload_config.date_column] = pd.to_datetime(
+                    df[upload_config.date_column], format=upload_config.date_format
+                )
+                df = df.set_index(upload_config.date_column)
+                df = df.sort_index()
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Errore conversione date: {str(e)}")
 
-        # Simula salvataggio dataset
-        simulated_rows = 1000
-        simulated_cols = len(upload_config.value_columns) + (1 if upload_config.date_column else 0)
+        preprocessing_jobs[job_id]["progress"] = 0.7
 
-        # Metadati dataset simulati
+        # Validazione dati se richiesta
+        validation_results = {}
+        data_quality_score = 1.0
+        missing_values_ratio = 0.0
+
+        if upload_config.validate_data:
+            loader = DataLoader()
+            for col in upload_config.value_columns:
+                val_result = loader.validate_time_series(df, col)
+                validation_results[col] = val_result
+
+                # Calcola quality score
+                if not val_result["is_valid"]:
+                    data_quality_score *= 0.8
+
+                # Calcola missing ratio
+                if (
+                    "statistics" in val_result
+                    and val_result["statistics"].get("missing_values", 0) > 0
+                ):
+                    total = val_result["statistics"].get("count", 1)
+                    missing = val_result["statistics"].get("missing_values", 0)
+                    missing_values_ratio = max(missing_values_ratio, missing / total)
+
+        preprocessing_jobs[job_id]["progress"] = 0.9
+
+        # Salva dataset su disco e in memoria
+        dataset_path = DATASETS_DIR / f"{dataset_id}.csv"
+        df.to_csv(dataset_path)
+
+        # Metadati dataset reali
+        inferred_types = {
+            col: str(df[col].dtype) for col in upload_config.value_columns if col in df.columns
+        }
+
         dataset_metadata = DatasetMetadata(
             dataset_id=dataset_id,
             name=upload_config.dataset_name,
-            rows=simulated_rows,
-            columns=simulated_cols,
+            rows=len(df),
+            columns=len(df.columns),
             size_bytes=file_size,
             upload_timestamp=datetime.now(),
             file_format=file.filename.split(".")[-1].lower(),
             column_info={
                 "date_column": upload_config.date_column,
                 "value_columns": upload_config.value_columns,
-                "inferred_types": {col: "float64" for col in upload_config.value_columns},
+                "inferred_types": inferred_types,
+                "all_columns": list(df.columns),
             },
-            data_quality_score=0.85,
-            missing_values_ratio=0.05,
+            data_quality_score=data_quality_score,
+            missing_values_ratio=missing_values_ratio,
         )
 
-        # Salva in storage simulato
-        datasets_storage[dataset_id] = dataset_metadata
+        # Salva in storage con DataFrame
+        datasets_storage[dataset_id] = {
+            "metadata": dataset_metadata,
+            "dataframe": df,
+            "file_path": str(dataset_path),
+        }
+
+        # Prepara issues found
+        issues_found = []
+        for col, val_res in validation_results.items():
+            if not val_res.get("is_valid", True):
+                issues_found.extend([f"{col}: {issue}" for issue in val_res.get("issues", [])])
+
+        # Converti tipi numpy in tipi Python nativi per serializzazione JSON
+        def convert_numpy_types(obj):
+            """Converte tipi numpy in tipi Python nativi"""
+            import numpy as np
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: convert_numpy_types(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_numpy_types(item) for item in obj]
+            return obj
 
         preprocessing_jobs[job_id].update(
             {
                 "status": "completed",
                 "progress": 1.0,
                 "results": {
-                    "rows_loaded": simulated_rows,
-                    "columns_detected": simulated_cols,
-                    "data_quality_score": 0.85,
-                    "issues_found": ["missing_values_detected"]
-                    if dataset_metadata.missing_values_ratio > 0
-                    else [],
+                    "rows_loaded": int(len(df)),
+                    "columns_detected": int(len(df.columns)),
+                    "data_quality_score": float(data_quality_score),
+                    "missing_values_ratio": float(missing_values_ratio),
+                    "issues_found": issues_found,
                     "file_size_mb": round(file_size / (1024 * 1024), 2),
+                    "validation_details": convert_numpy_types(validation_results) if upload_config.validate_data else {},
                 },
             }
         )
 
         logger.info(
-            f"Dataset {dataset_id} caricato con successo: {simulated_rows} righe, {simulated_cols} colonne"
+            f"Dataset {dataset_id} caricato con successo: {len(df)} righe, {len(df.columns)} colonne"
         )
 
     except Exception as e:
@@ -537,48 +643,109 @@ async def preprocess_dataset(config: PreprocessingRequest, background_tasks: Bac
         "results": {},
     }
 
-    # Simula preprocessing asincrono
+    # Preprocessing reale asincrono
     async def run_preprocessing():
         try:
-            original_dataset = datasets_storage[config.dataset_id]
+            import pandas as pd
+            from arima_forecaster.data import TimeSeriesPreprocessor
+
+            # Carica dataset originale
+            original_dataset_info = datasets_storage[config.dataset_id]
+            df_original = original_dataset_info["dataframe"].copy()
             total_steps = len(config.preprocessing_steps)
 
             processing_log = []
+            preprocessor = TimeSeriesPreprocessor()
+
+            # Applica ogni step di preprocessing
+            df_processed = df_original.copy()
 
             for i, step in enumerate(config.preprocessing_steps):
                 step_type = step["type"]
-
-                # Simula esecuzione step
-                await asyncio.sleep(0.5)
+                step_params = {k: v for k, v in step.items() if k != "type"}
 
                 # Log step processing
                 step_log = {
                     "step": i + 1,
                     "type": step_type,
-                    "parameters": {k: v for k, v in step.items() if k != "type"},
-                    "status": "completed",
+                    "parameters": step_params,
+                    "status": "running",
                 }
 
-                if step_type == "handle_missing":
-                    step_log["result"] = {
-                        "missing_values_handled": 25,
-                        "method": step.get("method", "interpolate"),
-                    }
-                elif step_type == "remove_outliers":
-                    step_log["result"] = {
-                        "outliers_removed": 8,
-                        "method": step.get("method", "iqr"),
-                    }
-                elif step_type == "smooth_data":
-                    step_log["result"] = {
-                        "smoothing_applied": True,
-                        "window": step.get("window", 5),
-                    }
-                elif step_type == "normalize":
-                    step_log["result"] = {
-                        "normalization": step.get("method", "minmax"),
-                        "range": step.get("feature_range", [0, 1]),
-                    }
+                try:
+                    # Esegui step reale
+                    if step_type == "handle_missing":
+                        method = step_params.get("method", "interpolate")
+                        for col in original_dataset_info["metadata"].column_info["value_columns"]:
+                            if col in df_processed.columns:
+                                df_processed[col] = preprocessor.handle_missing_values(
+                                    df_processed[col], method=method
+                                )
+                        step_log["result"] = {
+                            "missing_values_handled": df_processed.isnull().sum().sum(),
+                            "method": method,
+                        }
+                        step_log["status"] = "completed"
+
+                    elif step_type == "remove_outliers":
+                        method = step_params.get("method", "iqr")
+                        threshold = step_params.get("threshold", 3.0)
+                        outliers_removed = 0
+                        for col in original_dataset_info["metadata"].column_info["value_columns"]:
+                            if col in df_processed.columns:
+                                original_len = len(df_processed)
+                                df_processed[col] = preprocessor.remove_outliers(
+                                    df_processed[col], method=method, threshold=threshold
+                                )
+                                outliers_removed += original_len - len(
+                                    df_processed[df_processed[col].notna()]
+                                )
+                        step_log["result"] = {
+                            "outliers_removed": outliers_removed,
+                            "method": method,
+                            "threshold": threshold,
+                        }
+                        step_log["status"] = "completed"
+
+                    elif step_type == "make_stationary":
+                        # Use TimeSeriesPreprocessor's make_stationary method
+                        for col in original_dataset_info["metadata"].column_info["value_columns"]:
+                            if col in df_processed.columns:
+                                result = preprocessor.make_stationary(df_processed[col])
+                                df_processed[col] = result["stationary_series"]
+                        step_log["result"] = {
+                            "stationary_applied": True,
+                            "method": "auto",
+                        }
+                        step_log["status"] = "completed"
+
+                    elif step_type == "normalize":
+                        # Normalize using sklearn
+                        from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+                        method = step_params.get("method", "minmax")
+                        scaler = MinMaxScaler() if method == "minmax" else StandardScaler()
+
+                        for col in original_dataset_info["metadata"].column_info["value_columns"]:
+                            if col in df_processed.columns:
+                                df_processed[col] = scaler.fit_transform(df_processed[[col]])
+
+                        step_log["result"] = {
+                            "normalization": method,
+                            "range": step_params.get("feature_range", [0, 1])
+                            if method == "minmax"
+                            else "standardized",
+                        }
+                        step_log["status"] = "completed"
+
+                    else:
+                        step_log["result"] = {"info": f"Step type {step_type} not yet implemented"}
+                        step_log["status"] = "skipped"
+
+                except Exception as step_error:
+                    step_log["status"] = "failed"
+                    step_log["error"] = str(step_error)
+                    logger.error(f"Error in step {i + 1} ({step_type}): {step_error}")
 
                 processing_log.append(step_log)
 
@@ -586,25 +753,36 @@ async def preprocess_dataset(config: PreprocessingRequest, background_tasks: Bac
                 progress = (i + 1) / total_steps * 0.8  # Lascia 20% per finalizzazione
                 preprocessing_jobs[job_id]["progress"] = progress
 
-            # Finalizza dataset preprocessato
-            await asyncio.sleep(0.5)
+            # Finalizza dataset preprocessato - Salva su disco
+            output_path = DATASETS_DIR / f"{output_dataset_id}.csv"
+            df_processed.to_csv(output_path)
+
+            # Calcola nuovi quality metrics
+            new_missing_ratio = df_processed.isnull().sum().sum() / (
+                len(df_processed) * len(df_processed.columns)
+            )
+            new_quality_score = min(1.0, original_dataset_info["metadata"].data_quality_score + 0.1)
 
             # Crea metadati nuovo dataset
             processed_metadata = DatasetMetadata(
                 dataset_id=output_dataset_id,
                 name=config.output_dataset_name,
-                rows=original_dataset.rows,  # Potrebbe cambiare con outlier removal
-                columns=original_dataset.columns,
-                size_bytes=original_dataset.size_bytes,
+                rows=len(df_processed),
+                columns=len(df_processed.columns),
+                size_bytes=output_path.stat().st_size,
                 upload_timestamp=datetime.now(),
-                file_format="processed",
-                column_info=original_dataset.column_info,
-                data_quality_score=0.92,  # Migliorata dopo preprocessing
-                missing_values_ratio=0.0,  # Ridotta dopo preprocessing
+                file_format="processed_csv",
+                column_info=original_dataset_info["metadata"].column_info,
+                data_quality_score=new_quality_score,
+                missing_values_ratio=new_missing_ratio,
             )
 
-            # Salva dataset processato
-            datasets_storage[output_dataset_id] = processed_metadata
+            # Salva dataset processato in storage
+            datasets_storage[output_dataset_id] = {
+                "metadata": processed_metadata,
+                "dataframe": df_processed,
+                "file_path": str(output_path),
+            }
 
             preprocessing_jobs[job_id].update(
                 {
@@ -612,15 +790,20 @@ async def preprocess_dataset(config: PreprocessingRequest, background_tasks: Bac
                     "progress": 1.0,
                     "results": {
                         "processing_log": processing_log,
-                        "input_quality_score": original_dataset.data_quality_score,
-                        "output_quality_score": processed_metadata.data_quality_score,
+                        "input_quality_score": original_dataset_info["metadata"].data_quality_score,
+                        "output_quality_score": new_quality_score,
                         "improvement": round(
-                            processed_metadata.data_quality_score
-                            - original_dataset.data_quality_score,
+                            new_quality_score
+                            - original_dataset_info["metadata"].data_quality_score,
                             3,
                         ),
-                        "steps_completed": len(processing_log),
+                        "steps_completed": len(
+                            [s for s in processing_log if s["status"] == "completed"]
+                        ),
+                        "steps_failed": len([s for s in processing_log if s["status"] == "failed"]),
                         "output_dataset_id": output_dataset_id,
+                        "rows_output": len(df_processed),
+                        "missing_values_ratio": new_missing_ratio,
                     },
                 }
             )
@@ -1185,7 +1368,8 @@ async def list_datasets(
     </code></pre>
     """
 
-    datasets_list = list(datasets_storage.values())
+    # Estrai solo metadata da datasets_storage (che contiene dict con "metadata" e "dataframe")
+    datasets_list = [d["metadata"] for d in datasets_storage.values()]
 
     # Applicazione filtri
     if format_filter:
@@ -1243,11 +1427,27 @@ async def get_job_status(job_id: str):
 
     job_info = preprocessing_jobs[job_id]
 
+    # Converti tipi numpy in tipi Python nativi per serializzazione
+    def convert_numpy_types(obj):
+        """Converte tipi numpy in tipi Python nativi"""
+        import numpy as np
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_numpy_types(item) for item in obj]
+        return obj
+
     return DataJobResponse(
         job_id=job_id,
         status=job_info["status"],
-        progress=job_info.get("progress", 0.0),
+        progress=float(job_info.get("progress", 0.0)),
         dataset_id=job_info.get("dataset_id"),
-        results=job_info.get("results", {}),
+        results=convert_numpy_types(job_info.get("results", {})),
         error_message=job_info.get("error_message"),
     )

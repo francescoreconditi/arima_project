@@ -1,0 +1,162 @@
+<div class="data-upload-container">
+  <h2>Carica Dataset CSV</h2>
+
+  <!-- File Selection -->
+  <div class="upload-section">
+    <div class="file-input-wrapper">
+      <input
+        #fileInput
+        type="file"
+        id="fileInput"
+        accept=".csv"
+        (change)="onFileSelected($event)"
+        [disabled]="isUploading"
+      />
+      <label for="fileInput" class="file-label">
+        <span *ngIf="!fileName">📁 Seleziona File CSV</span>
+        <span *ngIf="fileName">📄 {{ fileName }}</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- CSV Preview -->
+  <div *ngIf="showPreview" class="preview-section">
+    <h3>Preview CSV</h3>
+    <div class="table-wrapper">
+      <table class="csv-preview-table">
+        <thead>
+          <tr>
+            <th *ngFor="let header of csvHeaders">{{ header }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of csvPreview">
+            <td *ngFor="let cell of row">{{ cell }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Configuration Form -->
+  <div *ngIf="selectedFile" class="config-section">
+    <h3>Configurazione Dataset</h3>
+
+    <div class="form-group">
+      <label for="datasetName">Nome Dataset:</label>
+      <input
+        id="datasetName"
+        type="text"
+        [(ngModel)]="datasetName"
+        placeholder="es. Sales_Q4_2024"
+        [disabled]="isUploading"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="dateColumn">Colonna Date (opzionale):</label>
+      <input
+        id="dateColumn"
+        type="text"
+        [(ngModel)]="dateColumn"
+        placeholder="es. date, timestamp"
+        [disabled]="isUploading"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="valueColumns">Colonne Valori (separate da virgola):</label>
+      <input
+        id="valueColumns"
+        type="text"
+        [(ngModel)]="valueColumnsInput"
+        placeholder="es. sales, revenue, quantity"
+        [disabled]="isUploading"
+      />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="separator">Separatore:</label>
+        <select id="separator" [(ngModel)]="separator" [disabled]="isUploading">
+          <option value=",">Virgola (,)</option>
+          <option value=";">Punto e virgola (;)</option>
+          <option value="	">Tab</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="encoding">Encoding:</label>
+        <select id="encoding" [(ngModel)]="encoding" [disabled]="isUploading">
+          <option value="utf-8">UTF-8</option>
+          <option value="latin-1">Latin-1</option>
+          <option value="cp1252">Windows-1252</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="skipRows">Righe da Saltare:</label>
+        <input
+          id="skipRows"
+          type="number"
+          [(ngModel)]="skipRows"
+          min="0"
+          [disabled]="isUploading"
+        />
+      </div>
+
+      <div class="form-group checkbox-group">
+        <label>
+          <input
+            type="checkbox"
+            [(ngModel)]="validateData"
+            [disabled]="isUploading"
+          />
+          Valida dati automaticamente
+        </label>
+      </div>
+    </div>
+
+    <!-- Upload Button -->
+    <div class="button-group">
+      <button
+        class="btn-upload"
+        (click)="uploadDataset()"
+        [disabled]="isUploading || !selectedFile"
+      >
+        <span *ngIf="!isUploading">Carica Dataset</span>
+        <span *ngIf="isUploading">Caricamento...</span>
+      </button>
+
+      <button
+        class="btn-reset"
+        (click)="resetForm()"
+        [disabled]="isUploading"
+      >
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div *ngIf="isUploading" class="progress-section">
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" [style.width.%]="uploadProgress"></div>
+    </div>
+    <p class="progress-text">Upload: {{ uploadProgress.toFixed(0) }}%</p>
+  </div>
+
+  <!-- Success Message -->
+  <div *ngIf="uploadSuccess" class="success-message">
+    Dataset caricato con successo!
+    <br />
+    <strong>ID:</strong> {{ uploadedDatasetId }}
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="uploadError" class="error-message">
+    {{ uploadError }}
+  </div>
+</div>

@@ -128,3 +128,57 @@ export interface ForecastChartData {
   lower_bound?: ChartSeries;
   upper_bound?: ChartSeries;
 }
+
+// ===== DATA MANAGEMENT MODELS =====
+
+export interface DataUploadConfig {
+  dataset_name: string;
+  date_column?: string;
+  value_columns: string[];
+  separator?: string;
+  date_format?: string;
+  encoding?: string;
+  skip_rows?: number;
+  validate_data?: boolean;
+}
+
+export interface DatasetMetadata {
+  dataset_id: string;
+  name: string;
+  rows: number;
+  columns: number;
+  size_bytes: number;
+  upload_timestamp: string;
+  file_format: string;
+  column_info: {
+    date_column?: string;
+    value_columns: string[];
+    inferred_types: { [key: string]: string };
+    all_columns?: string[];
+  };
+  data_quality_score: number;
+  missing_values_ratio: number;
+}
+
+export interface DataJobResponse {
+  job_id: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  progress: number;
+  dataset_id?: string;
+  results?: any;
+  error_message?: string;
+}
+
+export interface PreprocessingStep {
+  type: 'handle_missing' | 'remove_outliers' | 'make_stationary' | 'normalize';
+  method?: string;
+  threshold?: number;
+  feature_range?: [number, number];
+}
+
+export interface PreprocessingRequest {
+  dataset_id: string;
+  preprocessing_steps: PreprocessingStep[];
+  output_dataset_name: string;
+  preserve_original?: boolean;
+}

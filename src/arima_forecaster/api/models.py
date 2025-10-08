@@ -466,7 +466,11 @@ class ModelTrainingRequest(BaseModel):
     - Lunghezza coerente tra serie principale e variabili esogene
     """
 
-    data: TimeSeriesData = Field(..., description="Dati della serie temporale per l'addestramento")
+    # NUOVO: Supporto per dataset caricati
+    dataset_id: Optional[str] = Field(None, description="ID dataset caricato (alternativa a 'data')")
+    value_column: Optional[str] = Field(None, description="Nome colonna da usare per training (se dataset_id fornito)")
+
+    data: Optional[TimeSeriesData] = Field(None, description="Dati della serie temporale per l'addestramento")
     model_type: str = Field(..., description="Tipo di modello da addestrare")
     order: Optional[ARIMAOrder] = Field(None, description="Parametri di ordine ARIMA (p,d,q)")
     seasonal_order: Optional[SARIMAOrder] = Field(
@@ -479,6 +483,16 @@ class ModelTrainingRequest(BaseModel):
         default=False,
         description="Se true, seleziona automaticamente i migliori parametri tramite grid search",
     )
+
+    @validator("data")
+    def validate_data_or_dataset(cls, v, values):
+        """Valida che sia fornito data O dataset_id."""
+        dataset_id = values.get("dataset_id")
+        if v is None and dataset_id is None:
+            raise ValueError("Deve essere fornito 'data' oppure 'dataset_id'")
+        if v is not None and dataset_id is not None:
+            raise ValueError("Fornire solo uno tra 'data' e 'dataset_id'")
+        return v
 
     @validator("model_type")
     def validate_model_type(cls, v):

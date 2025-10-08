@@ -5,7 +5,7 @@
 // Scopo: Componente Angular per training modelli ARIMA
 // ============================================
 
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ArimaApiService } from '../../services/arima-api.service';
@@ -18,7 +18,13 @@ import { ModelTrainingRequest, ModelInfo, TimeSeriesData } from '../../models/ap
   templateUrl: './model-training.html',
   styleUrl: './model-training.scss'
 })
-export class ModelTraining {
+export class ModelTraining implements OnInit {
+  // Dataset selection
+  availableDatasets: any[] = [];
+  selectedDatasetId = '';
+  selectedDataset: any = null;
+  dataInputMode: 'dataset' | 'manual' = 'dataset';
+
   // Form data
   modelType: 'arima' | 'sarima' | 'sarimax' = 'arima';
   csvData = '';
@@ -41,6 +47,41 @@ export class ModelTraining {
   Object = Object;
 
   constructor(private apiService: ArimaApiService) {}
+
+  ngOnInit(): void {
+    this.loadAvailableDatasets();
+  }
+
+  /**
+   * Carica lista dataset disponibili
+   */
+  loadAvailableDatasets(): void {
+    this.apiService.listDatasets().subscribe({
+      next: (datasets) => {
+        this.availableDatasets = datasets;
+        console.log('Dataset disponibili:', datasets);
+      },
+      error: (error) => {
+        console.error('Errore caricamento dataset:', error);
+      }
+    });
+  }
+
+  /**
+   * Gestisce selezione dataset
+   */
+  onDatasetSelected(): void {
+    if (!this.selectedDatasetId) {
+      this.selectedDataset = null;
+      return;
+    }
+
+    const dataset = this.availableDatasets.find(d => d.dataset_id === this.selectedDatasetId);
+    if (dataset) {
+      this.selectedDataset = dataset;
+      console.log('Dataset selezionato:', dataset);
+    }
+  }
 
   /**
    * Parse CSV data dal textarea
@@ -77,14 +118,28 @@ export class ModelTraining {
     this.errorMessage = '';
     this.trainedModel = null;
 
-    const data = this.parseCSVData();
-    if (!data) return;
-
-    const request: ModelTrainingRequest = {
+    // Costruisci request in base alla modalità di input
+    const request: any = {
       model_type: this.modelType,
-      data: data,
       order: { p: this.p, d: this.d, q: this.q }
     };
+
+    // Usa dataset o dati manuali
+    if (this.dataInputMode === 'dataset') {
+      if (!this.selectedDatasetId) {
+        this.errorMessage = 'Seleziona un dataset';
+        return;
+      }
+      request.dataset_id = this.selectedDatasetId;
+      // Usa la prima colonna numerica disponibile
+      if (this.selectedDataset && this.selectedDataset.column_info.value_columns?.length > 0) {
+        request.value_column = this.selectedDataset.column_info.value_columns[0];
+      }
+    } else {
+      const data = this.parseCSVData();
+      if (!data) return;
+      request.data = data;
+    }
 
     // Aggiungi parametri stagionali per SARIMA/SARIMAX
     if (this.modelType === 'sarima' || this.modelType === 'sarimax') {

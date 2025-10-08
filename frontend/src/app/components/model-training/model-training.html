@@ -52,8 +52,44 @@
       </div>
     </div>
 
-    <!-- Area dati CSV -->
+    <!-- Modalità input dati -->
     <div class="form-group">
+      <label>Sorgente Dati:</label>
+      <div class="radio-group">
+        <label>
+          <input type="radio" [(ngModel)]="dataInputMode" value="dataset" name="inputMode">
+          Usa Dataset Caricato
+        </label>
+        <label>
+          <input type="radio" [(ngModel)]="dataInputMode" value="manual" name="inputMode">
+          Inserisci Manualmente
+        </label>
+      </div>
+    </div>
+
+    <!-- Selezione dataset -->
+    <div *ngIf="dataInputMode === 'dataset'" class="form-group">
+      <label for="datasetSelect">Seleziona Dataset:</label>
+      <select id="datasetSelect" [(ngModel)]="selectedDatasetId" (change)="onDatasetSelected()" class="form-control">
+        <option value="">-- Seleziona un dataset --</option>
+        <option *ngFor="let ds of availableDatasets" [value]="ds.dataset_id">
+          {{ ds.name }} ({{ ds.rows }} righe, {{ ds.columns }} colonne)
+        </option>
+      </select>
+
+      <!-- Info dataset selezionato -->
+      <div *ngIf="selectedDataset" class="dataset-info">
+        <h4>Informazioni Dataset</h4>
+        <p><strong>Nome:</strong> {{ selectedDataset.name }}</p>
+        <p><strong>Righe:</strong> {{ selectedDataset.rows }}</p>
+        <p><strong>Colonne:</strong> {{ selectedDataset.column_info.all_columns?.join(', ') }}</p>
+        <p><strong>Colonne numeriche:</strong> {{ selectedDataset.column_info.value_columns?.join(', ') }}</p>
+        <p><strong>Data Quality Score:</strong> {{ (selectedDataset.data_quality_score * 100).toFixed(1) }}%</p>
+      </div>
+    </div>
+
+    <!-- Area dati CSV (solo se modalità manuale) -->
+    <div *ngIf="dataInputMode === 'manual'" class="form-group">
       <label for="csvData">Dati Serie Temporale (formato CSV: data,valore):</label>
       <textarea
         id="csvData"

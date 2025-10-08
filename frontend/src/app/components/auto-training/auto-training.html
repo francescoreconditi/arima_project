@@ -48,13 +48,49 @@
       </div>
     </div>
 
+    <!-- Modalità input dati -->
     <div class="form-group">
+      <label>Sorgente Dati:</label>
+      <div class="radio-group">
+        <label>
+          <input type="radio" [(ngModel)]="dataInputMode" value="dataset" name="inputMode">
+          Usa Dataset Caricato
+        </label>
+        <label>
+          <input type="radio" [(ngModel)]="dataInputMode" value="manual" name="inputMode">
+          Inserisci Manualmente
+        </label>
+      </div>
+    </div>
+
+    <!-- Selezione dataset -->
+    <div *ngIf="dataInputMode === 'dataset'" class="form-group">
+      <label for="datasetSelect">Seleziona Dataset:</label>
+      <select id="datasetSelect" [(ngModel)]="selectedDatasetId" (change)="onDatasetSelected()" class="form-control">
+        <option value="">-- Seleziona un dataset --</option>
+        <option *ngFor="let ds of availableDatasets" [value]="ds.dataset_id">
+          {{ ds.name }} ({{ ds.rows }} righe)
+        </option>
+      </select>
+
+      <!-- Info dataset selezionato -->
+      <div *ngIf="selectedDataset" class="dataset-info">
+        <p><strong>Colonne numeriche:</strong> {{ selectedDataset.column_info.value_columns?.join(', ') }}</p>
+        <p class="warning">⚠️ Auto-selection con dataset disponibile solo in Training standard per ora</p>
+      </div>
+    </div>
+
+    <!-- Area dati CSV (solo se modalità manuale) -->
+    <div *ngIf="dataInputMode === 'manual'" class="form-group">
       <label for="csvData">Dati Serie Temporale (CSV: data,valore):</label>
       <textarea id="csvData" [(ngModel)]="csvData" rows="10" class="form-control"></textarea>
       <button type="button" (click)="loadSampleData()" class="btn-sample">Carica Esempio</button>
     </div>
 
-    <button (click)="onSearchModels()" [disabled]="isSearching || !csvData" class="btn-primary btn-search">
+    <button
+      (click)="onSearchModels()"
+      [disabled]="isSearching || (dataInputMode === 'manual' && !csvData) || (dataInputMode === 'dataset' && !selectedDatasetId)"
+      class="btn-primary btn-search">
       {{ isSearching ? 'Ricerca in corso...' : 'Avvia Ricerca' }}
     </button>
   </div>

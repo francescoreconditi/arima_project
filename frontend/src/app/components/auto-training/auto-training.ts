@@ -5,7 +5,7 @@
 // Scopo: Componente Angular per auto-training modelli ARIMA/SARIMA/SARIMAX
 // ============================================
 
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ArimaApiService } from '../../services/arima-api.service';
@@ -26,7 +26,13 @@ interface ModelCandidate {
   templateUrl: './auto-training.html',
   styleUrl: './auto-training.scss'
 })
-export class AutoTraining {
+export class AutoTraining implements OnInit {
+  // Dataset selection
+  availableDatasets: any[] = [];
+  selectedDatasetId = '';
+  selectedDataset: any = null;
+  dataInputMode: 'dataset' | 'manual' = 'dataset';
+
   // Form data
   modelType: 'auto-arima' | 'auto-sarima' | 'auto-sarimax' = 'auto-arima';
   csvData = '';
@@ -52,6 +58,41 @@ export class AutoTraining {
   Object = Object;
 
   constructor(private apiService: ArimaApiService) {}
+
+  ngOnInit(): void {
+    this.loadAvailableDatasets();
+  }
+
+  /**
+   * Carica lista dataset disponibili
+   */
+  loadAvailableDatasets(): void {
+    this.apiService.listDatasets().subscribe({
+      next: (datasets) => {
+        this.availableDatasets = datasets;
+        console.log('Dataset disponibili:', datasets);
+      },
+      error: (error) => {
+        console.error('Errore caricamento dataset:', error);
+      }
+    });
+  }
+
+  /**
+   * Gestisce selezione dataset
+   */
+  onDatasetSelected(): void {
+    if (!this.selectedDatasetId) {
+      this.selectedDataset = null;
+      return;
+    }
+
+    const dataset = this.availableDatasets.find(d => d.dataset_id === this.selectedDatasetId);
+    if (dataset) {
+      this.selectedDataset = dataset;
+      console.log('Dataset selezionato:', dataset);
+    }
+  }
 
   /**
    * Parse CSV data dal textarea
@@ -90,8 +131,22 @@ export class AutoTraining {
     this.searchResults = null;
     this.selectedModelIndex = null;
 
-    const data = this.parseCSVData();
-    if (!data) return;
+    // Ottieni dati da dataset o input manuale
+    let data: TimeSeriesData | null = null;
+
+    if (this.dataInputMode === 'dataset') {
+      if (!this.selectedDatasetId) {
+        this.errorMessage = 'Seleziona un dataset';
+        return;
+      }
+      // Per ora, mostra messaggio che serve implementare get dataset data
+      // In alternativa, l'utente deve usare modalità manuale
+      this.errorMessage = 'Auto-selection con dataset non ancora supportata. Usa modalità manuale o vai in Training standard.';
+      return;
+    } else {
+      data = this.parseCSVData();
+      if (!data) return;
+    }
 
     const request: AutoSelectionRequest = {
       data: data,

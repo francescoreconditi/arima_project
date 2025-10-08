@@ -128,7 +128,8 @@
       "Bash(test:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(quarto:*)"
+      "Bash(quarto:*)",
+      "Read(//c/**)"
     ],
     "deny": [],
     "ask": [],

@@ -314,9 +314,35 @@ async def train_model(
     model_manager, _ = services
 
     try:
-        # Converte i dati in pandas Series
-        timestamps = pd.to_datetime(request.data.timestamps)
-        series = pd.Series(request.data.values, index=timestamps)
+        # NUOVO: Supporto per dataset caricati
+        if request.dataset_id:
+            # Carica dati dal dataset storage
+            from arima_forecaster.api.routers.data_management import datasets_storage
+
+            if request.dataset_id not in datasets_storage:
+                raise HTTPException(status_code=404, detail=f"Dataset {request.dataset_id} non trovato")
+
+            dataset_info = datasets_storage[request.dataset_id]
+            df = dataset_info["dataframe"]
+
+            # Determina quale colonna usare
+            value_col = request.value_column
+            if not value_col:
+                # Usa la prima colonna numerica disponibile
+                value_columns = dataset_info["metadata"].column_info.get("value_columns", [])
+                if not value_columns:
+                    raise HTTPException(status_code=400, detail="Nessuna colonna numerica trovata nel dataset")
+                value_col = value_columns[0]
+
+            if value_col not in df.columns:
+                raise HTTPException(status_code=400, detail=f"Colonna '{value_col}' non trovata nel dataset")
+
+            series = df[value_col]
+            logger.info(f"Loaded data from dataset {request.dataset_id}, column {value_col}: {len(series)} observations")
+        else:
+            # Usa i dati forniti direttamente nella richiesta
+            timestamps = pd.to_datetime(request.data.timestamps)
+            series = pd.Series(request.data.values, index=timestamps)
 
         # Genera ID univoco
         model_id = str(uuid.uuid4())

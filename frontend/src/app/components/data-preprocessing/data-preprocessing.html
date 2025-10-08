@@ -1,0 +1,53 @@
+<div class="preprocessing-container">
+  <h2>Preprocessing Dataset</h2>
+
+  <div class="config-form">
+    <div class="form-group">
+      <label>Seleziona Dataset:</label>
+      <select [(ngModel)]="selectedDatasetId" (change)="onDatasetSelected()" class="form-control">
+        <option value="">-- Seleziona dataset --</option>
+        <option *ngFor="let ds of availableDatasets" [value]="ds.dataset_id">{{ds.name}} ({{ds.rows}} righe)</option>
+      </select>
+    </div>
+
+    <div *ngIf="selectedDataset" class="dataset-info">
+      <p><strong>Colonne:</strong> {{selectedDataset.column_info.value_columns?.join(', ')}}</p>
+    </div>
+
+    <div class="steps-section">
+      <h3>Steps Preprocessing</h3>
+      <div class="step-config">
+        <label><input type="checkbox" [(ngModel)]="handleMissing"> Gestisci Valori Mancanti</label>
+        <select *ngIf="handleMissing" [(ngModel)]="missingMethod" class="form-control">
+          <option value="interpolate">Interpolazione</option>
+          <option value="forward_fill">Forward Fill</option>
+        </select>
+      </div>
+      <div class="step-config">
+        <label><input type="checkbox" [(ngModel)]="removeOutliers"> Rimuovi Outlier</label>
+        <select *ngIf="removeOutliers" [(ngModel)]="outlierMethod" class="form-control">
+          <option value="iqr">IQR</option>
+          <option value="zscore">Z-Score</option>
+        </select>
+      </div>
+      <div class="step-config">
+        <label><input type="checkbox" [(ngModel)]="normalize"> Normalizza</label>
+        <select *ngIf="normalize" [(ngModel)]="normalizeMethod" class="form-control">
+          <option value="standard">Standard</option>
+          <option value="minmax">MinMax</option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="isProcessing" class="progress-bar">
+      <div class="progress-fill" [style.width.%]="processingProgress"></div>
+    </div>
+
+    <div *ngIf="processingSuccess" class="success-message">Preprocessing completato!</div>
+    <div *ngIf="errorMessage" class="error-message">{{errorMessage}}</div>
+
+    <button (click)="startPreprocessing()" [disabled]="isProcessing || !selectedDatasetId" class="btn-primary">
+      {{isProcessing ? 'Elaborazione...' : 'Avvia Preprocessing'}}
+    </button>
+  </div>
+</div>

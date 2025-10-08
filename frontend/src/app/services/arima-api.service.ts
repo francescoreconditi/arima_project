@@ -192,6 +192,47 @@ export class ArimaApiService {
   getDownloadReportUrl(filePath: string): string {
     return `${this.API_BASE_URL}/visualization/download-report/${filePath}`;
   }
+
+  // ===== DATA MANAGEMENT ENDPOINTS =====
+
+  /**
+   * Carica un file CSV con configurazione
+   */
+  uploadDataset(file: File, config: any): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Config deve essere un query parameter, non FormData
+    const configParam = encodeURIComponent(JSON.stringify(config));
+    const url = `${this.API_BASE_URL}/data/upload?config=${configParam}`;
+
+    return this.http.post(url, formData);
+  }
+
+  /**
+   * Ottiene lo stato di un job di data management
+   */
+  getDataJobStatus(jobId: string): Observable<any> {
+    return this.http.get(`${this.API_BASE_URL}/data/job-status/${jobId}`);
+  }
+
+  /**
+   * Ottiene lista di tutti i dataset caricati
+   */
+  listDatasets(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_BASE_URL}/data/datasets`);
+  }
+
+  /**
+   * Esegue preprocessing su un dataset
+   */
+  preprocessDataset(request: any): Observable<any> {
+    return this.http.post(
+      `${this.API_BASE_URL}/data/preprocess`,
+      request,
+      this.httpOptions
+    );
+  }
 }
 
 // ===== NUOVI MODELLI PER REPORT GENERATION =====
