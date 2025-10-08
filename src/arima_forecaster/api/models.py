@@ -906,6 +906,7 @@ class ModelInfo(BaseModel):
         <tr><td>training_observations</td><td>int</td><td>Numero di osservazioni utilizzate per il training</td></tr>
         <tr><td>parameters</td><td>Dict</td><td>Parametri di configurazione del modello</td></tr>
         <tr><td>metrics</td><td>Dict</td><td>Metriche di valutazione e performance</td></tr>
+        <tr><td>descrizione</td><td>str</td><td>Descrizione personalizzata del modello (opzionale)</td></tr>
     </table>
 
     <h4>Esempio:</h4>
@@ -925,7 +926,8 @@ class ModelInfo(BaseModel):
             "bic": 1891.33,
             "mae": 2.34,
             "rmse": 3.12
-        }
+        },
+        "descrizione": "Modello SARIMA per previsioni vendite mensili"
     }
     </code></pre>
     """
@@ -937,6 +939,7 @@ class ModelInfo(BaseModel):
     training_observations: int = Field(..., description="Numero di osservazioni per il training")
     parameters: Dict[str, Any] = Field(..., description="Parametri di configurazione")
     metrics: Dict[str, float] = Field(..., description="Metriche di performance")
+    descrizione: Optional[str] = Field(default="", description="Descrizione personalizzata del modello")
 
 
 class ForecastResult(BaseModel):

@@ -124,6 +124,7 @@ async def list_models(services: tuple = Depends(get_services)):
                         training_observations=metadata.get("training_observations", 0),
                         parameters=metadata.get("parameters", {}),
                         metrics=metadata.get("metrics", {}),
+                        descrizione=metadata.get("descrizione", ""),
                     )
                 )
             except Exception as e:
@@ -198,12 +199,124 @@ async def get_model_info(model_id: str, services: tuple = Depends(get_services))
             training_observations=metadata.get("training_observations", 0),
             parameters=metadata.get("parameters", {}),
             metrics=metadata.get("metrics", {}),
+            descrizione=metadata.get("descrizione", ""),
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to get model info for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{model_id}/details")
+async def get_model_full_details(model_id: str, services: tuple = Depends(get_services)):
+    """
+    Recupera TUTTE le informazioni dettagliate di un modello caricando il file .pkl.
+
+    Questo endpoint carica il modello completo dal file .pkl e ne estrae tutte le
+    informazioni disponibili: coefficienti, diagnostiche, residui, statistiche, ecc.
+
+    <h4>Parametri di Ingresso:</h4>
+    <table >
+        <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
+        <tr><td>model_id</td><td>str</td><td>ID univoco del modello</td></tr>
+    </table>
+
+    <h4>Esempio di Chiamata:</h4>
+    <pre><code>
+    curl -X GET "http://localhost:8000/models/abc123/details"
+    </code></pre>
+
+    <h4>Informazioni Restituite:</h4>
+    <ul>
+        <li>Metadati base (tipo, status, data creazione)</li>
+        <li>Parametri del modello (order, seasonal_order)</li>
+        <li>Coefficienti del modello (AR, MA, stagionali)</li>
+        <li>Statistiche di fit (AIC, BIC, log-likelihood)</li>
+        <li>Diagnostiche residui (se disponibili)</li>
+        <li>Informazioni sulla covarianza</li>
+        <li>Altre informazioni specifiche del tipo di modello</li>
+    </ul>
+    """
+    model_manager, _ = services
+
+    try:
+        # Verifica esistenza modello
+        if not model_manager.model_exists(model_id):
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        # Carica dettagli completi dal file .pkl
+        full_details = model_manager.load_full_model_details(model_id)
+
+        return full_details
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to load full details for {model_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/{model_id}/description")
+async def update_model_description(
+    model_id: str,
+    description: str,
+    services: tuple = Depends(get_services)
+):
+    """
+    Aggiorna la descrizione di un modello esistente.
+
+    Permette di modificare o aggiungere una descrizione personalizzata a un modello
+    senza alterare i suoi parametri o metriche.
+
+    <h4>Parametri di Ingresso:</h4>
+    <table >
+        <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
+        <tr><td>model_id</td><td>str</td><td>ID univoco del modello</td></tr>
+        <tr><td>description</td><td>str</td><td>Nuova descrizione del modello</td></tr>
+    </table>
+
+    <h4>Esempio di Chiamata:</h4>
+    <pre><code>
+    curl -X PATCH "http://localhost:8000/models/abc123/description?description=Modello%20SARIMA%20per%20vendite"
+    </code></pre>
+
+    <h4>Esempio di Risposta:</h4>
+    <pre><code>
+    {
+        "model_id": "abc123",
+        "descrizione": "Modello SARIMA per vendite mensili",
+        "message": "Descrizione aggiornata con successo"
+    }
+    </code></pre>
+
+    <h4>Errori Possibili:</h4>
+    <ul>
+        <li><strong>404</strong>: Modello non trovato</li>
+        <li><strong>500</strong>: Errore nell'aggiornamento del registry</li>
+    </ul>
+    """
+    model_manager, _ = services
+
+    try:
+        # Verifica esistenza modello
+        if not model_manager.model_exists(model_id):
+            raise HTTPException(status_code=404, detail="Model not found")
+
+        # Aggiorna la descrizione nel registry
+        model_manager.update_model_description(model_id, description)
+
+        return {
+            "model_id": model_id,
+            "descrizione": description,
+            "message": "Descrizione aggiornata con successo"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update description for {model_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

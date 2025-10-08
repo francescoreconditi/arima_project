@@ -26,6 +26,7 @@
           <th>Status</th>
           <th>Osservazioni</th>
           <th>Creato</th>
+          <th>Descrizione</th>
           <th>Azioni</th>
         </tr>
       </thead>
@@ -38,7 +39,14 @@
           </td>
           <td>{{ model.training_observations }}</td>
           <td>{{ model.created_at | date:'short' }}</td>
+          <td>{{ model.descrizione || '-' }}</td>
           <td>
+            <button (click)="editDescription(model)" class="btn-edit" title="Modifica descrizione">
+              Modifica
+            </button>
+            <button (click)="viewModelDetails(model)" class="btn-view" title="Visualizza dettagli">
+              Visualizza
+            </button>
             <button (click)="deleteModel(model.model_id)" class="btn-danger">
               Elimina
             </button>
@@ -52,5 +60,139 @@
   <div *ngIf="!isLoading && models.length === 0" class="no-models">
     <p>Nessun modello trovato.</p>
     <p>Vai alla pagina <a routerLink="/training">Training</a> per addestrare un nuovo modello.</p>
+  </div>
+
+  <!-- Modale Modifica Descrizione -->
+  <div *ngIf="showEditModal && selectedModel" class="modal-overlay" (click)="closeEditModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>Modifica Descrizione</h3>
+      <p><strong>Model ID:</strong> {{ selectedModel.model_id.substring(0, 8) }}...</p>
+      <div class="form-group">
+        <label for="description">Descrizione:</label>
+        <textarea
+          id="description"
+          [(ngModel)]="editingDescription"
+          rows="3"
+          placeholder="Inserisci una descrizione per il modello..."
+        ></textarea>
+      </div>
+      <div class="modal-actions">
+        <button (click)="saveDescription()" class="btn-primary">Salva</button>
+        <button (click)="closeEditModal()" class="btn-secondary">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale Visualizza Dettagli -->
+  <div *ngIf="showDetailsModal && selectedModel" class="modal-overlay" (click)="closeDetailsModal()">
+    <div class="modal-content modal-large" (click)="$event.stopPropagation()">
+      <h3>Dettagli Completi Modello</h3>
+
+      <!-- Loading -->
+      <div *ngIf="isLoadingDetails" class="loading-details">
+        <p>Caricamento dettagli dal file .pkl...</p>
+      </div>
+
+      <!-- Dettagli caricati -->
+      <div *ngIf="!isLoadingDetails && fullModelDetails" class="model-details">
+        <!-- Informazioni Generali -->
+        <div class="detail-section">
+          <h4>Informazioni Generali</h4>
+          <p><strong>Model ID:</strong> {{ fullModelDetails.model_id }}</p>
+          <p><strong>Tipo:</strong> {{ fullModelDetails.model_type }}</p>
+          <p><strong>Status:</strong> <span [class]="'status-' + fullModelDetails.status">{{ fullModelDetails.status }}</span></p>
+          <p><strong>Creato:</strong> {{ fullModelDetails.created_at | date:'medium' }}</p>
+          <p><strong>Osservazioni Training:</strong> {{ fullModelDetails.training_observations }}</p>
+          <p><strong>Descrizione:</strong> {{ fullModelDetails.descrizione || 'Nessuna descrizione' }}</p>
+        </div>
+
+        <!-- Parametri del Modello -->
+        <div class="detail-section">
+          <h4>Parametri del Modello</h4>
+          <pre>{{ fullModelDetails.parameters | json }}</pre>
+        </div>
+
+        <!-- Metriche -->
+        <div class="detail-section">
+          <h4>Metriche di Performance</h4>
+          <pre>{{ fullModelDetails.metrics | json }}</pre>
+        </div>
+
+        <!-- Coefficienti (dal file .pkl) -->
+        <div *ngIf="fullModelDetails.model_summary?.coefficients" class="detail-section">
+          <h4>Coefficienti del Modello</h4>
+          <div class="coefficients-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Coefficiente</th>
+                  <th>Valore</th>
+                  <th *ngIf="fullModelDetails.model_summary?.standard_errors">Std Error</th>
+                  <th *ngIf="fullModelDetails.model_summary?.p_values">P-Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let name of fullModelDetails.model_summary.coefficients.names; let i = index">
+                  <td>{{ name }}</td>
+                  <td>{{ fullModelDetails.model_summary.coefficients.values[i] | number:'1.4-4' }}</td>
+                  <td *ngIf="fullModelDetails.model_summary?.standard_errors">
+                    {{ fullModelDetails.model_summary.standard_errors[i] | number:'1.4-4' }}
+                  </td>
+                  <td *ngIf="fullModelDetails.model_summary?.p_values">
+                    {{ fullModelDetails.model_summary.p_values[i] | number:'1.4-4' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Statistiche di Fit (dal file .pkl) -->
+        <div *ngIf="fullModelDetails.model_summary?.fit_statistics" class="detail-section">
+          <h4>Statistiche di Fit</h4>
+          <pre>{{ fullModelDetails.model_summary.fit_statistics | json }}</pre>
+        </div>
+
+        <!-- Residui Sample (dal file .pkl) -->
+        <div *ngIf="fullModelDetails.model_summary?.residuals_sample" class="detail-section">
+          <h4>Campione Residui (ultimi 100)</h4>
+          <p><strong>Numero residui:</strong> {{ fullModelDetails.model_summary.residuals_sample.length }}</p>
+          <pre class="residuals-preview">{{ fullModelDetails.model_summary.residuals_sample.slice(0, 20) | json }}</pre>
+          <p><em>... (mostrando primi 20 di {{ fullModelDetails.model_summary.residuals_sample.length }})</em></p>
+        </div>
+
+        <!-- Covarianza Info (dal file .pkl) -->
+        <div *ngIf="fullModelDetails.model_summary?.covariance_shape" class="detail-section">
+          <h4>Informazioni Covarianza</h4>
+          <p><strong>Shape Matrice Covarianza:</strong> {{ fullModelDetails.model_summary.covariance_shape.join(' x ') }}</p>
+        </div>
+
+        <!-- Summary Text (dal file .pkl) -->
+        <div *ngIf="fullModelDetails.model_summary?.summary_text" class="detail-section">
+          <h4>Model Summary (da statsmodels)</h4>
+          <pre class="model-summary-text">{{ fullModelDetails.model_summary.summary_text }}</pre>
+        </div>
+
+        <!-- VAR Specific Details -->
+        <div *ngIf="fullModelDetails.model_summary?.lags" class="detail-section">
+          <h4>Dettagli VAR</h4>
+          <p><strong>Numero di Lag:</strong> {{ fullModelDetails.model_summary.lags }}</p>
+          <p *ngIf="fullModelDetails.model_summary?.variable_names">
+            <strong>Variabili:</strong> {{ fullModelDetails.model_summary.variable_names.join(', ') }}
+          </p>
+        </div>
+
+        <!-- Errori di Estrazione -->
+        <div *ngIf="fullModelDetails.model_summary?.extraction_error" class="detail-section error-section">
+          <h4>Nota</h4>
+          <p>Alcuni dettagli potrebbero non essere disponibili:</p>
+          <p class="error-text">{{ fullModelDetails.model_summary.extraction_error }}</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button (click)="closeDetailsModal()" class="btn-secondary">Chiudi</button>
+      </div>
+    </div>
   </div>
 </div>

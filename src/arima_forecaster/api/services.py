@@ -712,6 +712,194 @@ class ModelManager:
             self.logger.error(f"Impossibile eliminare il modello {model_id}: {e}")
             raise
 
+    def update_model_description(self, model_id: str, description: str):
+        """
+        Aggiorna la descrizione di un modello esistente nel registry.
+
+        Modifica solo il campo 'descrizione' senza alterare parametri,
+        metriche o altri metadati del modello.
+
+        Args:
+            model_id: ID del modello da aggiornare
+            description: Nuova descrizione del modello
+
+        Raises:
+            ValueError: Modello non trovato nel registry
+        """
+        try:
+            if model_id not in self.model_registry:
+                raise ValueError(f"Modello {model_id} non trovato")
+
+            # Aggiorna la descrizione nel registry in-memory
+            self.model_registry[model_id]["descrizione"] = description
+
+            # Persiste le modifiche su disco
+            self._save_registry()
+
+            self.logger.info(f"Descrizione aggiornata per modello {model_id}")
+
+        except Exception as e:
+            self.logger.error(f"Impossibile aggiornare descrizione del modello {model_id}: {e}")
+            raise
+
+    def load_full_model_details(self, model_id: str) -> Dict[str, Any]:
+        """
+        Carica TUTTE le informazioni dettagliate di un modello dal file .pkl.
+
+        Questo metodo carica il modello completo e ne estrae tutti i dettagli
+        disponibili: coefficienti, statistiche, diagnostiche, residui, ecc.
+
+        Args:
+            model_id: ID del modello da caricare
+
+        Returns:
+            Dizionario con tutte le informazioni dettagliate del modello
+
+        Raises:
+            ValueError: Modello non trovato
+            Exception: Errore nel caricamento del file .pkl
+        """
+        try:
+            if model_id not in self.model_registry:
+                raise ValueError(f"Modello {model_id} non trovato")
+
+            # Carica il modello dal file .pkl
+            model = self.load_model(model_id)
+            metadata = self.model_registry[model_id]
+
+            # Informazioni base dal registry
+            details = {
+                "model_id": model_id,
+                "model_type": metadata.get("model_type", "unknown"),
+                "status": metadata.get("status", "completed"),
+                "created_at": metadata.get("created_at"),
+                "training_observations": metadata.get("training_observations", 0),
+                "descrizione": metadata.get("descrizione", ""),
+                "parameters": metadata.get("parameters", {}),
+                "metrics": metadata.get("metrics", {})
+            }
+
+            # Estrai informazioni specifiche dal modello caricato
+            model_type = metadata.get("model_type", "").lower()
+
+            if model_type in ["arima", "sarima", "sarimax"]:
+                # Modelli ARIMA/SARIMA/SARIMAX
+                arima_details = self._extract_arima_details(model)
+                details["model_summary"] = arima_details
+
+            elif model_type == "var":
+                # Modello VAR
+                var_details = self._extract_var_details(model)
+                details["model_summary"] = var_details
+
+            return details
+
+        except Exception as e:
+            self.logger.error(f"Impossibile caricare dettagli completi per modello {model_id}: {e}")
+            raise
+
+    def _extract_arima_details(self, model) -> Dict[str, Any]:
+        """Estrae dettagli completi da un modello ARIMA/SARIMA/SARIMAX."""
+        details = {}
+
+        try:
+            # Accedi al modello statsmodels interno
+            if hasattr(model, 'model') and hasattr(model.model, 'model_'):
+                sm_model = model.model.model_
+                sm_results = model.model
+
+                # Parametri del modello
+                if hasattr(sm_results, 'params'):
+                    details["coefficients"] = {
+                        "values": sm_results.params.tolist() if hasattr(sm_results.params, 'tolist') else list(sm_results.params),
+                        "names": list(sm_results.params.index) if hasattr(sm_results.params, 'index') else []
+                    }
+
+                # Statistiche di fit
+                if hasattr(sm_results, 'aic'):
+                    details["fit_statistics"] = {
+                        "aic": float(sm_results.aic) if sm_results.aic is not None else None,
+                        "bic": float(sm_results.bic) if hasattr(sm_results, 'bic') and sm_results.bic is not None else None,
+                        "hqic": float(sm_results.hqic) if hasattr(sm_results, 'hqic') and sm_results.hqic is not None else None,
+                        "log_likelihood": float(sm_results.llf) if hasattr(sm_results, 'llf') and sm_results.llf is not None else None
+                    }
+
+                # Errori standard dei coefficienti
+                if hasattr(sm_results, 'bse'):
+                    details["standard_errors"] = sm_results.bse.tolist() if hasattr(sm_results.bse, 'tolist') else list(sm_results.bse)
+
+                # P-values
+                if hasattr(sm_results, 'pvalues'):
+                    details["p_values"] = sm_results.pvalues.tolist() if hasattr(sm_results.pvalues, 'tolist') else list(sm_results.pvalues)
+
+                # Residui (primi 100 per non sovraccaricare)
+                if hasattr(sm_results, 'resid'):
+                    resid = sm_results.resid
+                    if hasattr(resid, 'tolist'):
+                        details["residuals_sample"] = resid[-100:].tolist()  # Ultimi 100
+                    else:
+                        details["residuals_sample"] = list(resid[-100:])
+
+                # Informazioni sulla covarianza
+                if hasattr(sm_results, 'cov_params'):
+                    cov = sm_results.cov_params()
+                    details["covariance_shape"] = list(cov.shape) if hasattr(cov, 'shape') else None
+
+                # Summary come stringa (se disponibile)
+                if hasattr(sm_results, 'summary'):
+                    try:
+                        details["summary_text"] = str(sm_results.summary())
+                    except:
+                        pass
+
+        except Exception as e:
+            self.logger.warning(f"Errore estrazione dettagli ARIMA: {e}")
+            details["extraction_error"] = str(e)
+
+        return details
+
+    def _extract_var_details(self, model) -> Dict[str, Any]:
+        """Estrae dettagli completi da un modello VAR."""
+        details = {}
+
+        try:
+            if hasattr(model, 'model') and hasattr(model.model, 'params'):
+                sm_results = model.model
+
+                # Parametri per ogni equazione
+                if hasattr(sm_results, 'params'):
+                    details["coefficients"] = sm_results.params.to_dict() if hasattr(sm_results.params, 'to_dict') else str(sm_results.params)
+
+                # Statistiche di fit
+                if hasattr(sm_results, 'aic'):
+                    details["fit_statistics"] = {
+                        "aic": float(sm_results.aic),
+                        "bic": float(sm_results.bic) if hasattr(sm_results, 'bic') else None,
+                        "fpe": float(sm_results.fpe) if hasattr(sm_results, 'fpe') else None,
+                        "hqic": float(sm_results.hqic) if hasattr(sm_results, 'hqic') else None
+                    }
+
+                # Numero di lag
+                if hasattr(sm_results, 'k_ar'):
+                    details["lags"] = int(sm_results.k_ar)
+
+                # Nomi delle variabili
+                if hasattr(sm_results, 'names'):
+                    details["variable_names"] = list(sm_results.names)
+
+                # Summary
+                if hasattr(sm_results, 'summary'):
+                    try:
+                        details["summary_text"] = str(sm_results.summary())
+                    except:
+                        pass
+
+        except Exception as e:
+            self.logger.warning(f"Errore estrazione dettagli VAR: {e}")
+            details["extraction_error"] = str(e)
+
+        return details
+
 
 class ForecastService:
     """

@@ -66,6 +66,7 @@ export interface ModelInfo {
   training_observations: number;
   parameters: Record<string, any>;
   metrics: Record<string, number>;
+  descrizione?: string;
 }
 
 export interface ModelListResponse {

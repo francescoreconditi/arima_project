@@ -115,4 +115,25 @@ export class ArimaApiService {
     // Usa endpoint corretto: /models/{model_id} invece di /models/{model_id}/status
     return this.http.get<ModelInfo>(`${this.API_BASE_URL}/models/${modelId}`);
   }
+
+  /**
+   * Aggiorna la descrizione di un modello
+   */
+  updateModelDescription(modelId: string, description: string): Observable<any> {
+    return this.http.patch(
+      `${this.API_BASE_URL}/models/${modelId}/description`,
+      null,
+      {
+        ...this.httpOptions,
+        params: { description }
+      }
+    );
+  }
+
+  /**
+   * Ottiene TUTTI i dettagli completi di un modello dal file .pkl
+   */
+  getModelFullDetails(modelId: string): Observable<any> {
+    return this.http.get<any>(`${this.API_BASE_URL}/models/${modelId}/details`);
+  }
 }
