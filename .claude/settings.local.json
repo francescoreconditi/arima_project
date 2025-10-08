@@ -127,7 +127,8 @@
       "Bash(for:*)",
       "Bash(test:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(quarto:*)"
     ],
     "deny": [],
     "ask": [],

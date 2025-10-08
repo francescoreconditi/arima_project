@@ -4,6 +4,8 @@
 #| label: tbl-key-metrics
 #| tbl-cap: "Metriche Principali del Modello"
 
+from IPython.display import HTML, display
+
 metrics = model_results.get('metrics', {})
 if metrics:
     metrics_df = pd.DataFrame([
@@ -14,9 +16,8 @@ if metrics:
         ['AIC (Akaike Information Criterion)', f"{metrics.get('aic', 'N/A'):.2f}" if isinstance(metrics.get('aic'), (int, float)) else 'N/A'],
         ['BIC (Bayesian Information Criterion)', f"{metrics.get('bic', 'N/A'):.2f}" if isinstance(metrics.get('bic'), (int, float)) else 'N/A'],
     ], columns=['Metrica', 'Valore'])
-    
+
     # Display as rendered HTML table
-    from IPython.display import HTML, display
     html_table = metrics_df.to_html(index=False, classes='table table-striped', escape=False, table_id='metrics-table')
     display(HTML(html_table))
 else:

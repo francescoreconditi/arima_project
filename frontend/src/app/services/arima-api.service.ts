@@ -162,4 +162,54 @@ export class ArimaApiService {
       }
     );
   }
+
+  // ===== VISUALIZATION & REPORTING ENDPOINTS =====
+
+  /**
+   * Genera report professionale usando Quarto (asincrono - job based)
+   * Restituisce job_id per monitorare il progresso
+   */
+  generateReport(config: ReportGenerationRequest): Observable<VisualizationJobResponse> {
+    return this.http.post<VisualizationJobResponse>(
+      `${this.API_BASE_URL}/visualization/generate-report`,
+      config,
+      this.httpOptions
+    );
+  }
+
+  /**
+   * Controlla lo stato di un job di visualizzazione/report
+   */
+  checkJobStatus(jobId: string): Observable<VisualizationJobResponse> {
+    return this.http.get<VisualizationJobResponse>(
+      `${this.API_BASE_URL}/visualization/job-status/${jobId}`
+    );
+  }
+
+  /**
+   * Costruisce l'URL per scaricare un file report generato
+   */
+  getDownloadReportUrl(filePath: string): string {
+    return `${this.API_BASE_URL}/visualization/download-report/${filePath}`;
+  }
+}
+
+// ===== NUOVI MODELLI PER REPORT GENERATION =====
+
+export interface ReportGenerationRequest {
+  model_ids: string[];
+  report_type: 'executive' | 'technical' | 'comprehensive' | 'regulatory';
+  include_sections: string[];
+  export_formats: ('pdf' | 'html' | 'docx')[];
+  template_style: 'corporate' | 'minimal' | 'academic' | 'dashboard';
+  language: string;
+}
+
+export interface VisualizationJobResponse {
+  job_id: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  progress?: number;
+  estimated_completion?: string;
+  results_urls?: string[];
+  error?: string;
 }

@@ -56,7 +56,28 @@
   <div *ngIf="forecastResult" class="forecast-results">
     <div class="results-header">
       <h3>Risultati Forecast</h3>
-      <button (click)="exportToCSV()" class="btn-export">Esporta CSV</button>
+      <div class="export-buttons">
+        <button (click)="exportToCSV()" class="btn-export">Esporta CSV</button>
+        <button (click)="downloadReport('pdf')" class="btn-report" [disabled]="isGeneratingReport">
+          {{ isGeneratingReport ? 'Generazione PDF...' : 'Scarica Report PDF (Quarto)' }}
+        </button>
+        <button (click)="downloadReport('html')" class="btn-report-html" [disabled]="isGeneratingReport">
+          {{ isGeneratingReport ? 'Generazione HTML...' : 'Scarica Report HTML (Quarto)' }}
+        </button>
+      </div>
+
+      <!-- Progress bar per generazione report -->
+      <div *ngIf="isGeneratingReport" class="report-progress">
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" [style.width.%]="reportProgress"></div>
+        </div>
+        <p class="progress-text">Generazione report: {{ reportProgress.toFixed(0) }}%</p>
+      </div>
+
+      <!-- Errore generazione report -->
+      <div *ngIf="reportGenerationError" class="error-message">
+        {{ reportGenerationError }}
+      </div>
     </div>
 
     <!-- Info generali -->

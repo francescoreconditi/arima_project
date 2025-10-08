@@ -31,6 +31,7 @@ def get_services():
     forecast_service = get_forecast_service()
     return model_manager, forecast_service
 
+
 # Configurazione router
 router = APIRouter(
     prefix="/visualization",
@@ -435,25 +436,132 @@ async def generate_report(config: ReportConfigRequest, background_tasks: Backgro
         "results_urls": [],
     }
 
-    # Simula generazione report
+    # Genera report reali usando QuartoReportGenerator
     async def generate_report_job():
         try:
+            from arima_forecaster.reporting import QuartoReportGenerator
+            from arima_forecaster.visualization import ForecastPlotter
+            import tempfile
+
             visualization_jobs[job_id]["status"] = "running"
+            visualization_jobs[job_id]["progress"] = 0.1
+
+            model_manager, forecast_service = get_services()
+
+            # Carica tutti i modelli richiesti
+            all_model_results = {}
+            for model_id in config.model_ids:
+                if not model_manager.model_exists(model_id):
+                    raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+
+                model = model_manager.load_model(model_id)
+                metadata = model_manager.get_model_info(model_id)
+
+                # Genera forecast per il modello
+                forecast_result = await forecast_service.generate_forecast(
+                    model_id=model_id,
+                    steps=30,  # Default 30 steps
+                    confidence_level=0.95,
+                    return_intervals=True,
+                )
+
+                all_model_results[model_id] = {
+                    "metadata": metadata,
+                    "forecast": {
+                        "values": forecast_result.forecast_values,
+                        "timestamps": forecast_result.forecast_timestamps,
+                        "lower_bounds": forecast_result.lower_bounds,
+                        "upper_bounds": forecast_result.upper_bounds,
+                    },
+                }
+
+            visualization_jobs[job_id]["progress"] = 0.3
+
+            # Genera plot per ogni modello
+            plots_dir = Path(tempfile.mkdtemp())
+            plots_data = {}
+
+            # Fix per TCL/TK: usa backend non-interattivo
+            import matplotlib
+            matplotlib.use('Agg')  # Backend non-interattivo per evitare errori TCL
+
+            for model_id, results in all_model_results.items():
+                plotter = ForecastPlotter()
+                plot_path = plots_dir / f"{model_id}_forecast.png"
+
+                # Prepara i dati come pandas Series
+                import pandas as pd
+
+                # Crea Series per actual (se disponibile, altrimenti vuota)
+                actual_data = results["metadata"].get("training_data", [])
+                if actual_data and len(actual_data) > 0:
+                    actual_series = pd.Series(actual_data)
+                else:
+                    # Crea una serie vuota
+                    actual_series = pd.Series([])
+
+                # Crea Series per forecast
+                forecast_series = pd.Series(results["forecast"]["values"])
+
+                # Crea DataFrame per confidence intervals (se disponibile)
+                confidence_df = None
+                if results["forecast"]["lower_bounds"] and results["forecast"]["upper_bounds"]:
+                    confidence_df = pd.DataFrame(
+                        {
+                            "lower": results["forecast"]["lower_bounds"],
+                            "upper": results["forecast"]["upper_bounds"],
+                        }
+                    )
+
+                # Crea grafico forecast
+                plotter.plot_forecast(
+                    actual=actual_series,
+                    forecast=forecast_series,
+                    confidence_intervals=confidence_df,
+                    title=f"Forecast - {model_id}",
+                    save_path=str(plot_path),
+                )
+
+                plots_data[f"{model_id}_forecast"] = str(plot_path)
+
+            visualization_jobs[job_id]["progress"] = 0.5
+
+            # Genera report per ogni formato richiesto
+            results_urls = []
+            report_generator = QuartoReportGenerator(template_name="default")
 
             for i, fmt in enumerate(config.export_formats):
-                await asyncio.sleep(2)  # Simula generazione formato
-                progress = (i + 1) / len(config.export_formats)
+                # Prepara model_results per il template Quarto
+                model_results = {
+                    "title": f"Report Forecast - {config.report_type.title()}",
+                    "report_type": config.report_type,
+                    "language": config.language,
+                    "models": all_model_results,
+                    "sections": config.include_sections,
+                    "generated_at": datetime.now().isoformat(),
+                }
+
+                # Genera report nel formato specifico
+                output_path = report_generator.generate_model_report(
+                    model_results=model_results,
+                    plots_data=plots_data,
+                    report_title=f"Report Forecast - {', '.join(config.model_ids)}",
+                    output_filename=f"{job_id}_report",
+                    format_type=fmt,
+                )
+
+                results_urls.append(str(output_path))
+
+                progress = 0.5 + (0.5 * (i + 1) / len(config.export_formats))
                 visualization_jobs[job_id]["progress"] = progress
 
-            # URL risultati simulati
-            results = [f"/reports/{job_id}/report.{fmt}" for fmt in config.export_formats]
-
             visualization_jobs[job_id].update(
-                {"status": "completed", "progress": 1.0, "results_urls": results}
+                {"status": "completed", "progress": 1.0, "results_urls": results_urls}
             )
 
         except Exception as e:
             visualization_jobs[job_id]["status"] = "failed"
+            visualization_jobs[job_id]["error"] = str(e)
             logger.error(f"Errore generazione report {job_id}: {str(e)}")
 
     background_tasks.add_task(generate_report_job)
@@ -875,7 +983,7 @@ async def generate_forecast_plot(
     confidence_level: float = 0.95,
     include_intervals: bool = True,
     theme: str = "plotly_white",
-    services: tuple = Depends(get_services)
+    services: tuple = Depends(get_services),
 ):
     """
     Genera grafico interattivo Plotly con Serie Temporale + Forecast.
@@ -919,31 +1027,33 @@ async def generate_forecast_plot(
             model_id=model_id,
             steps=forecast_steps,
             confidence_level=confidence_level,
-            return_intervals=include_intervals
+            return_intervals=include_intervals,
         )
 
         # Converti ForecastResult in dizionario con i nomi corretti dei campi
         forecast_result = {
-            'forecast': forecast_response.forecast_values,
-            'timestamps': forecast_response.forecast_timestamps,
-            'confidence_intervals': {
-                'lower': forecast_response.lower_bounds,
-                'upper': forecast_response.upper_bounds
-            } if forecast_response.lower_bounds and forecast_response.upper_bounds else None
+            "forecast": forecast_response.forecast_values,
+            "timestamps": forecast_response.forecast_timestamps,
+            "confidence_intervals": {
+                "lower": forecast_response.lower_bounds,
+                "upper": forecast_response.upper_bounds,
+            }
+            if forecast_response.lower_bounds and forecast_response.upper_bounds
+            else None,
         }
 
         # Recupera dati storici dal modello (se disponibili)
         historical_data = []
         historical_dates = []
 
-        if hasattr(model, 'training_data') and model.training_data is not None:
+        if hasattr(model, "training_data") and model.training_data is not None:
             import pandas as pd
 
             # Converti a lista i dati
             if isinstance(model.training_data, pd.Series):
                 historical_data = model.training_data.values.tolist()
                 # Usa l'index del pandas Series se disponibile
-                if hasattr(model.training_data, 'index'):
+                if hasattr(model.training_data, "index"):
                     try:
                         # Prova a convertire l'index in stringhe
                         historical_dates = [str(x) for x in model.training_data.index]
@@ -966,95 +1076,101 @@ async def generate_forecast_plot(
 
         # Serie storica (se disponibile)
         if historical_data:
-            fig.add_trace(go.Scatter(
-                x=historical_dates,
-                y=historical_data,
-                mode='lines',
-                name='Serie Storica',
-                line=dict(color='blue', width=2),
-                hovertemplate='<b>Storico</b><br>Periodo: %{x}<br>Valore: %{y:.2f}<extra></extra>'
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=historical_dates,
+                    y=historical_data,
+                    mode="lines",
+                    name="Serie Storica",
+                    line=dict(color="blue", width=2),
+                    hovertemplate="<b>Storico</b><br>Periodo: %{x}<br>Valore: %{y:.2f}<extra></extra>",
+                )
+            )
 
         # Forecast - usa i timestamp se disponibili, altrimenti numeri sequenziali
-        if 'timestamps' in forecast_result and forecast_result['timestamps']:
-            forecast_dates = forecast_result['timestamps']
+        if "timestamps" in forecast_result and forecast_result["timestamps"]:
+            forecast_dates = forecast_result["timestamps"]
         else:
             # Fallback a numeri sequenziali
-            forecast_dates = list(range(
-                len(historical_data) + 1 if historical_data else 1,
-                len(historical_data) + forecast_steps + 1 if historical_data else forecast_steps + 1
-            ))
+            forecast_dates = list(
+                range(
+                    len(historical_data) + 1 if historical_data else 1,
+                    len(historical_data) + forecast_steps + 1
+                    if historical_data
+                    else forecast_steps + 1,
+                )
+            )
 
-        fig.add_trace(go.Scatter(
-            x=forecast_dates,
-            y=forecast_result['forecast'],
-            mode='lines+markers',
-            name='Forecast',
-            line=dict(color='red', width=2, dash='dash'),
-            marker=dict(size=6),
-            hovertemplate='<b>Forecast</b><br>Periodo: %{x}<br>Valore: %{y:.2f}<extra></extra>'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=forecast_dates,
+                y=forecast_result["forecast"],
+                mode="lines+markers",
+                name="Forecast",
+                line=dict(color="red", width=2, dash="dash"),
+                marker=dict(size=6),
+                hovertemplate="<b>Forecast</b><br>Periodo: %{x}<br>Valore: %{y:.2f}<extra></extra>",
+            )
+        )
 
         # Intervalli di confidenza (se richiesti)
-        if include_intervals and 'confidence_intervals' in forecast_result:
-            ci = forecast_result['confidence_intervals']
+        if include_intervals and "confidence_intervals" in forecast_result:
+            ci = forecast_result["confidence_intervals"]
 
             # Upper bound
-            fig.add_trace(go.Scatter(
-                x=forecast_dates,
-                y=ci['upper'],
-                mode='lines',
-                name=f'Upper Bound ({int(confidence_level*100)}%)',
-                line=dict(width=0),
-                showlegend=False,
-                hovertemplate='<b>Upper Bound</b><br>Valore: %{y:.2f}<extra></extra>'
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=forecast_dates,
+                    y=ci["upper"],
+                    mode="lines",
+                    name=f"Upper Bound ({int(confidence_level * 100)}%)",
+                    line=dict(width=0),
+                    showlegend=False,
+                    hovertemplate="<b>Upper Bound</b><br>Valore: %{y:.2f}<extra></extra>",
+                )
+            )
 
             # Lower bound con fill
-            fig.add_trace(go.Scatter(
-                x=forecast_dates,
-                y=ci['lower'],
-                mode='lines',
-                name=f'Intervallo Confidenza {int(confidence_level*100)}%',
-                fill='tonexty',
-                fillcolor='rgba(255, 0, 0, 0.2)',
-                line=dict(width=0),
-                hovertemplate='<b>Lower Bound</b><br>Valore: %{y:.2f}<extra></extra>'
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=forecast_dates,
+                    y=ci["lower"],
+                    mode="lines",
+                    name=f"Intervallo Confidenza {int(confidence_level * 100)}%",
+                    fill="tonexty",
+                    fillcolor="rgba(255, 0, 0, 0.2)",
+                    line=dict(width=0),
+                    hovertemplate="<b>Lower Bound</b><br>Valore: %{y:.2f}<extra></extra>",
+                )
+            )
 
         # Layout del grafico
         fig.update_layout(
             title={
-                'text': f'Serie Temporale + Forecast ({forecast_steps} step)',
-                'x': 0.5,
-                'xanchor': 'center',
-                'font': {'size': 20}
+                "text": f"Serie Temporale + Forecast ({forecast_steps} step)",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 20},
             },
-            xaxis_title='Periodo',
-            yaxis_title='Valore',
+            xaxis_title="Periodo",
+            yaxis_title="Valore",
             template=theme,
-            hovermode='x unified',
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ),
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             height=600,
-            margin=dict(l=60, r=60, t=80, b=60)
+            margin=dict(l=60, r=60, t=80, b=60),
         )
 
         # Converti in HTML
         html_content = pio.to_html(
             fig,
-            include_plotlyjs='cdn',
+            include_plotlyjs="cdn",
             full_html=True,
             config={
-                'displayModeBar': True,
-                'displaylogo': False,
-                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-            }
+                "displayModeBar": True,
+                "displaylogo": False,
+                "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+            },
         )
 
         return HTMLResponse(content=html_content)
@@ -1063,9 +1179,307 @@ async def generate_forecast_plot(
         raise
     except Exception as e:
         import traceback
+
         error_details = traceback.format_exc()
         logger.error(f"Errore generazione grafico forecast per {model_id}: {e}\n{error_details}")
         raise HTTPException(status_code=500, detail=f"Errore generazione grafico: {str(e)}")
+
+
+@router.get("/forecast-report/{model_id}/{forecast_steps}")
+async def generate_forecast_report(
+    model_id: str,
+    forecast_steps: int,
+    confidence_level: float = 0.95,
+    include_intervals: bool = True,
+    report_format: str = "pdf",
+    services: tuple = Depends(get_services),
+):
+    """
+    Genera report completo del forecast in formato PDF/HTML/DOCX.
+
+    Questo endpoint crea un report professionale che include:
+    - Informazioni sul modello
+    - Grafico serie temporale + forecast
+    - Tabella dati forecast dettagliata
+    - Statistiche e metriche del modello
+    - Intervalli di confidenza (se richiesti)
+
+    <h4>Parametri:</h4>
+    <table>
+        <tr><th>Nome</th><th>Tipo</th><th>Descrizione</th></tr>
+        <tr><td>model_id</td><td>str</td><td>ID del modello</td></tr>
+        <tr><td>forecast_steps</td><td>int</td><td>Numero di step da prevedere</td></tr>
+        <tr><td>confidence_level</td><td>float</td><td>Livello confidenza (default 0.95)</td></tr>
+        <tr><td>include_intervals</td><td>bool</td><td>Include intervalli (default true)</td></tr>
+        <tr><td>report_format</td><td>str</td><td>Formato: pdf, html, docx (default pdf)</td></tr>
+    </table>
+
+    <h4>Risposta:</h4>
+    - File PDF/HTML/DOCX pronto per download
+    - Content-Type appropriato per il formato
+    - Nome file con timestamp
+
+    <h4>Esempio Chiamata:</h4>
+    <pre><code>
+    GET /visualization/forecast-report/abc123/30?report_format=pdf
+    </code></pre>
+    """
+    from fastapi.responses import FileResponse, StreamingResponse
+    from io import BytesIO
+    import tempfile
+    from datetime import datetime
+
+    model_manager, forecast_service = services
+
+    try:
+        # Verifica esistenza modello
+        if not model_manager.model_exists(model_id):
+            raise HTTPException(status_code=404, detail="Modello non trovato")
+
+        # Carica modello e metadati
+        model = model_manager.load_model(model_id)
+        metadata = model_manager.get_model_info(model_id)
+
+        # Genera forecast
+        forecast_response = await forecast_service.generate_forecast(
+            model_id=model_id,
+            steps=forecast_steps,
+            confidence_level=confidence_level,
+            return_intervals=include_intervals,
+        )
+
+        if report_format.lower() == "pdf":
+            # Import reportlab solo quando necessario per PDF
+            from reportlab.lib.pagesizes import letter, A4
+            from reportlab.platypus import (
+                SimpleDocTemplate,
+                Table,
+                TableStyle,
+                Paragraph,
+                Spacer,
+                Image,
+                PageBreak,
+            )
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch
+            from reportlab.lib import colors
+
+            # Crea PDF in memoria
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(
+                buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18
+            )
+
+            # Container per gli elementi del report
+            elements = []
+            styles = getSampleStyleSheet()
+
+            # Titolo
+            title_style = ParagraphStyle(
+                "CustomTitle",
+                parent=styles["Heading1"],
+                fontSize=24,
+                textColor=colors.HexColor("#1976d2"),
+                spaceAfter=30,
+                alignment=1,  # Center
+            )
+            elements.append(Paragraph("Report Forecast", title_style))
+            elements.append(Spacer(1, 0.2 * inch))
+
+            # Informazioni Modello
+            elements.append(Paragraph("<b>Informazioni Modello</b>", styles["Heading2"]))
+            model_info_data = [
+                ["Model ID:", model_id[:20] + "..."],
+                ["Tipo Modello:", metadata.get("model_type", "N/A").upper()],
+                ["Data Creazione:", str(metadata.get("created_at", "N/A"))[:19]],
+                ["Osservazioni Training:", str(metadata.get("training_observations", "N/A"))],
+                ["Step Forecast:", str(forecast_steps)],
+                ["Livello Confidenza:", f"{int(confidence_level * 100)}%"],
+            ]
+
+            model_table = Table(model_info_data, colWidths=[3 * inch, 3 * inch])
+            model_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#e3f2fd")),
+                        ("TEXTCOLOR", (0, 0), (-1, -1), colors.black),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                    ]
+                )
+            )
+            elements.append(model_table)
+            elements.append(Spacer(1, 0.3 * inch))
+
+            # Statistiche Forecast
+            elements.append(Paragraph("<b>Statistiche Forecast</b>", styles["Heading2"]))
+            forecast_values = forecast_response.forecast_values
+            stats_data = [
+                ["Metrica", "Valore"],
+                ["Media", f"{sum(forecast_values) / len(forecast_values):.2f}"],
+                ["Minimo", f"{min(forecast_values):.2f}"],
+                ["Massimo", f"{max(forecast_values):.2f}"],
+                ["Range", f"{max(forecast_values) - min(forecast_values):.2f}"],
+            ]
+
+            stats_table = Table(stats_data, colWidths=[3 * inch, 3 * inch])
+            stats_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1976d2")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 12),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ]
+                )
+            )
+            elements.append(stats_table)
+            elements.append(Spacer(1, 0.3 * inch))
+
+            # Tabella Forecast (prime 20 righe per non appesantire)
+            elements.append(Paragraph("<b>Dati Forecast (prime 20 righe)</b>", styles["Heading2"]))
+
+            forecast_data = [["Periodo", "Timestamp", "Valore Previsto"]]
+            if include_intervals and forecast_response.lower_bounds:
+                forecast_data[0].extend(["Lower Bound", "Upper Bound"])
+
+            for i in range(min(20, len(forecast_values))):
+                row = [
+                    str(i + 1),
+                    forecast_response.forecast_timestamps[i][:19],
+                    f"{forecast_values[i]:.2f}",
+                ]
+                if include_intervals and forecast_response.lower_bounds:
+                    row.extend(
+                        [
+                            f"{forecast_response.lower_bounds[i]:.2f}",
+                            f"{forecast_response.upper_bounds[i]:.2f}",
+                        ]
+                    )
+                forecast_data.append(row)
+
+            col_widths = [0.8 * inch, 2.2 * inch, 1.5 * inch]
+            if include_intervals:
+                col_widths.extend([1.5 * inch, 1.5 * inch])
+
+            forecast_table = Table(forecast_data, colWidths=col_widths)
+            forecast_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1976d2")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 10),
+                        ("FONTSIZE", (0, 1), (-1, -1), 9),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+                    ]
+                )
+            )
+            elements.append(forecast_table)
+
+            # Footer
+            elements.append(Spacer(1, 0.5 * inch))
+            footer_style = ParagraphStyle(
+                "Footer", parent=styles["Normal"], fontSize=9, textColor=colors.grey, alignment=1
+            )
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            elements.append(Paragraph(f"Report generato il {timestamp}", footer_style))
+            elements.append(Paragraph("Powered by ARIMA Forecaster API", footer_style))
+
+            # Build PDF
+            doc.build(elements)
+            buffer.seek(0)
+
+            # Genera nome file con timestamp
+            filename = (
+                f"forecast_report_{model_id[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            )
+
+            return StreamingResponse(
+                buffer,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
+
+        elif report_format.lower() == "html":
+            # Genera HTML semplice
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Report Forecast - {model_id[:8]}</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                    h1 {{ color: #1976d2; }}
+                    table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
+                    th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
+                    th {{ background-color: #1976d2; color: white; }}
+                    .stats {{ background-color: #f5f5f5; }}
+                </style>
+            </head>
+            <body>
+                <h1>Report Forecast</h1>
+                <h2>Informazioni Modello</h2>
+                <table>
+                    <tr><td><b>Model ID</b></td><td>{model_id}</td></tr>
+                    <tr><td><b>Tipo</b></td><td>{metadata.get("model_type", "N/A").upper()}</td></tr>
+                    <tr><td><b>Step Forecast</b></td><td>{forecast_steps}</td></tr>
+                </table>
+
+                <h2>Dati Forecast</h2>
+                <table>
+                    <tr><th>Periodo</th><th>Timestamp</th><th>Valore</th></tr>
+            """
+
+            for i, (ts, val) in enumerate(
+                zip(
+                    forecast_response.forecast_timestamps[:20],
+                    forecast_response.forecast_values[:20],
+                )
+            ):
+                html_content += f"<tr><td>{i + 1}</td><td>{ts}</td><td>{val:.2f}</td></tr>"
+
+            html_content += """
+                </table>
+                <p style="color: grey; font-size: 12px; margin-top: 40px;">
+                    Report generato da ARIMA Forecaster API
+                </p>
+            </body>
+            </html>
+            """
+
+            filename = (
+                f"forecast_report_{model_id[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            )
+
+            return StreamingResponse(
+                BytesIO(html_content.encode("utf-8")),
+                media_type="text/html",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Formato non supportato: {report_format}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+
+        error_details = traceback.format_exc()
+        logger.error(f"Errore generazione report per {model_id}: {e}\n{error_details}")
+        raise HTTPException(status_code=500, detail=f"Errore generazione report: {str(e)}")
 
 
 @router.get("/job-status/{job_id}", response_model=VisualizationJobResponse)
@@ -1185,3 +1599,74 @@ async def get_job_status(job_id: str):
         estimated_completion=job_info.get("estimated_completion"),
         results_urls=job_info.get("results_urls", []),
     )
+
+
+@router.get("/download-report/{file_path:path}")
+async def download_report_file(file_path: str):
+    """
+    Scarica un file report generato dal sistema.
+
+    <h4>Descrizione:</h4>
+    Permette il download dei report generati dall'endpoint /generate-report.
+    Il path del file viene ottenuto dai risultati del job (results_urls).
+
+    <h4>Parametri:</h4>
+    - file_path: Path relativo o assoluto del file da scaricare
+
+    <h4>Formati Supportati:</h4>
+    - PDF: Report stampabile professionale
+    - HTML: Report interattivo web
+    - DOCX: Documento Word editabile
+    - PNG: Immagini grafici
+
+    <h4>Risposta:</h4>
+    - StreamingResponse con il file binario
+    - Content-Type appropriato per il formato
+    - Header Content-Disposition per download
+
+    <h4>Esempio Chiamata:</h4>
+    <pre><code>
+    GET /visualization/download-report/outputs/reports/report_job_abc123_report.html
+    </code></pre>
+    """
+    from fastapi.responses import FileResponse
+
+    # Converti path relativo in assoluto
+    file_path_obj = Path(file_path)
+
+    if not file_path_obj.is_absolute():
+        # Se il path è relativo, cerca nella directory del progetto
+        current_path = Path(__file__).parent
+        while current_path.parent != current_path:
+            if (current_path / "pyproject.toml").exists() or (current_path / "CLAUDE.md").exists():
+                project_root = current_path
+                break
+            current_path = current_path.parent
+        else:
+            project_root = Path(__file__).parent.parent.parent.parent
+
+        file_path_obj = project_root / file_path
+
+    # Verifica che il file esista
+    if not file_path_obj.exists():
+        raise HTTPException(status_code=404, detail=f"File non trovato: {file_path}")
+
+    # Verifica che sia un file (non directory)
+    if not file_path_obj.is_file():
+        raise HTTPException(status_code=400, detail="Il path specificato non è un file")
+
+    # Determina media type in base all'estensione
+    suffix = file_path_obj.suffix.lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".html": "text/html",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".json": "application/json",
+    }
+
+    media_type = media_types.get(suffix, "application/octet-stream")
+
+    return FileResponse(path=str(file_path_obj), media_type=media_type, filename=file_path_obj.name)

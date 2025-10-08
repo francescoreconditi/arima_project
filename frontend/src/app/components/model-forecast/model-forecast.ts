@@ -44,6 +44,14 @@ export class ModelForecast implements OnInit {
   plotlyChartUrl: SafeHtml | null = null;
   isLoadingChart = false;
 
+  // Report generation
+  isGeneratingReport = false;
+  reportJobId: string | null = null;
+  reportProgress = 0;
+  reportGenerationError = '';
+  generatedReportUrls: string[] = [];
+  private downloadTriggered = false; // Flag per evitare download multipli
+
   constructor(
     private apiService: ArimaApiService,
     private sanitizer: DomSanitizer
@@ -223,5 +231,141 @@ export class ModelForecast implements OnInit {
     const squaredDiffs = data.map(val => Math.pow(val - mean, 2));
     const variance = this.calculateMean(squaredDiffs);
     return Math.sqrt(variance);
+  }
+
+  /**
+   * Genera report professionale usando Quarto (metodo asincrono con job)
+   */
+  generateQuartoReport(formats: ('pdf' | 'html' | 'docx')[] = ['html']): void {
+    if (!this.selectedModelId) {
+      this.errorMessage = 'Seleziona un modello prima di generare il report';
+      return;
+    }
+
+    this.isGeneratingReport = true;
+    this.reportGenerationError = '';
+    this.reportProgress = 0;
+    this.generatedReportUrls = [];
+    this.downloadTriggered = false; // Reset flag per nuovo report
+
+    // Configurazione report
+    const reportConfig = {
+      model_ids: [this.selectedModelId],
+      report_type: 'comprehensive' as const,
+      include_sections: ['summary', 'methodology', 'results', 'diagnostics', 'recommendations'],
+      export_formats: formats,
+      template_style: 'corporate' as const,
+      language: 'it'
+    };
+
+    // Avvia la generazione del report
+    this.apiService.generateReport(reportConfig).subscribe({
+      next: (response) => {
+        this.reportJobId = response.job_id;
+        console.log('Report job avviato:', response.job_id);
+
+        // Polling dello stato del job ogni 2 secondi
+        this.pollReportStatus();
+      },
+      error: (error) => {
+        this.reportGenerationError = `Errore avvio generazione report: ${error.error?.detail || error.message}`;
+        this.isGeneratingReport = false;
+        console.error('Errore generazione report:', error);
+      }
+    });
+  }
+
+  /**
+   * Polling dello stato del job di generazione report
+   */
+  private pollReportStatus(): void {
+    if (!this.reportJobId) return;
+
+    let pollingCompleted = false; // Flag per evitare esecuzioni multiple
+
+    const intervalId = setInterval(() => {
+      if (!this.reportJobId || pollingCompleted) {
+        clearInterval(intervalId);
+        return;
+      }
+
+      this.apiService.checkJobStatus(this.reportJobId).subscribe({
+        next: (status) => {
+          this.reportProgress = (status.progress || 0) * 100;
+
+          if (status.status === 'completed') {
+            // Job completato - imposta flag e ferma polling
+            pollingCompleted = true;
+            clearInterval(intervalId);
+            this.isGeneratingReport = false;
+            this.generatedReportUrls = status.results_urls || [];
+            console.log('Report generati:', this.generatedReportUrls);
+
+            // Scarica automaticamente tutti i file
+            this.downloadAllGeneratedReports();
+
+            // Reset jobId per evitare richieste duplicate
+            this.reportJobId = null;
+          } else if (status.status === 'failed') {
+            // Job fallito
+            pollingCompleted = true;
+            clearInterval(intervalId);
+            this.isGeneratingReport = false;
+            this.reportGenerationError = status.error || 'Errore sconosciuto durante la generazione';
+            console.error('Report generation failed:', status.error);
+            this.reportJobId = null;
+          }
+          // Altrimenti continua il polling (status = 'queued' o 'running')
+        },
+        error: (error) => {
+          pollingCompleted = true;
+          clearInterval(intervalId);
+          this.isGeneratingReport = false;
+          this.reportGenerationError = `Errore controllo stato job: ${error.message}`;
+          console.error('Errore polling status:', error);
+          this.reportJobId = null;
+        }
+      });
+    }, 2000); // Polling ogni 2 secondi
+  }
+
+  /**
+   * Scarica tutti i report generati
+   */
+  private downloadAllGeneratedReports(): void {
+    // Protezione contro chiamate multiple
+    if (this.downloadTriggered) {
+      console.log('Download già avviato, skip');
+      return;
+    }
+
+    if (this.generatedReportUrls.length === 0) {
+      this.reportGenerationError = 'Nessun file generato';
+      return;
+    }
+
+    this.downloadTriggered = true; // Imposta flag
+
+    // Scarica ogni file con un piccolo delay tra uno e l'altro
+    this.generatedReportUrls.forEach((filePath, index) => {
+      setTimeout(() => {
+        const downloadUrl = this.apiService.getDownloadReportUrl(filePath);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = '';  // Il server fornisce il filename
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, index * 500); // Delay di 500ms tra i download
+    });
+  }
+
+  /**
+   * Wrapper per compatibilità con i pulsanti esistenti
+   * Ora usa il sistema Quarto invece dell'endpoint semplice
+   */
+  downloadReport(format: 'pdf' | 'html'): void {
+    this.generateQuartoReport([format]);
   }
 }
