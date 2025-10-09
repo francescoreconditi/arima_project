@@ -76,7 +76,7 @@
       <!-- Info dataset selezionato -->
       <div *ngIf="selectedDataset" class="dataset-info">
         <p><strong>Colonne numeriche:</strong> {{ selectedDataset.column_info.value_columns?.join(', ') }}</p>
-        <p class="warning">⚠️ Auto-selection con dataset disponibile solo in Training standard per ora</p>
+        <p class="warning">⚠️ Auto-selection con dataset non supportata dal backend. Usa modalità manuale o vai in Training standard.</p>
       </div>
     </div>
 

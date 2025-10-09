@@ -131,22 +131,16 @@ export class AutoTraining implements OnInit {
     this.searchResults = null;
     this.selectedModelIndex = null;
 
-    // Ottieni dati da dataset o input manuale
-    let data: TimeSeriesData | null = null;
-
+    // NOTA: L'endpoint /models/auto-select richiede obbligatoriamente il campo 'data'
+    // e non supporta 'dataset_id'. Quindi funziona solo in modalità manuale.
     if (this.dataInputMode === 'dataset') {
-      if (!this.selectedDatasetId) {
-        this.errorMessage = 'Seleziona un dataset';
-        return;
-      }
-      // Per ora, mostra messaggio che serve implementare get dataset data
-      // In alternativa, l'utente deve usare modalità manuale
-      this.errorMessage = 'Auto-selection con dataset non ancora supportata. Usa modalità manuale o vai in Training standard.';
+      this.errorMessage = 'Auto-selection con dataset non supportata dal backend. Usa modalità manuale o vai in Training standard.';
       return;
-    } else {
-      data = this.parseCSVData();
-      if (!data) return;
     }
+
+    // Ottieni dati da input manuale
+    const data = this.parseCSVData();
+    if (!data) return;
 
     const request: AutoSelectionRequest = {
       data: data,
