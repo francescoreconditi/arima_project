@@ -178,5 +178,40 @@
       "mase": 1.010835982994903
     },
     "status": "completed"
+  },
+  "5f19ed49-7ba6-4498-a68f-2a5bfbccc958": {
+    "model_id": "5f19ed49-7ba6-4498-a68f-2a5bfbccc958",
+    "model_type": "arima",
+    "model_path": "models\\5f19ed49-7ba6-4498-a68f-2a5bfbccc958.pkl",
+    "created_at": "2025-10-09T12:41:37.960280",
+    "training_observations": 30,
+    "parameters": {
+      "order": {
+        "p": 1,
+        "d": 1,
+        "q": 1
+      },
+      "seasonal_order": null
+    },
+    "metrics": {
+      "mae": 217.64344406276462,
+      "mse": 171703.06133185714,
+      "rmse": 414.37068107173934,
+      "mape": 84.41017246016274,
+      "smape": 63.44114286423383,
+      "r_squared": -0.01964064314952685,
+      "correlation": 0.1554244143934681,
+      "mean_error": 85.02733307909719,
+      "median_ae": 116.1522747858831,
+      "max_error": 1623.872181707883,
+      "min_error": 9.4941649565219,
+      "std_error": 405.55321964116297,
+      "iqr_error": 115.43493344325148,
+      "q90_error": 258.65177454507926,
+      "q95_error": 886.1639449407069,
+      "theil_u": 0.8867155239232652,
+      "mase": 1.010835982994903
+    },
+    "status": "completed"
   }
 }

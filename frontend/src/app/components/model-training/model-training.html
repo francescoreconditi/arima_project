@@ -104,7 +104,7 @@
     <!-- Pulsante training -->
     <button
       (click)="onTrainModel()"
-      [disabled]="isTraining || !csvData"
+      [disabled]="isTraining || (dataInputMode === 'manual' && !csvData) || (dataInputMode === 'dataset' && !selectedDatasetId)"
       class="btn-primary">
       {{ isTraining ? 'Training in corso...' : 'Addestra Modello' }}
     </button>
