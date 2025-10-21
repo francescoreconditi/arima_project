@@ -216,6 +216,33 @@ async def generate_forecast(
         else:
             forecast_list = list(predictions)
 
+        # Controlla valori NaN nel forecast (indica modello corrotto o incompatibile)
+        if any(np.isnan(val) if isinstance(val, (int, float)) else False for val in forecast_list):
+            logger.error(
+                f"Model {model_id} generated NaN predictions. "
+                "This usually indicates a corrupted or incompatible model file."
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Il modello ha generato previsioni invalide (NaN). "
+                    "Questo modello potrebbe essere corrotto o salvato con una versione "
+                    "precedente incompatibile. Si consiglia di eliminarlo e addestrarne uno nuovo."
+                ),
+            )
+
+        # Controlla NaN negli intervalli di confidenza se presenti
+        if confidence_intervals is not None:
+            lower = confidence_intervals.get("lower", [])
+            upper = confidence_intervals.get("upper", [])
+            if any(
+                np.isnan(val) if isinstance(val, (int, float)) else False for val in lower + upper
+            ):
+                logger.warning(
+                    f"Model {model_id} generated NaN in confidence intervals, removing them"
+                )
+                confidence_intervals = None
+
         return ForecastResponse(
             forecast=forecast_list,
             timestamps=timestamps,

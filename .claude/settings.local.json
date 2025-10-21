@@ -129,7 +129,10 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(quarto:*)",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "Bash(ruff check \"src\\arima_forecaster\\core\\sarimax_model.py\" --select E,F)",
+      "Bash(tasklist:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [],

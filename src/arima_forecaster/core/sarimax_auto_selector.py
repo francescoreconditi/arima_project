@@ -186,6 +186,43 @@ class SARIMAXAutoSelector(SARIMAForecaster):
             self.logger.error(f"Training SARIMAX Auto Selector fallito: {e}")
             raise ModelTrainingError(f"Impossibile addestrare SARIMAX Auto Selector: {e}")
 
+    def forecast(
+        self,
+        steps: int,
+        exog: Optional[pd.DataFrame] = None,
+        confidence_intervals: bool = True,
+        alpha: float = 0.05,
+        return_conf_int: bool = False,
+    ) -> Union[pd.Series, Tuple[pd.Series, pd.DataFrame]]:
+        """
+        Override del metodo forecast per gestire automaticamente le exog.
+
+        Questo metodo delega a forecast_with_exog() per garantire compatibilità
+        con modelli addestrati con variabili esogene. Se il modello è stato
+        addestrato con exog ma non vengono fornite per il forecast, vengono
+        create automaticamente con valori zero.
+
+        Args:
+            steps: Numero step da prevedere
+            exog: Variabili esogene per forecast (opzionale)
+            confidence_intervals: Se calcolare intervalli confidenza
+            alpha: Livello alpha per intervalli confidenza
+            return_conf_int: Se restituire intervalli confidenza (per compatibilità API)
+
+        Returns:
+            Serie previsioni, opzionalmente con intervalli confidenza
+
+        Raises:
+            ForecastError: Se forecast fallisce
+        """
+        # Delega a forecast_with_exog che gestisce correttamente le variabili esogene
+        return self.forecast_with_exog(
+            steps=steps,
+            exog=exog,
+            confidence_intervals=confidence_intervals or return_conf_int,
+            alpha=alpha,
+        )
+
     def forecast_with_exog(
         self,
         steps: int,
@@ -638,26 +675,37 @@ class SARIMAXAutoSelector(SARIMAForecaster):
 
     def _create_forecast_index(self, steps: int) -> pd.Index:
         """Crea indice temporale per forecast."""
-        last_date = self.training_data.index[-1]
+        # Gestisce il caso in cui training_data non sia disponibile (modelli salvati con versione precedente)
+        if self.training_data is not None:
+            last_date = self.training_data.index[-1]
 
-        if isinstance(last_date, pd.Timestamp):
-            freq = pd.infer_freq(self.training_data.index)
-            if freq:
-                try:
-                    freq_offset = pd.tseries.frequencies.to_offset(freq)
-                    forecast_index = pd.date_range(
-                        start=last_date + freq_offset, periods=steps, freq=freq
-                    )
-                except Exception:
+            if isinstance(last_date, pd.Timestamp):
+                freq = pd.infer_freq(self.training_data.index)
+                if freq:
+                    try:
+                        freq_offset = pd.tseries.frequencies.to_offset(freq)
+                        forecast_index = pd.date_range(
+                            start=last_date + freq_offset, periods=steps, freq=freq
+                        )
+                    except Exception:
+                        forecast_index = pd.date_range(
+                            start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
+                        )
+                else:
                     forecast_index = pd.date_range(
                         start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
                     )
             else:
-                forecast_index = pd.date_range(
-                    start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
-                )
+                forecast_index = range(len(self.training_data), len(self.training_data) + steps)
         else:
-            forecast_index = range(len(self.training_data), len(self.training_data) + steps)
+            # Fallback: usa data corrente come base se training_data non disponibile
+            self.logger.warning(
+                "training_data non disponibile, uso data corrente come base per l'indice forecast"
+            )
+            last_date = pd.Timestamp.now()
+            forecast_index = pd.date_range(
+                start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
+            )
 
         return forecast_index
 

@@ -176,11 +176,19 @@ async def _train_model_background(
         else:
             metrics = {}
 
+        # Deduce il model_type corretto dalla classe effettiva del modello
+        # Questo evita inconsistenze tra tipo richiesto e tipo salvato
+        actual_model_type = request.model_type
+        if actual_model_type == "sarimax":
+            # "sarimax" nel request viene mappato a "sarima" perche' usa SARIMAForecaster
+            # Il vero SARIMAX (con exog) richiederebbe SARIMAXForecaster
+            actual_model_type = "sarima"
+
         # Salva il modello nel registry con metadati completi
         model_manager.save_model(
             model_id=model_id,
             model=model,
-            model_type=request.model_type,
+            model_type=actual_model_type,
             metadata={
                 "parameters": {
                     "order": {"p": request.order.p, "d": request.order.d, "q": request.order.q},
@@ -320,7 +328,9 @@ async def train_model(
             from arima_forecaster.api.routers.data_management import datasets_storage
 
             if request.dataset_id not in datasets_storage:
-                raise HTTPException(status_code=404, detail=f"Dataset {request.dataset_id} non trovato")
+                raise HTTPException(
+                    status_code=404, detail=f"Dataset {request.dataset_id} non trovato"
+                )
 
             dataset_info = datasets_storage[request.dataset_id]
             df = dataset_info["dataframe"]
@@ -331,14 +341,20 @@ async def train_model(
                 # Usa la prima colonna numerica disponibile
                 value_columns = dataset_info["metadata"].column_info.get("value_columns", [])
                 if not value_columns:
-                    raise HTTPException(status_code=400, detail="Nessuna colonna numerica trovata nel dataset")
+                    raise HTTPException(
+                        status_code=400, detail="Nessuna colonna numerica trovata nel dataset"
+                    )
                 value_col = value_columns[0]
 
             if value_col not in df.columns:
-                raise HTTPException(status_code=400, detail=f"Colonna '{value_col}' non trovata nel dataset")
+                raise HTTPException(
+                    status_code=400, detail=f"Colonna '{value_col}' non trovata nel dataset"
+                )
 
             series = df[value_col]
-            logger.info(f"Loaded data from dataset {request.dataset_id}, column {value_col}: {len(series)} observations")
+            logger.info(
+                f"Loaded data from dataset {request.dataset_id}, column {value_col}: {len(series)} observations"
+            )
         else:
             # Usa i dati forniti direttamente nella richiesta
             timestamps = pd.to_datetime(request.data.timestamps)
@@ -519,9 +535,13 @@ async def auto_select_model(request: AutoSelectionRequest, services: tuple = Dep
         if is_seasonal:
             # Per SARIMA: combina order e seasonal_order in una tupla unica
             best_order = (
-                selector.best_order[0], selector.best_order[1], selector.best_order[2],
-                selector.best_seasonal_order[0], selector.best_seasonal_order[1],
-                selector.best_seasonal_order[2], selector.best_seasonal_order[3]
+                selector.best_order[0],
+                selector.best_order[1],
+                selector.best_order[2],
+                selector.best_seasonal_order[0],
+                selector.best_seasonal_order[1],
+                selector.best_seasonal_order[2],
+                selector.best_seasonal_order[3],
             )
         else:
             # Per ARIMA: usa solo order

@@ -187,28 +187,39 @@ class SARIMAXForecaster:
                 conf_int = None
 
             # Crea indice previsione
-            last_date = self.training_data.index[-1]
-            if isinstance(last_date, pd.Timestamp):
-                freq = pd.infer_freq(self.training_data.index)
-                if freq:
-                    try:
-                        # Converte frequenza stringa in DateOffset e aggiunge al timestamp
-                        freq_offset = pd.tseries.frequencies.to_offset(freq)
-                        forecast_index = pd.date_range(
-                            start=last_date + freq_offset, periods=steps, freq=freq
-                        )
-                    except Exception:
-                        # Fallback: usa frequenza giornaliera
+            # Gestisce il caso in cui training_data non sia disponibile (modelli salvati con versione precedente)
+            if self.training_data is not None:
+                last_date = self.training_data.index[-1]
+                if isinstance(last_date, pd.Timestamp):
+                    freq = pd.infer_freq(self.training_data.index)
+                    if freq:
+                        try:
+                            # Converte frequenza stringa in DateOffset e aggiunge al timestamp
+                            freq_offset = pd.tseries.frequencies.to_offset(freq)
+                            forecast_index = pd.date_range(
+                                start=last_date + freq_offset, periods=steps, freq=freq
+                            )
+                        except Exception:
+                            # Fallback: usa frequenza giornaliera
+                            forecast_index = pd.date_range(
+                                start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
+                            )
+                    else:
+                        # Fallback: usa frequenza giornaliera se non può essere inferita
                         forecast_index = pd.date_range(
                             start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
                         )
                 else:
-                    # Fallback: usa frequenza giornaliera se non può essere inferita
-                    forecast_index = pd.date_range(
-                        start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
-                    )
+                    forecast_index = range(len(self.training_data), len(self.training_data) + steps)
             else:
-                forecast_index = range(len(self.training_data), len(self.training_data) + steps)
+                # Fallback: usa data corrente come base se training_data non disponibile
+                self.logger.warning(
+                    "training_data non disponibile, uso data corrente come base per l'indice forecast"
+                )
+                last_date = pd.Timestamp.now()
+                forecast_index = pd.date_range(
+                    start=last_date + pd.Timedelta(days=1), periods=steps, freq="D"
+                )
 
             forecast_series = pd.Series(forecast_values, index=forecast_index, name="forecast")
 
@@ -292,6 +303,12 @@ class SARIMAXForecaster:
                     f,
                 )
 
+            # Salva i dati di addestramento (serie temporale target)
+            if self.training_data is not None:
+                data_path = filepath.with_suffix(".training_data.pkl")
+                with open(data_path, "wb") as f:
+                    pickle.dump(self.training_data, f)
+
             # Salva i dati di addestramento esogeni se presenti
             if self.training_exog is not None:
                 exog_path = filepath.with_suffix(".exog.pkl")
@@ -338,6 +355,13 @@ class SARIMAXForecaster:
                 trend = None
                 training_metadata = {}
 
+            # Carica dati di addestramento se disponibili
+            training_data = None
+            data_path = filepath.with_suffix(".training_data.pkl")
+            if data_path.exists():
+                with open(data_path, "rb") as f:
+                    training_data = pickle.load(f)
+
             # Carica dati esogeni se disponibili
             training_exog = None
             exog_path = filepath.with_suffix(".exog.pkl")
@@ -350,6 +374,7 @@ class SARIMAXForecaster:
                 order=order, seasonal_order=seasonal_order, exog_names=exog_names, trend=trend
             )
             instance.fitted_model = fitted_model
+            instance.training_data = training_data
             instance.training_exog = training_exog
             instance.training_metadata = training_metadata
 
